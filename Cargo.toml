@@ -3,6 +3,8 @@ name = "bevy_so_smooth"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
+bevy = { version = "0.6.0", default-features = false, features = ["render"] }
+
+[dev-dependencies]
+bevy = "0.6"
