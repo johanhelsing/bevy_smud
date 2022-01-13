@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 bevy = { version = "0.6.0", default-features = false, features = ["render"] }
+bytemuck = "1.7"
 
 [dev-dependencies]
 bevy = "0.6"
