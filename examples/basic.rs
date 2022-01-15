@@ -1,4 +1,5 @@
 use bevy::{
+    asset::AssetServerSettings,
     prelude::*,
     sprite::{MaterialMesh2dBundle, Mesh2dHandle},
 };
@@ -6,6 +7,10 @@ use bevy_so_smooth::*;
 
 fn main() {
     App::new()
+        .insert_resource(AssetServerSettings {
+            watch_for_changes: true,
+            ..Default::default()
+        })
         .insert_resource(Msaa { samples: 4 })
         .add_plugins(DefaultPlugins)
         .add_plugin(SoSmoothPlugin)
