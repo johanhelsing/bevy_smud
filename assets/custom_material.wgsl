@@ -22,7 +22,7 @@ struct FragmentInput {
 [[stage(fragment)]]
 fn fragment(in: FragmentInput) -> [[location(0)]] vec4<f32> {
     let width = 15.;
-    let p = sd_renormalize_uv(in.uv) * width;
-    let d = sd_circle(p, width / 2.);
+    let pos = sd_renormalize_uv(in.uv) * width;
+    let d = sd_circle(pos, width / 2.);
     return colorize_normal(d, 0., material.color.rgb);
 }
