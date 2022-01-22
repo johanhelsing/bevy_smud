@@ -188,7 +188,7 @@ impl SpecializedPipeline for SmudPipeline {
         let vertex_attributes = vec![
             // Position (GOTCHA! Vertex_Position isn't first in the buffer due to how Mesh sorts attributes(alphabetically))
             VertexAttribute {
-                format: VertexFormat::Float32x3,
+                format: VertexFormat::Float32x2,
                 // this offset is the size of the color attribute, which is stored first
                 offset: 16,
                 // position is available at location 0 in the shader
@@ -201,8 +201,8 @@ impl SpecializedPipeline for SmudPipeline {
                 shader_location: 1,
             },
         ];
-        // This is the sum of the size of position and color attributes (12 + 16 = 28)
-        let vertex_array_stride = 28;
+        // This is the sum of the size of position and color attributes (8 + 16 = 24)
+        let vertex_array_stride = 24;
 
         RenderPipelineDescriptor {
             vertex: VertexState {
