@@ -14,7 +14,7 @@ fn main() {
         .add_plugins(DefaultPlugins)
         .add_plugin(SoSmoothPlugin)
         // .add_startup_system(setup)
-        .add_startup_system(star)
+        .add_startup_system(quad)
         .run();
 }
 
@@ -38,7 +38,7 @@ fn main() {
 //     commands.spawn_bundle(OrthographicCameraBundle::new_2d());
 // }
 
-fn star(
+fn quad(
     mut commands: Commands,
     // We will add a new Mesh for the star being created
     mut meshes: ResMut<Assets<Mesh>>,
