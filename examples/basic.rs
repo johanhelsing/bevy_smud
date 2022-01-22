@@ -54,8 +54,8 @@ fn star(
     // And a RGB color attribute as well
     let v_color = vec![[1.0, 1.0, 0.0, 1.0]; 4];
     quad.set_attribute(Mesh::ATTRIBUTE_COLOR, v_color);
-    let indices = vec![0, 1, 2, 3];
-    quad.set_indices(Some(Indices::U32(indices)));
+    // let indices = vec![0, 1, 2, 3];
+    // quad.set_indices(Some(Indices::U32(indices)));
 
     // We can now spawn the entities for the star and the camera
     commands.spawn_bundle((
