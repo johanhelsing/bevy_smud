@@ -1,8 +1,6 @@
 use bevy::{
-    asset::AssetServerSettings,
-    prelude::*,
-    render::{mesh::Indices, render_resource::PrimitiveTopology},
-    sprite::{MaterialMesh2dBundle, Mesh2dHandle},
+    asset::AssetServerSettings, prelude::*, render::render_resource::PrimitiveTopology,
+    sprite::Mesh2dHandle,
 };
 use bevy_so_smooth::*;
 
@@ -20,25 +18,25 @@ fn main() {
         .run();
 }
 
-fn setup(
-    mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<CustomMaterial>>,
-) {
-    let size = Vec2::new(300.0, 300.0);
+// fn setup(
+//     mut commands: Commands,
+//     mut meshes: ResMut<Assets<Mesh>>,
+//     mut materials: ResMut<Assets<CustomMaterial>>,
+// ) {
+//     let size = Vec2::new(300.0, 300.0);
 
-    let material = materials.add(CustomMaterial {
-        color: Vec4::new(0.05, 0.05, 0.1, 1.0),
-    });
+//     let material = materials.add(CustomMaterial {
+//         color: Vec4::new(0.05, 0.05, 0.1, 1.0),
+//     });
 
-    commands.spawn().insert_bundle(MaterialMesh2dBundle {
-        mesh: Mesh2dHandle(meshes.add(Mesh::from(shape::Quad::new(size)))),
-        material,
-        ..Default::default()
-    });
+//     commands.spawn().insert_bundle(MaterialMesh2dBundle {
+//         mesh: Mesh2dHandle(meshes.add(Mesh::from(shape::Quad::new(size)))),
+//         material,
+//         ..Default::default()
+//     });
 
-    commands.spawn_bundle(OrthographicCameraBundle::new_2d());
-}
+//     commands.spawn_bundle(OrthographicCameraBundle::new_2d());
+// }
 
 fn star(
     mut commands: Commands,
