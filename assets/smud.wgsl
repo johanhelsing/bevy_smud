@@ -1,3 +1,7 @@
+#import "./prelude.wgsl"
+#import "./shapes.wgsl"
+#import "./colorize.wgsl"
+
 // Import the standard 2d mesh uniforms and set their bind groups
 
 #import bevy_sprite::mesh2d_view_bind_group
@@ -17,6 +21,7 @@ struct Vertex {
 struct VertexOutput {
     [[builtin(position)]] clip_position: vec4<f32>;
     [[location(0)]] color: vec4<f32>;
+    [[location(1)]] pos: vec2<f32>;
 };
 
 [[stage(vertex)]]
@@ -25,15 +30,19 @@ fn vertex(vertex: Vertex) -> VertexOutput {
     // Project the world position of the mesh into screen position
     out.clip_position = view.view_proj * mesh.model * vec4<f32>(vertex.position, 0.0, 1.0);
     out.color = vertex.color;
+    out.pos = vertex.position;
     return out;
 }
 
 struct FragmentInput {
     // The color is interpolated between vertices by default
     [[location(0)]] color: vec4<f32>;
+    [[location(1)]] pos: vec2<f32>;
 };
 
 [[stage(fragment)]]
 fn fragment(in: FragmentInput) -> [[location(0)]] vec4<f32> {
-    return in.color;
+    let d = sd_circle(in.pos, 50.0);
+    return colorize_normal(d, 0., in.color.rgb);
+    // return in.color * length(in.pos) / 200.0;
 }

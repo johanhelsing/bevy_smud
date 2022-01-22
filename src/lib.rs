@@ -1,4 +1,5 @@
 use bevy::{
+    asset::LoadState,
     core::FloatOrd,
     core_pipeline::Transparent2d,
     ecs::system::{lifetimeless::SRes, SystemParamItem},
@@ -36,7 +37,13 @@ const SMUD_MESH2D_SHADER_HANDLE: HandleUntyped =
 // Needed to keep the shaders alive
 struct ShaderHandles {
     #[allow(dead_code)]
-    smud_shader: Handle<Shader>,
+    smud: Handle<Shader>,
+    prelude: Handle<Shader>,
+    prelude_loaded: bool,
+    colorize: Handle<Shader>,
+    colorize_loaded: bool,
+    shapes: Handle<Shader>,
+    shapes_loaded: bool,
 }
 
 impl Plugin for SoSmoothPlugin {
@@ -44,20 +51,27 @@ impl Plugin for SoSmoothPlugin {
         // TODO: remove
         app.add_plugin(Material2dPlugin::<CustomMaterial>::default());
 
-        let shader: Handle<Shader> = app
-            .world
-            .get_resource::<AssetServer>()
-            .unwrap()
-            .load("smud.wgsl");
+        let shaders = {
+            let asset_server = app.world.get_resource::<AssetServer>().unwrap();
+            ShaderHandles {
+                smud: asset_server.load("smud.wgsl"),
+                prelude: asset_server.load("prelude.wgsl"),
+                prelude_loaded: false,
+                colorize: asset_server.load("colorize.wgsl"),
+                colorize_loaded: false,
+                shapes: asset_server.load("shapes.wgsl"),
+                shapes_loaded: false,
+            }
+        };
 
         app.world
             .get_resource_mut::<Assets<Shader>>()
             .unwrap()
-            .add_alias(&shader, SMUD_MESH2D_SHADER_HANDLE);
+            .add_alias(&shaders.smud, SMUD_MESH2D_SHADER_HANDLE);
 
-        app.insert_resource(ShaderHandles {
-            smud_shader: shader,
-        });
+        app.insert_resource(shaders);
+
+        app.add_system_to_stage(CoreStage::PostUpdate, set_shader_import_paths);
 
         // non-hot-reload path
         // app.world
@@ -76,6 +90,43 @@ impl Plugin for SoSmoothPlugin {
             .init_resource::<SpecializedPipelines<SmudPipeline>>()
             .add_system_to_stage(RenderStage::Extract, extract_shapes)
             .add_system_to_stage(RenderStage::Queue, queue_shapes);
+    }
+}
+
+fn set_shader_import_paths(
+    asset_server: Res<AssetServer>,
+    mut shaders: ResMut<Assets<Shader>>,
+    mut shader_handles: ResMut<ShaderHandles>,
+) {
+    if !shader_handles.prelude_loaded
+        && asset_server.get_load_state(shader_handles.prelude.clone()) == LoadState::Loaded
+    {
+        shaders
+            .get_mut(shader_handles.prelude.clone())
+            .unwrap()
+            .set_import_path("bevy_smud::prelude");
+        info!("Prelude ready");
+        shader_handles.prelude_loaded = true;
+    }
+
+    if !shader_handles.colorize_loaded
+        && asset_server.get_load_state(shader_handles.colorize.clone()) == LoadState::Loaded
+    {
+        shaders
+            .get_mut(shader_handles.colorize.clone())
+            .unwrap()
+            .set_import_path("bevy_smud::colorize");
+        shader_handles.colorize_loaded = true;
+    }
+
+    if !shader_handles.shapes_loaded
+        && asset_server.get_load_state(shader_handles.shapes.clone()) == LoadState::Loaded
+    {
+        shaders
+            .get_mut(shader_handles.shapes.clone())
+            .unwrap()
+            .set_import_path("bevy_smud::shapes");
+        shader_handles.shapes_loaded = true;
     }
 }
 

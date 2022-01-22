@@ -50,7 +50,7 @@ fn star(
     // Set the position attribute
     quad.set_attribute(Mesh::ATTRIBUTE_POSITION, v_pos);
     // And a RGB color attribute as well
-    let v_color = vec![[1.0, 1.0, 0.0, 1.0]; 4];
+    let v_color = vec![[0.5, 0.3, 0.1, 1.0]; 4];
     quad.set_attribute(Mesh::ATTRIBUTE_COLOR, v_color);
     // let indices = vec![0, 1, 2, 3];
     // quad.set_indices(Some(Indices::U32(indices)));
