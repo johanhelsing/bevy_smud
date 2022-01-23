@@ -28,6 +28,7 @@ const SMUD_MESH2D_SHADER_HANDLE: HandleUntyped =
     HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 5645555317811706725);
 
 // Needed to keep the shaders alive
+#[cfg(feature = "smud_shader_hot_reloading")]
 struct ShaderHandles {
     #[allow(dead_code)]
     smud: Handle<Shader>,
@@ -35,28 +36,33 @@ struct ShaderHandles {
 
 impl Plugin for SoSmoothPlugin {
     fn build(&self, app: &mut App) {
-        let shaders = {
-            let asset_server = app.world.get_resource::<AssetServer>().unwrap();
-            ShaderHandles {
-                smud: asset_server.load("smud.wgsl"),
-            }
-        };
+        #[cfg(feature = "smud_shader_hot_reloading")]
+        {
+            let shaders = {
+                let asset_server = app.world.get_resource::<AssetServer>().unwrap();
+                ShaderHandles {
+                    smud: asset_server.load("smud.wgsl"),
+                }
+            };
 
-        app.world
-            .get_resource_mut::<Assets<Shader>>()
-            .unwrap()
-            .add_alias(&shaders.smud, SMUD_MESH2D_SHADER_HANDLE);
+            app.world
+                .get_resource_mut::<Assets<Shader>>()
+                .unwrap()
+                .add_alias(&shaders.smud, SMUD_MESH2D_SHADER_HANDLE);
 
-        app.insert_resource(shaders);
+            app.insert_resource(shaders);
+        }
 
-        // non-hot-reload path
-        // app.world
-        //     .get_resource_mut::<Assets<Shader>>()
-        //     .unwrap()
-        //     .set_untracked(
-        //         SMUD_MESH2D_SHADER_HANDLE,
-        //         Shader::from_wgsl(include_str!("../assets/smud.wgsl")),
-        //     );
+        #[cfg(not(feature = "smud_shader_hot_reloading"))]
+        {
+            app.world
+                .get_resource_mut::<Assets<Shader>>()
+                .unwrap()
+                .set_untracked(
+                    SMUD_MESH2D_SHADER_HANDLE,
+                    Shader::from_wgsl(include_str!("../assets/smud.wgsl")),
+                );
+        }
 
         let render_app = app.get_sub_app_mut(RenderApp).unwrap();
         render_app

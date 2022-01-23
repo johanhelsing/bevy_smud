@@ -3,12 +3,15 @@ name = "bevy_so_smooth"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+smud_shader_hot_reloading = ["bevy/bevy_shader_hot_reloading"]
+
 [dependencies]
-bevy = { version = "0.6.0", default-features = false, features = ["render", "bevy_shader_hot_reloading"] }
+bevy = { version = "0.6.0", default-features = false, features = ["render"] }
 bytemuck = "1.7"
 
 [dev-dependencies]
 bevy = "0.6"
 
 [patch.crates-io]
-bevy = { git = "https://github.com/superdump/bevy", branch = "hot-reload-core-shaders", features = [ "bevy_shader_hot_reloading"] }
+bevy = { git = "https://github.com/superdump/bevy", branch = "hot-reload-core-shaders" }

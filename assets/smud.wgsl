@@ -1,6 +1,6 @@
-#import "./prelude.wgsl"
-#import "./shapes.wgsl"
-#import "./colorize.wgsl"
+// #import "./prelude.wgsl"
+// #import "./shapes.wgsl"
+// #import "./colorize.wgsl"
 
 // Import the standard 2d mesh uniforms and set their bind groups
 
@@ -42,7 +42,7 @@ struct FragmentInput {
 
 [[stage(fragment)]]
 fn fragment(in: FragmentInput) -> [[location(0)]] vec4<f32> {
-    let d = sd_circle(in.pos, 50.0);
-    return colorize_normal(d, 0., in.color.rgb);
-    // return in.color * length(in.pos) / 200.0;
+    // let d = sd_circle(in.pos, 50.0);
+    // return colorize_normal(d, 0., in.color.rgb);
+    return in.color * length(in.pos) / 200.0;
 }

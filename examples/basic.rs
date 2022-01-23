@@ -1,16 +1,16 @@
-use bevy::{
-    asset::AssetServerSettings, prelude::*, render::render_resource::PrimitiveTopology,
-    sprite::Mesh2dHandle,
-};
+use bevy::{prelude::*, render::render_resource::PrimitiveTopology, sprite::Mesh2dHandle};
 use bevy_so_smooth::*;
 
 fn main() {
-    App::new()
-        .insert_resource(AssetServerSettings {
-            watch_for_changes: true,
-            ..Default::default()
-        })
-        .insert_resource(Msaa { samples: 4 })
+    let mut app = App::new();
+
+    #[cfg(feature = "smud_shader_hot_reloading")]
+    app.insert_resource(bevy::asset::AssetServerSettings {
+        watch_for_changes: true,
+        ..Default::default()
+    });
+
+    app.insert_resource(Msaa { samples: 4 })
         .add_plugins(DefaultPlugins)
         .add_plugin(SoSmoothPlugin)
         // .add_startup_system(setup)
