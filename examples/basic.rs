@@ -23,21 +23,9 @@ fn main() {
 }
 
 fn setup(mut commands: Commands) {
-    let spacing = 30.0;
-    let w = 20;
-    let h = w;
-    for i in 0..w {
-        for j in 0..h {
-            commands.spawn_bundle(ShapeBundle {
-                transform: Transform::from_translation(Vec3::new(
-                    i as f32 * spacing - w as f32 * spacing / 2.,
-                    j as f32 * spacing - h as f32 * spacing / 2.,
-                    0.,
-                )),
-                shape: SmudShape::Arc(1.),
-                ..Default::default()
-            });
-            commands.spawn_bundle(OrthographicCameraBundle::new_2d());
-        }
-    }
+    commands.spawn_bundle(ShapeBundle {
+        shape: SmudShape::Arc(1.),
+        ..Default::default()
+    });
+    commands.spawn_bundle(OrthographicCameraBundle::new_2d());
 }
