@@ -9,6 +9,7 @@ smud_shader_hot_reloading = ["bevy/bevy_shader_hot_reloading"]
 [dependencies]
 bevy = { version = "0.6.0", default-features = false, features = ["render"] }
 bytemuck = "1.7"
+bitflags = "1.2"
 
 [dev-dependencies]
 bevy = "0.6"

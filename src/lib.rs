@@ -1,24 +1,31 @@
 use bevy::{
     core::FloatOrd,
     core_pipeline::Transparent2d,
+    ecs::system::{lifetimeless::SRes, SystemParamItem},
     prelude::*,
     reflect::TypeUuid,
     render::{
-        render_asset::RenderAssets,
-        render_phase::{AddRenderCommand, DrawFunctions, RenderPhase, SetItemPipeline},
-        render_resource::{
-            BlendState, ColorTargetState, ColorWrites, Face, FragmentState, FrontFace,
-            MultisampleState, PolygonMode, PrimitiveState, RenderPipelineCache,
-            RenderPipelineDescriptor, SpecializedPipeline, SpecializedPipelines, TextureFormat,
-            VertexAttribute, VertexBufferLayout, VertexFormat, VertexState, VertexStepMode,
+        mesh::{GpuBufferInfo, GpuMesh},
+        render_component::UniformComponentPlugin,
+        render_phase::{
+            AddRenderCommand, DrawFunctions, EntityRenderCommand, RenderCommandResult, RenderPhase,
+            SetItemPipeline, TrackedRenderPass,
         },
+        render_resource::{
+            BlendState, BufferInitDescriptor, BufferUsages, ColorTargetState, ColorWrites, Face,
+            FragmentState, FrontFace, MultisampleState, PolygonMode, PrimitiveState,
+            PrimitiveTopology, RenderPipelineCache, RenderPipelineDescriptor, SpecializedPipeline,
+            SpecializedPipelines, TextureFormat, VertexAttribute, VertexBufferLayout, VertexFormat,
+            VertexState, VertexStepMode,
+        },
+        renderer::RenderDevice,
         texture::BevyDefault,
         view::VisibleEntities,
         RenderApp, RenderStage,
     },
     sprite::{
-        DrawMesh2d, Mesh2dHandle, Mesh2dPipeline, Mesh2dPipelineKey, Mesh2dUniform,
-        SetMesh2dBindGroup, SetMesh2dViewBindGroup,
+        Mesh2dPipeline, Mesh2dPipelineKey, Mesh2dUniform, SetMesh2dBindGroup,
+        SetMesh2dViewBindGroup,
     },
 };
 
@@ -147,6 +154,9 @@ impl Plugin for SoSmoothPlugin {
             shaders.set_untracked(SMUD_SHADER_HANDLE, smud);
         }
 
+        // TODO: look at what it does!
+        app.add_plugin(UniformComponentPlugin::<Mesh2dUniform>::default());
+
         let render_app = app.get_sub_app_mut(RenderApp).unwrap();
         render_app
             // TODO: what does it do internally?
@@ -164,20 +174,85 @@ type DrawSmudShape = (
     SetMesh2dViewBindGroup<0>,
     // Set the mesh uniform as bind group 1
     SetMesh2dBindGroup<1>,
-    DrawMesh2d,
+    // DrawMesh2d,
+    DrawQuad,
 );
+
+struct DrawQuad;
+impl EntityRenderCommand for DrawQuad {
+    type Param = SRes<SmudPipeline>;
+    #[inline]
+    fn render<'w>(
+        _view: Entity,
+        _item: Entity,
+        pipeline: SystemParamItem<'w, '_, Self::Param>,
+        pass: &mut TrackedRenderPass<'w>,
+    ) -> RenderCommandResult {
+        let gpu_mesh = &pipeline.into_inner().quad;
+        pass.set_vertex_buffer(0, gpu_mesh.vertex_buffer.slice(..));
+        match &gpu_mesh.buffer_info {
+            GpuBufferInfo::Indexed {
+                buffer,
+                index_format,
+                count,
+            } => {
+                pass.set_index_buffer(buffer.slice(..), 0, *index_format);
+                pass.draw_indexed(0..*count, 0, 0..1);
+            }
+            GpuBufferInfo::NonIndexed { vertex_count } => {
+                pass.draw(0..*vertex_count, 0..1);
+            }
+        }
+        RenderCommandResult::Success
+    }
+}
 
 #[derive(Component, Default)]
 pub struct SmudShape;
 
 struct SmudPipeline {
     mesh2d_pipeline: Mesh2dPipeline,
+    quad: GpuMesh,
+    // quad_handle: Handle<Mesh>,
 }
 
 impl FromWorld for SmudPipeline {
     fn from_world(world: &mut World) -> Self {
+        let mut mesh = Mesh::new(PrimitiveTopology::TriangleStrip);
+        let w = 100.;
+        let v_pos = vec![[-w, -w], [w, -w], [-w, w], [w, w]];
+        mesh.set_attribute(Mesh::ATTRIBUTE_POSITION, v_pos);
+        // And a RGB color attribute
+        let v_color = vec![[0.5, 0.3, 0.1, 1.0]; 4];
+        mesh.set_attribute(Mesh::ATTRIBUTE_COLOR, v_color);
+        // let indices = vec![0, 1, 2, 3];
+        // quad.set_indices(Some(Indices::U32(indices)));
+
+        // let quad = world
+        //     .get_resource_mut::<Assets<Mesh>>()
+        //     .unwrap()
+        //     .add(quad.clone());
+        let quad = {
+            // let render_queue = world.get_resource_mut::<RenderQueue>().unwrap();
+            let render_device = world.get_resource_mut::<RenderDevice>().unwrap();
+            let vertex_buffer_data = mesh.get_vertex_buffer_data();
+            let vertex_buffer = render_device.create_buffer_with_data(&BufferInitDescriptor {
+                usage: BufferUsages::VERTEX,
+                label: Some("Mesh Vertex Buffer"),
+                contents: &vertex_buffer_data,
+            });
+            GpuMesh {
+                vertex_buffer,
+                buffer_info: GpuBufferInfo::NonIndexed { vertex_count: 4 },
+                has_tangents: false,
+                primitive_topology: mesh.primitive_topology(),
+            }
+        };
+
         Self {
             mesh2d_pipeline: FromWorld::from_world(world),
+            // quad_handle: Default::default(), // this is initialized later when we can actually use Assets!
+            quad,
         }
     }
 }
@@ -255,18 +330,52 @@ impl SpecializedPipeline for SmudPipeline {
     }
 }
 
+// TODO: what are they even used for?
+// NOTE: These must match the bit flags in bevy_sprite/src/mesh2d/mesh2d.wgsl!
+bitflags::bitflags! {
+    #[repr(transparent)]
+    struct MeshFlags: u32 {
+        const NONE                       = 0;
+        const UNINITIALIZED              = 0xFFFF;
+    }
+}
+
 fn extract_shapes(
     mut commands: Commands,
     mut previous_len: Local<usize>,
-    query: Query<(Entity, &ComputedVisibility), With<SmudShape>>,
+    query: Query<
+        (
+            Entity,
+            // &ComputedVisibility
+            &GlobalTransform,
+        ),
+        With<SmudShape>,
+    >,
 ) {
     let mut values = Vec::with_capacity(*previous_len);
-    for (entity, computed_visibility) in query.iter() {
-        if !computed_visibility.is_visible {
-            continue;
-        }
+    for (
+        entity,
+        // computed_visibility
+        transform,
+    ) in query.iter()
+    {
+        // if !computed_visibility.is_visible {
+        //     continue;
+        // }
         // TODO: copy over other data as well?
-        values.push((entity, (SmudShape,)));
+        let transform = transform.compute_matrix();
+        values.push((
+            entity,
+            (
+                SmudShape,
+                Mesh2dUniform {
+                    // TODO: what are the flags for?
+                    flags: MeshFlags::empty().bits,
+                    transform,
+                    inverse_transpose_model: transform.inverse().transpose(),
+                },
+            ),
+        ));
     }
     *previous_len = values.len();
     commands.insert_or_spawn_batch(values);
@@ -278,9 +387,8 @@ fn queue_shapes(
     mut pipeline_cache: ResMut<RenderPipelineCache>,
     transparent_draw_functions: Res<DrawFunctions<Transparent2d>>,
     smud_pipeline: Res<SmudPipeline>,
-    shape_query: Query<(&Mesh2dHandle, &Mesh2dUniform), With<SmudShape>>,
+    shape_query: Query<&Mesh2dUniform, With<SmudShape>>,
     msaa: Res<Msaa>,
-    render_meshes: Res<RenderAssets<Mesh>>,
 ) {
     if shape_query.is_empty() {
         return;
@@ -292,17 +400,12 @@ fn queue_shapes(
             .get_id::<DrawSmudShape>()
             .unwrap();
 
-        let mesh_key = Mesh2dPipelineKey::from_msaa_samples(msaa.samples);
+        // TODO: point of this key is?
+        let mesh_key = Mesh2dPipelineKey::from_msaa_samples(msaa.samples)
+            | Mesh2dPipelineKey::from_primitive_topology(PrimitiveTopology::TriangleStrip);
 
         for visible_entity in &visible_entities.entities {
-            if let Ok((mesh2d_handle, mesh2d_uniform)) = shape_query.get(*visible_entity) {
-                // Get our specialized pipeline
-                let mesh = render_meshes
-                    .get(&mesh2d_handle.0)
-                    .expect("Shape without mesh");
-                let mesh_key =
-                    mesh_key | Mesh2dPipelineKey::from_primitive_topology(mesh.primitive_topology);
-
+            if let Ok(mesh2d_uniform) = shape_query.get(*visible_entity) {
                 let pipeline_id =
                     pipelines.specialize(&mut pipeline_cache, &smud_pipeline, mesh_key);
 

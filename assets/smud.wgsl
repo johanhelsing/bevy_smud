@@ -35,7 +35,6 @@ fn vertex(vertex: Vertex) -> VertexOutput {
 }
 
 struct FragmentInput {
-    // The color is interpolated between vertices by default
     [[location(0)]] color: vec4<f32>;
     [[location(1)]] pos: vec2<f32>;
 };
