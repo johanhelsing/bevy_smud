@@ -166,7 +166,6 @@ impl Plugin for SoSmoothPlugin {
 
         let render_app = app.get_sub_app_mut(RenderApp).unwrap();
         render_app
-            // TODO: what does it do internally?
             .add_render_command::<Transparent2d, DrawSmudShape>()
             .init_resource::<SmudPipeline>()
             .init_resource::<SpecializedPipelines<SmudPipeline>>()
@@ -298,7 +297,6 @@ impl SpecializedPipeline for SmudPipeline {
                     write_mask: ColorWrites::ALL,
                 }],
             }),
-            // Use the two standard uniforms for 2d meshes
             layout: Some(vec![
                 // Bind group 0 is the view uniform
                 self.mesh2d_pipeline.view_layout.clone(),
