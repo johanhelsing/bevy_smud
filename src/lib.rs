@@ -330,16 +330,6 @@ impl SpecializedPipeline for SmudPipeline {
     }
 }
 
-// TODO: what are they even used for?
-// NOTE: These must match the bit flags in bevy_sprite/src/mesh2d/mesh2d.wgsl!
-bitflags::bitflags! {
-    #[repr(transparent)]
-    struct MeshFlags: u32 {
-        const NONE                       = 0;
-        const UNINITIALIZED              = 0xFFFF;
-    }
-}
-
 fn extract_shapes(
     mut commands: Commands,
     mut previous_len: Local<usize>,
@@ -357,8 +347,7 @@ fn extract_shapes(
             (
                 SmudShape,
                 Mesh2dUniform {
-                    // TODO: what are the flags for?
-                    flags: MeshFlags::empty().bits,
+                    flags: 0,
                     transform,
                     inverse_transpose_model: transform.inverse().transpose(),
                 },
