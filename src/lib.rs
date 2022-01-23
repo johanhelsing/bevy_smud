@@ -6,7 +6,7 @@ use bevy::{
     reflect::TypeUuid,
     render::{
         mesh::{GpuBufferInfo, GpuMesh},
-        render_component::UniformComponentPlugin,
+        render_component::{ExtractComponentPlugin, UniformComponentPlugin},
         render_phase::{
             AddRenderCommand, DrawFunctions, EntityRenderCommand, RenderCommandResult, RenderPhase,
             SetItemPipeline, TrackedRenderPass,
@@ -30,8 +30,10 @@ use bevy::{
 };
 
 mod bundle;
+mod components;
 
 pub use bundle::ShapeBundle;
+pub use components::*;
 
 #[derive(Default)]
 pub struct SoSmoothPlugin;
@@ -160,6 +162,7 @@ impl Plugin for SoSmoothPlugin {
 
         // TODO: look at what it does!
         app.add_plugin(UniformComponentPlugin::<Mesh2dUniform>::default());
+        app.add_plugin(ExtractComponentPlugin::<SmudShape>::default());
 
         let render_app = app.get_sub_app_mut(RenderApp).unwrap();
         render_app
@@ -211,33 +214,21 @@ impl EntityRenderCommand for DrawQuad {
     }
 }
 
-#[derive(Component, Clone, Default)]
-pub struct SmudShape;
-
 struct SmudPipeline {
     mesh2d_pipeline: Mesh2dPipeline,
     quad: GpuMesh,
-    // quad_handle: Handle<Mesh>,
 }
 
 impl FromWorld for SmudPipeline {
     fn from_world(world: &mut World) -> Self {
-        let mut mesh = Mesh::new(PrimitiveTopology::TriangleStrip);
-        let w = 100.;
-        let v_pos = vec![[-w, -w], [w, -w], [-w, w], [w, w]];
-        mesh.set_attribute(Mesh::ATTRIBUTE_POSITION, v_pos);
-        // And a RGB color attribute
-        let v_color = vec![[0.5, 0.3, 0.1, 1.0]; 4];
-        mesh.set_attribute(Mesh::ATTRIBUTE_COLOR, v_color);
-        // let indices = vec![0, 1, 2, 3];
-        // quad.set_indices(Some(Indices::U32(indices)));
-
-        // let quad = world
-        //     .get_resource_mut::<Assets<Mesh>>()
-        //     .unwrap()
-        //     .add(quad.clone());
         let quad = {
-            // let render_queue = world.get_resource_mut::<RenderQueue>().unwrap();
+            let mut mesh = Mesh::new(PrimitiveTopology::TriangleStrip);
+            let w = 100.;
+            let v_pos = vec![[-w, -w], [w, -w], [-w, w], [w, w]];
+            mesh.set_attribute(Mesh::ATTRIBUTE_POSITION, v_pos);
+            let v_color = vec![[0.5, 0.3, 0.1, 1.0]; 4];
+            mesh.set_attribute(Mesh::ATTRIBUTE_COLOR, v_color);
+
             let render_device = world.get_resource_mut::<RenderDevice>().unwrap();
             let vertex_buffer_data = mesh.get_vertex_buffer_data();
             let vertex_buffer = render_device.create_buffer_with_data(&BufferInitDescriptor {
@@ -348,14 +339,11 @@ fn extract_shapes(
         let transform = transform.compute_matrix();
         values.push((
             entity,
-            (
-                SmudShape,
-                Mesh2dUniform {
-                    flags: 0, // TODO: I probably don't need all these...
-                    transform,
-                    inverse_transpose_model: transform.inverse().transpose(),
-                },
-            ),
+            (Mesh2dUniform {
+                flags: 0, // TODO: I probably don't need all these...
+                transform,
+                inverse_transpose_model: transform.inverse().transpose(),
+            },),
         ));
     }
     *previous_len = values.len();
