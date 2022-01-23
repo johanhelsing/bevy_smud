@@ -1,6 +1,7 @@
 // #import "./prelude.wgsl"
 // #import "./shapes.wgsl"
 // #import "./colorize.wgsl"
+#import bevy_smud::prelude
 
 // Import the standard 2d mesh uniforms and set their bind groups
 
