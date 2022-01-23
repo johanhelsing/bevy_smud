@@ -222,7 +222,7 @@ impl FromWorld for SmudPipeline {
     fn from_world(world: &mut World) -> Self {
         let quad = {
             let mut mesh = Mesh::new(PrimitiveTopology::TriangleStrip);
-            let w = 100.;
+            let w = 0.5;
             let v_pos = vec![[-w, -w], [w, -w], [-w, w], [w, w]];
             mesh.set_attribute(Mesh::ATTRIBUTE_POSITION, v_pos);
             let v_color = vec![[0.5, 0.3, 0.1, 1.0]; 4];

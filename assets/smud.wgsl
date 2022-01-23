@@ -28,9 +28,10 @@ struct VertexOutput {
 fn vertex(vertex: Vertex) -> VertexOutput {
     var out: VertexOutput;
     // Project the world position of the mesh into screen position
-    out.clip_position = view.view_proj * mesh.model * vec4<f32>(vertex.position, 0.0, 1.0);
+    let pos = vertex.position * 30.;
+    out.clip_position = view.view_proj * mesh.model * vec4<f32>(pos, 0.0, 1.0);
     out.color = vertex.color;
-    out.pos = vertex.position;
+    out.pos = pos;
     return out;
 }
 
@@ -41,7 +42,7 @@ struct FragmentInput {
 
 [[stage(fragment)]]
 fn fragment(in: FragmentInput) -> [[location(0)]] vec4<f32> {
-    let d = sd_circle(in.pos, 50.0);
+    let d = sd_circle(in.pos, 10.0);
     return colorize_normal(d, 0., in.color.rgb);
     // return in.color * length(in.pos) / 200.0;
 }
