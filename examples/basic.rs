@@ -13,23 +13,11 @@ fn main() {
     app.insert_resource(Msaa { samples: 4 })
         .add_plugins(DefaultPlugins)
         .add_plugin(SoSmoothPlugin)
-        // .add_startup_system(setup)
-        .add_startup_system(quad)
+        .add_startup_system(setup)
         .run();
 }
 
-fn quad(mut commands: Commands) {
-    // We can now spawn the entities for the star and the camera
-    commands.spawn_bundle((
-        // We use a marker component to identify the custom colored meshes
-        SmudShape::default(),
-        // These other components are needed for 2d meshes to be rendered
-        Transform::default(),
-        GlobalTransform::default(),
-        Visibility::default(),
-        ComputedVisibility::default(),
-    ));
-    commands
-        // And use an orthographic projection
-        .spawn_bundle(OrthographicCameraBundle::new_2d());
+fn setup(mut commands: Commands) {
+    commands.spawn_bundle(ShapeBundle::default());
+    commands.spawn_bundle(OrthographicCameraBundle::new_2d());
 }

@@ -29,6 +29,10 @@ use bevy::{
     },
 };
 
+mod bundle;
+
+pub use bundle::ShapeBundle;
+
 #[derive(Default)]
 pub struct SoSmoothPlugin;
 
@@ -207,7 +211,7 @@ impl EntityRenderCommand for DrawQuad {
     }
 }
 
-#[derive(Component, Default)]
+#[derive(Component, Clone, Default)]
 pub struct SmudShape;
 
 struct SmudPipeline {
@@ -347,7 +351,7 @@ fn extract_shapes(
             (
                 SmudShape,
                 Mesh2dUniform {
-                    flags: 0,
+                    flags: 0, // TODO: I probably don't need all these...
                     transform,
                     inverse_transpose_model: transform.inverse().transpose(),
                 },
