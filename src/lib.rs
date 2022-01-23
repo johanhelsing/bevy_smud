@@ -343,25 +343,13 @@ bitflags::bitflags! {
 fn extract_shapes(
     mut commands: Commands,
     mut previous_len: Local<usize>,
-    query: Query<
-        (
-            Entity,
-            // &ComputedVisibility
-            &GlobalTransform,
-        ),
-        With<SmudShape>,
-    >,
+    query: Query<(Entity, &ComputedVisibility, &GlobalTransform), With<SmudShape>>,
 ) {
     let mut values = Vec::with_capacity(*previous_len);
-    for (
-        entity,
-        // computed_visibility
-        transform,
-    ) in query.iter()
-    {
-        // if !computed_visibility.is_visible {
-        //     continue;
-        // }
+    for (entity, computed_visibility, transform) in query.iter() {
+        if !computed_visibility.is_visible {
+            continue;
+        }
         // TODO: copy over other data as well?
         let transform = transform.compute_matrix();
         values.push((
