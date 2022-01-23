@@ -1,31 +1,24 @@
 use bevy::{
-    asset::LoadState,
     core::FloatOrd,
     core_pipeline::Transparent2d,
-    ecs::system::{lifetimeless::SRes, SystemParamItem},
     prelude::*,
     reflect::TypeUuid,
     render::{
-        render_asset::{PrepareAssetError, RenderAsset, RenderAssets},
+        render_asset::RenderAssets,
         render_phase::{AddRenderCommand, DrawFunctions, RenderPhase, SetItemPipeline},
         render_resource::{
-            std140::{AsStd140, Std140},
-            BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout,
-            BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingType, BlendState, Buffer,
-            BufferBindingType, BufferInitDescriptor, BufferSize, BufferUsages, ColorTargetState,
-            ColorWrites, Face, FragmentState, FrontFace, MultisampleState, PolygonMode,
-            PrimitiveState, RenderPipelineCache, RenderPipelineDescriptor, ShaderStages,
-            SpecializedPipeline, SpecializedPipelines, TextureFormat, VertexAttribute,
-            VertexBufferLayout, VertexFormat, VertexState, VertexStepMode,
+            BlendState, ColorTargetState, ColorWrites, Face, FragmentState, FrontFace,
+            MultisampleState, PolygonMode, PrimitiveState, RenderPipelineCache,
+            RenderPipelineDescriptor, SpecializedPipeline, SpecializedPipelines, TextureFormat,
+            VertexAttribute, VertexBufferLayout, VertexFormat, VertexState, VertexStepMode,
         },
-        renderer::RenderDevice,
         texture::BevyDefault,
         view::VisibleEntities,
         RenderApp, RenderStage,
     },
     sprite::{
-        DrawMesh2d, Material2d, Material2dPipeline, Material2dPlugin, Mesh2dHandle, Mesh2dPipeline,
-        Mesh2dPipelineKey, Mesh2dUniform, SetMesh2dBindGroup, SetMesh2dViewBindGroup,
+        DrawMesh2d, Mesh2dHandle, Mesh2dPipeline, Mesh2dPipelineKey, Mesh2dUniform,
+        SetMesh2dBindGroup, SetMesh2dViewBindGroup,
     },
 };
 
@@ -38,29 +31,14 @@ const SMUD_MESH2D_SHADER_HANDLE: HandleUntyped =
 struct ShaderHandles {
     #[allow(dead_code)]
     smud: Handle<Shader>,
-    prelude: Handle<Shader>,
-    prelude_loaded: bool,
-    colorize: Handle<Shader>,
-    colorize_loaded: bool,
-    shapes: Handle<Shader>,
-    shapes_loaded: bool,
 }
 
 impl Plugin for SoSmoothPlugin {
     fn build(&self, app: &mut App) {
-        // TODO: remove
-        app.add_plugin(Material2dPlugin::<CustomMaterial>::default());
-
         let shaders = {
             let asset_server = app.world.get_resource::<AssetServer>().unwrap();
             ShaderHandles {
                 smud: asset_server.load("smud.wgsl"),
-                prelude: asset_server.load("prelude.wgsl"),
-                prelude_loaded: false,
-                colorize: asset_server.load("colorize.wgsl"),
-                colorize_loaded: false,
-                shapes: asset_server.load("shapes.wgsl"),
-                shapes_loaded: false,
             }
         };
 
@@ -70,8 +48,6 @@ impl Plugin for SoSmoothPlugin {
             .add_alias(&shaders.smud, SMUD_MESH2D_SHADER_HANDLE);
 
         app.insert_resource(shaders);
-
-        app.add_system_to_stage(CoreStage::PostUpdate, set_shader_import_paths);
 
         // non-hot-reload path
         // app.world
@@ -93,43 +69,6 @@ impl Plugin for SoSmoothPlugin {
     }
 }
 
-fn set_shader_import_paths(
-    asset_server: Res<AssetServer>,
-    mut shaders: ResMut<Assets<Shader>>,
-    mut shader_handles: ResMut<ShaderHandles>,
-) {
-    if !shader_handles.prelude_loaded
-        && asset_server.get_load_state(shader_handles.prelude.clone()) == LoadState::Loaded
-    {
-        shaders
-            .get_mut(shader_handles.prelude.clone())
-            .unwrap()
-            .set_import_path("bevy_smud::prelude");
-        info!("Prelude ready");
-        shader_handles.prelude_loaded = true;
-    }
-
-    if !shader_handles.colorize_loaded
-        && asset_server.get_load_state(shader_handles.colorize.clone()) == LoadState::Loaded
-    {
-        shaders
-            .get_mut(shader_handles.colorize.clone())
-            .unwrap()
-            .set_import_path("bevy_smud::colorize");
-        shader_handles.colorize_loaded = true;
-    }
-
-    if !shader_handles.shapes_loaded
-        && asset_server.get_load_state(shader_handles.shapes.clone()) == LoadState::Loaded
-    {
-        shaders
-            .get_mut(shader_handles.shapes.clone())
-            .unwrap()
-            .set_import_path("bevy_smud::shapes");
-        shader_handles.shapes_loaded = true;
-    }
-}
-
 type DrawSmudShape = (
     SetItemPipeline,
     // Set the view uniform as bind group 0
@@ -138,82 +77,6 @@ type DrawSmudShape = (
     SetMesh2dBindGroup<1>,
     DrawMesh2d,
 );
-
-#[derive(Debug, Clone, TypeUuid, AsStd140)]
-#[uuid = "200dfa11-9b87-40e1-8774-ffcd3fcb17df"]
-pub struct CustomMaterial {
-    pub color: Vec4,
-}
-
-#[derive(Clone)]
-pub struct GpuCustomMaterial {
-    _buffer: Buffer,
-    bind_group: BindGroup,
-}
-
-impl Material2d for CustomMaterial {
-    fn bind_group(render_asset: &<Self as RenderAsset>::PreparedAsset) -> &BindGroup {
-        &render_asset.bind_group
-    }
-
-    fn bind_group_layout(render_device: &bevy::render::renderer::RenderDevice) -> BindGroupLayout {
-        render_device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-            entries: &[BindGroupLayoutEntry {
-                binding: 0,
-                visibility: ShaderStages::FRAGMENT,
-                ty: BindingType::Buffer {
-                    ty: BufferBindingType::Uniform,
-                    has_dynamic_offset: false,
-                    min_binding_size: BufferSize::new(CustomMaterial::std140_size_static() as u64),
-                },
-                count: None, // TODO: what?
-            }],
-            label: None, // TODO: WHAT?
-        })
-    }
-
-    fn fragment_shader(asset_server: &AssetServer) -> Option<Handle<Shader>> {
-        Some(asset_server.load("custom_material.wgsl"))
-    }
-}
-
-impl RenderAsset for CustomMaterial {
-    type ExtractedAsset = CustomMaterial;
-    type PreparedAsset = GpuCustomMaterial;
-    type Param = (SRes<RenderDevice>, SRes<Material2dPipeline<Self>>);
-
-    fn extract_asset(&self) -> Self::ExtractedAsset {
-        self.clone()
-    }
-
-    fn prepare_asset(
-        extracted_asset: Self::ExtractedAsset,
-        (render_device, material_pipeline): &mut SystemParamItem<Self::Param>,
-    ) -> Result<Self::PreparedAsset, PrepareAssetError<Self::ExtractedAsset>> {
-        let custom_material_std140 = extracted_asset.as_std140();
-        let custom_material_bytes = custom_material_std140.as_bytes();
-
-        let buffer = render_device.create_buffer_with_data(&BufferInitDescriptor {
-            contents: custom_material_bytes,
-            label: None,
-            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
-        });
-
-        let bind_group = render_device.create_bind_group(&BindGroupDescriptor {
-            entries: &[BindGroupEntry {
-                binding: 0,
-                resource: buffer.as_entire_binding(),
-            }],
-            label: None,
-            layout: &material_pipeline.material2d_layout,
-        });
-
-        Ok(GpuCustomMaterial {
-            _buffer: buffer,
-            bind_group,
-        })
-    }
-}
 
 #[derive(Component, Default)]
 pub struct SmudShape;
