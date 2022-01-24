@@ -91,11 +91,11 @@ fn setup(
         .insert(PanCam::default());
 }
 
-fn update(mut query: Query<(&mut Transform, &Index), With<SmudShape>>, time: Res<Time>) {
-    let t = time.time_since_startup().as_secs_f64();
+// fn update(mut query: Query<(&mut Transform, &Index), With<SmudShape>>, time: Res<Time>) {
+//     let t = time.time_since_startup().as_secs_f64();
 
-    for (mut tx, index) in query.iter_mut() {
-        let s = f64::sin(t + (index.0 as f64) / 1.0) as f32;
-        tx.scale = Vec3::splat(s);
-    }
-}
+//     for (mut tx, index) in query.iter_mut() {
+//         let s = f64::sin(t + (index.0 as f64) / 1.0) as f32;
+//         tx.scale = Vec3::splat(s);
+//     }
+// }

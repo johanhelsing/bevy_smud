@@ -7,7 +7,6 @@ use bevy::{
     },
     math::const_vec2,
     prelude::*,
-    reflect::TypeUuid,
     render::{
         render_phase::{
             AddRenderCommand, BatchedPhaseItem, DrawFunctions, EntityRenderCommand, RenderCommand,
@@ -31,137 +30,22 @@ use bevy::{
 };
 use bytemuck::{Pod, Zeroable};
 use copyless::VecHelper;
-
-mod bundle;
-mod components;
+use shader_loading::*;
 
 pub use bundle::ShapeBundle;
 pub use components::*;
 
+mod bundle;
+mod components;
+mod shader_loading;
+
 #[derive(Default)]
 pub struct SoSmoothPlugin;
 
-const PRELUDE_SHADER_HANDLE: HandleUntyped =
-    HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 11291576006157771079);
-const PRELUDE_SHADER_IMPORT: &str = "bevy_smud::prelude";
-
-const SHAPES_SHADER_HANDLE: HandleUntyped =
-    HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 10055894596049459186);
-const SHAPES_SHADER_IMPORT: &str = "bevy_smud::shapes";
-
-const COLORIZE_SHADER_HANDLE: HandleUntyped =
-    HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 10050447940405429418);
-const COLORIZE_SHADER_IMPORT: &str = "bevy_smud::colorize";
-
-const SMUD_SHADER_HANDLE: HandleUntyped =
-    HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 5645555317811706725);
-const SMUD_SHADER_IMPORT: &str = "bevy_smud::smud";
-
-#[cfg(feature = "smud_shader_hot_reloading")]
-struct HotShader {
-    strong_handle: Handle<Shader>,
-    untyped_handle: Option<HandleUntyped>,
-    loaded: bool,
-    import_path: String,
-}
-
-// Needed to keep the shaders alive
-#[cfg(feature = "smud_shader_hot_reloading")]
-struct HotShaders<T> {
-    shaders: Vec<HotShader>,
-    marker: std::marker::PhantomData<T>,
-}
-
-#[cfg(feature = "smud_shader_hot_reloading")]
-impl<T> Default for HotShaders<T> {
-    fn default() -> Self {
-        Self {
-            shaders: Default::default(),
-            marker: Default::default(),
-        }
-    }
-}
-
-#[cfg(feature = "smud_shader_hot_reloading")]
-fn setup_shader_imports<T: 'static + Send + Sync>(
-    mut hot_shaders: ResMut<HotShaders<T>>,
-    mut shaders: ResMut<Assets<Shader>>,
-    asset_server: Res<AssetServer>,
-) {
-    for hot_shader in hot_shaders.shaders.iter_mut() {
-        if !hot_shader.loaded
-            && asset_server.get_load_state(hot_shader.strong_handle.clone())
-                == bevy::asset::LoadState::Loaded
-        {
-            shaders
-                .get_mut(hot_shader.strong_handle.clone())
-                .unwrap()
-                .set_import_path(&hot_shader.import_path);
-
-            hot_shader.loaded = true;
-        }
-    }
-}
-
 impl Plugin for SoSmoothPlugin {
     fn build(&self, app: &mut App) {
-        #[cfg(feature = "smud_shader_hot_reloading")]
-        {
-            let mut hot_shaders = {
-                let asset_server = app.world.get_resource::<AssetServer>().unwrap();
-                HotShaders::<Self> {
-                    shaders: [
-                        ("prelude.wgsl", PRELUDE_SHADER_IMPORT, PRELUDE_SHADER_HANDLE),
-                        ("shapes.wgsl", SHAPES_SHADER_IMPORT, SHAPES_SHADER_HANDLE),
-                        (
-                            "colorize.wgsl",
-                            COLORIZE_SHADER_IMPORT,
-                            COLORIZE_SHADER_HANDLE,
-                        ),
-                        ("smud.wgsl", SMUD_SHADER_IMPORT, SMUD_SHADER_HANDLE),
-                    ]
-                    .into_iter()
-                    .map(|(path, import_path, untyped_handle)| HotShader {
-                        strong_handle: asset_server.load(path),
-                        untyped_handle: Some(untyped_handle),
-                        import_path: import_path.into(),
-                        loaded: false,
-                    })
-                    .collect(),
-                    ..Default::default()
-                }
-            };
-            let mut shader_assets = app.world.get_resource_mut::<Assets<Shader>>().unwrap();
-
-            for hot_shader in hot_shaders.shaders.iter_mut() {
-                let untyped_handle = hot_shader.untyped_handle.take().unwrap();
-                shader_assets.add_alias(hot_shader.strong_handle.clone(), untyped_handle);
-            }
-
-            app.insert_resource(hot_shaders);
-            app.add_system(setup_shader_imports::<SoSmoothPlugin>);
-        }
-
-        #[cfg(not(feature = "smud_shader_hot_reloading"))]
-        {
-            let mut shaders = app.world.get_resource_mut::<Assets<Shader>>().unwrap();
-
-            let prelude = Shader::from_wgsl(include_str!("../assets/prelude.wgsl"))
-                .with_import_path(PRELUDE_SHADER_IMPORT);
-            shaders.set_untracked(PRELUDE_SHADER_HANDLE, prelude);
-
-            let shapes = Shader::from_wgsl(include_str!("../assets/shapes.wgsl"))
-                .with_import_path(SHAPES_SHADER_IMPORT);
-            shaders.set_untracked(SHAPES_SHADER_HANDLE, shapes);
-
-            let colorize = Shader::from_wgsl(include_str!("../assets/colorize.wgsl"))
-                .with_import_path(COLORIZE_SHADER_IMPORT);
-            shaders.set_untracked(COLORIZE_SHADER_HANDLE, colorize);
-
-            let smud = Shader::from_wgsl(include_str!("../assets/smud.wgsl"))
-                .with_import_path(SMUD_SHADER_IMPORT);
-            shaders.set_untracked(SMUD_SHADER_HANDLE, smud);
-        }
+        // All the messy boiler-plate for loading a bunch of shaders
+        app.add_plugin(ShaderLoadingPlugin);
 
         if let Ok(render_app) = app.get_sub_app_mut(RenderApp) {
             render_app
