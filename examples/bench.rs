@@ -57,9 +57,11 @@ fn setup(
     let palette = palettes.get(assets.palette.clone()).unwrap();
     let mut rng = rand::thread_rng();
     let spacing = 50.0;
-    let w = 316;
+    // let w = 316;
+    let w = 420;
     // let w = 100;
     let h = w;
+    info!("Adding {} shapes", w * h);
 
     let clear_color = palette.lightest();
     commands.insert_resource(ClearColor(clear_color));
