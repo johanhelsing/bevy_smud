@@ -25,7 +25,7 @@ fn main() {
 }
 fn setup(mut commands: Commands) {
     let spacing = 50.0;
-    let w = 200;
+    let w = 316;
     let h = w;
     for i in 0..w {
         for j in 0..h {
@@ -35,7 +35,7 @@ fn setup(mut commands: Commands) {
                     j as f32 * spacing - h as f32 * spacing / 2.,
                     0.,
                 )),
-                shape: SmudShape::Arc(1.),
+                shape: SmudShape::default(),
                 ..Default::default()
             });
         }

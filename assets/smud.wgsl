@@ -2,20 +2,22 @@
 #import bevy_smud::shapes
 #import bevy_smud::colorize
 
-// Import the standard 2d mesh uniforms and set their bind groups
-
-#import bevy_sprite::mesh2d_view_bind_group
+struct View {
+    view_proj: mat4x4<f32>;
+    world_position: vec3<f32>;
+};
 [[group(0), binding(0)]]
 var<uniform> view: View;
 
-#import bevy_sprite::mesh2d_struct
-[[group(1), binding(0)]]
-var<uniform> mesh: Mesh2d;
+// #import bevy_sprite::mesh2d_struct
+// [[group(1), binding(0)]]
+// var<uniform> mesh: Mesh2d;
 
 // as specified in `specialize()`
 struct Vertex {
-    [[location(0)]] position: vec2<f32>;
-    [[location(1)]] color: vec4<f32>;
+    [[location(0)]] position: vec3<f32>;
+    [[location(1)]] uv: vec2<f32>; // TODO: could be just index?
+    // [[location(1)]] color: vec4<f32>;
 };
 
 struct VertexOutput {
@@ -28,10 +30,13 @@ struct VertexOutput {
 fn vertex(vertex: Vertex) -> VertexOutput {
     var out: VertexOutput;
     // Project the world position of the mesh into screen position
-    let pos = vertex.position * 50.;
-    out.clip_position = view.view_proj * mesh.model * vec4<f32>(pos, 0.0, 1.0);
-    out.color = vertex.color;
-    out.pos = pos;
+    let pos = vertex.position;
+    // out.clip_position = view.view_proj * mesh.model * vec4<f32>(pos, 0.0, 1.0);
+    out.clip_position = view.view_proj * vec4<f32>(pos, 1.0);
+    // out.color = vertex.color;
+    // out.color = vec4<f32>(1.0, 0.0, 0.0, 1.0);
+    out.color = vec4<f32>(0.5, 0.3, 0.1, 1.0);
+    out.pos = vertex.uv * 20.0;
     return out;
 }
 
@@ -44,5 +49,6 @@ struct FragmentInput {
 fn fragment(in: FragmentInput) -> [[location(0)]] vec4<f32> {
     let d = sd_circle(in.pos, 15.);
     return colorize_normal(d, 0., in.color.rgb);
+    // return vec4<f32>(1.0, 1.0, 0.0, 1.0);
     // return in.color * length(in.pos) / 200.0;
 }

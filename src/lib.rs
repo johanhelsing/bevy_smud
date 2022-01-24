@@ -1,33 +1,37 @@
 use bevy::{
     core::FloatOrd,
     core_pipeline::Transparent2d,
-    ecs::system::{lifetimeless::SRes, SystemParamItem},
+    ecs::system::{
+        lifetimeless::{Read, SQuery, SRes},
+        SystemParamItem,
+    },
+    math::const_vec2,
     prelude::*,
     reflect::TypeUuid,
     render::{
-        mesh::{GpuBufferInfo, GpuMesh},
-        render_component::{ExtractComponentPlugin, UniformComponentPlugin},
+        render_component::UniformComponentPlugin,
         render_phase::{
-            AddRenderCommand, DrawFunctions, EntityRenderCommand, RenderCommandResult, RenderPhase,
-            SetItemPipeline, TrackedRenderPass,
+            AddRenderCommand, BatchedPhaseItem, DrawFunctions, EntityRenderCommand, RenderCommand,
+            RenderCommandResult, RenderPhase, SetItemPipeline, TrackedRenderPass,
         },
         render_resource::{
-            BlendState, BufferInitDescriptor, BufferUsages, ColorTargetState, ColorWrites, Face,
-            FragmentState, FrontFace, MultisampleState, PolygonMode, PrimitiveState,
-            PrimitiveTopology, RenderPipelineCache, RenderPipelineDescriptor, SpecializedPipeline,
-            SpecializedPipelines, TextureFormat, VertexAttribute, VertexBufferLayout, VertexFormat,
-            VertexState, VertexStepMode,
+            std140::AsStd140, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout,
+            BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingType, BlendState,
+            BufferBindingType, BufferSize, BufferUsages, BufferVec, ColorTargetState, ColorWrites,
+            Face, FragmentState, FrontFace, MultisampleState, PolygonMode, PrimitiveState,
+            PrimitiveTopology, RenderPipelineCache, RenderPipelineDescriptor, ShaderStages,
+            SpecializedPipeline, SpecializedPipelines, TextureFormat, VertexAttribute,
+            VertexBufferLayout, VertexFormat, VertexState, VertexStepMode,
         },
-        renderer::RenderDevice,
+        renderer::{RenderDevice, RenderQueue},
         texture::BevyDefault,
-        view::VisibleEntities,
-        RenderApp, RenderStage,
+        view::{ViewUniform, ViewUniformOffset, ViewUniforms, VisibleEntities},
+        RenderApp, RenderStage, RenderWorld,
     },
-    sprite::{
-        Mesh2dPipeline, Mesh2dPipelineKey, Mesh2dUniform, SetMesh2dBindGroup,
-        SetMesh2dViewBindGroup,
-    },
+    sprite::{Mesh2dPipeline, Mesh2dPipelineKey, Mesh2dUniform},
 };
+use bytemuck::{Pod, Zeroable};
+use copyless::VecHelper;
 
 mod bundle;
 mod components;
@@ -160,93 +164,151 @@ impl Plugin for SoSmoothPlugin {
             shaders.set_untracked(SMUD_SHADER_HANDLE, smud);
         }
 
-        // TODO: look at what it does!
-        app.add_plugin(UniformComponentPlugin::<Mesh2dUniform>::default());
-        app.add_plugin(ExtractComponentPlugin::<SmudShape>::default());
-
-        let render_app = app.get_sub_app_mut(RenderApp).unwrap();
-        render_app
-            .add_render_command::<Transparent2d, DrawSmudShape>()
-            .init_resource::<SmudPipeline>()
-            .init_resource::<SpecializedPipelines<SmudPipeline>>()
-            .add_system_to_stage(RenderStage::Extract, extract_shapes)
-            .add_system_to_stage(RenderStage::Queue, queue_shapes);
+        if let Ok(render_app) = app.get_sub_app_mut(RenderApp) {
+            render_app
+                .add_render_command::<Transparent2d, DrawSmudShape>()
+                .init_resource::<ExtractedShapes>()
+                .init_resource::<ShapeMeta>()
+                .init_resource::<SmudPipeline>()
+                .init_resource::<SpecializedPipelines<SmudPipeline>>()
+                .add_system_to_stage(RenderStage::Extract, extract_shapes)
+                .add_system_to_stage(RenderStage::Queue, queue_shapes);
+        }
     }
 }
 
+// type DrawSmudShape = (
+//     SetItemPipeline,
+//     // Set the view uniform as bind group 0
+//     SetMesh2dViewBindGroup<0>,
+//     // Set the mesh uniform as bind group 1
+//     SetMesh2dBindGroup<1>,
+//     // DrawMesh2d,
+//     DrawQuad,
+// );
+
 type DrawSmudShape = (
     SetItemPipeline,
-    // Set the view uniform as bind group 0
-    SetMesh2dViewBindGroup<0>,
-    // Set the mesh uniform as bind group 1
-    SetMesh2dBindGroup<1>,
-    // DrawMesh2d,
-    DrawQuad,
+    SetShapeViewBindGroup<0>,
+    // SetSpriteTextureBindGroup<1>,
+    DrawShapeBatch,
 );
+struct SetShapeViewBindGroup<const I: usize>;
+impl<const I: usize> EntityRenderCommand for SetShapeViewBindGroup<I> {
+    type Param = (SRes<ShapeMeta>, SQuery<Read<ViewUniformOffset>>);
 
-struct DrawQuad;
-impl EntityRenderCommand for DrawQuad {
-    type Param = SRes<SmudPipeline>;
-    #[inline]
     fn render<'w>(
-        _view: Entity,
+        view: Entity,
         _item: Entity,
-        pipeline: SystemParamItem<'w, '_, Self::Param>,
+        (sprite_meta, view_query): SystemParamItem<'w, '_, Self::Param>,
         pass: &mut TrackedRenderPass<'w>,
     ) -> RenderCommandResult {
-        let gpu_mesh = &pipeline.into_inner().quad;
-        pass.set_vertex_buffer(0, gpu_mesh.vertex_buffer.slice(..));
-        match &gpu_mesh.buffer_info {
-            GpuBufferInfo::Indexed {
-                buffer,
-                index_format,
-                count,
-            } => {
-                pass.set_index_buffer(buffer.slice(..), 0, *index_format);
-                pass.draw_indexed(0..*count, 0, 0..1);
-            }
-            GpuBufferInfo::NonIndexed { vertex_count } => {
-                pass.draw(0..*vertex_count, 0..1);
-            }
-        }
+        let view_uniform = view_query.get(view).unwrap();
+        pass.set_bind_group(
+            I,
+            sprite_meta.into_inner().view_bind_group.as_ref().unwrap(),
+            &[view_uniform.offset],
+        );
         RenderCommandResult::Success
     }
 }
 
+pub struct DrawShapeBatch;
+impl<P: BatchedPhaseItem> RenderCommand<P> for DrawShapeBatch {
+    type Param = (SRes<ShapeMeta>, SQuery<Read<ShapeBatch>>);
+
+    fn render<'w>(
+        _view: Entity,
+        item: &P,
+        (shape_meta, _query_batch): SystemParamItem<'w, '_, Self::Param>,
+        pass: &mut TrackedRenderPass<'w>,
+    ) -> RenderCommandResult {
+        // let sprite_batch = query_batch.get(item.entity()).unwrap();
+        let shape_meta = shape_meta.into_inner();
+        pass.set_vertex_buffer(0, shape_meta.vertices.buffer().unwrap().slice(..));
+        pass.draw(item.batch_range().as_ref().unwrap().clone(), 0..1);
+        RenderCommandResult::Success
+    }
+}
+
+// struct DrawQuad;
+// impl EntityRenderCommand for DrawQuad {
+//     type Param = SRes<SmudPipeline>;
+//     #[inline]
+//     fn render<'w>(
+//         _view: Entity,
+//         _item: Entity,
+//         pipeline: SystemParamItem<'w, '_, Self::Param>,
+//         pass: &mut TrackedRenderPass<'w>,
+//     ) -> RenderCommandResult {
+//         let gpu_mesh = &pipeline.into_inner().quad;
+//         pass.set_vertex_buffer(0, gpu_mesh.vertex_buffer.slice(..));
+//         match &gpu_mesh.buffer_info {
+//             GpuBufferInfo::Indexed {
+//                 buffer,
+//                 index_format,
+//                 count,
+//             } => {
+//                 pass.set_index_buffer(buffer.slice(..), 0, *index_format);
+//                 pass.draw_indexed(0..*count, 0, 0..1);
+//             }
+//             GpuBufferInfo::NonIndexed { vertex_count } => {
+//                 pass.draw(0..*vertex_count, 0..1);
+//             }
+//         }
+//         RenderCommandResult::Success
+//     }
+// }
+
 struct SmudPipeline {
-    mesh2d_pipeline: Mesh2dPipeline,
-    quad: GpuMesh,
+    view_layout: BindGroupLayout,
 }
 
 impl FromWorld for SmudPipeline {
     fn from_world(world: &mut World) -> Self {
-        let quad = {
-            let mut mesh = Mesh::new(PrimitiveTopology::TriangleStrip);
-            let w = 0.5;
-            let v_pos = vec![[-w, -w], [w, -w], [-w, w], [w, w]];
-            mesh.set_attribute(Mesh::ATTRIBUTE_POSITION, v_pos);
-            let v_color = vec![[0.5, 0.3, 0.1, 1.0]; 4];
-            mesh.set_attribute(Mesh::ATTRIBUTE_COLOR, v_color);
+        let render_device = world.get_resource::<RenderDevice>().unwrap();
 
-            let render_device = world.get_resource_mut::<RenderDevice>().unwrap();
-            let vertex_buffer_data = mesh.get_vertex_buffer_data();
-            let vertex_buffer = render_device.create_buffer_with_data(&BufferInitDescriptor {
-                usage: BufferUsages::VERTEX,
-                label: Some("Mesh Vertex Buffer"),
-                contents: &vertex_buffer_data,
-            });
-            GpuMesh {
-                vertex_buffer,
-                buffer_info: GpuBufferInfo::NonIndexed { vertex_count: 4 },
-                has_tangents: false,
-                primitive_topology: mesh.primitive_topology(),
-            }
-        };
+        let view_layout = render_device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+            entries: &[BindGroupLayoutEntry {
+                binding: 0,
+                visibility: ShaderStages::VERTEX | ShaderStages::FRAGMENT,
+                ty: BindingType::Buffer {
+                    ty: BufferBindingType::Uniform,
+                    has_dynamic_offset: true,
+                    min_binding_size: BufferSize::new(ViewUniform::std140_size_static() as u64),
+                },
+                count: None,
+            }],
+            label: Some("sprite_view_layout"),
+        });
+        // let quad = {
+        //     let mut mesh = Mesh::new(PrimitiveTopology::TriangleStrip);
+        //     let w = 0.5;
+        //     let v_pos = vec![[-w, -w], [w, -w], [-w, w], [w, w]];
+        //     mesh.set_attribute(Mesh::ATTRIBUTE_POSITION, v_pos);
+        //     let v_color = vec![[0.5, 0.3, 0.1, 1.0]; 4];
+        //     mesh.set_attribute(Mesh::ATTRIBUTE_COLOR, v_color);
+
+        //     let render_device = world.get_resource_mut::<RenderDevice>().unwrap();
+        //     let vertex_buffer_data = mesh.get_vertex_buffer_data();
+        //     let vertex_buffer = render_device.create_buffer_with_data(&BufferInitDescriptor {
+        //         usage: BufferUsages::VERTEX,
+        //         label: Some("Mesh Vertex Buffer"),
+        //         contents: &vertex_buffer_data,
+        //     });
+        //     GpuMesh {
+        //         vertex_buffer,
+        //         buffer_info: GpuBufferInfo::NonIndexed { vertex_count: 4 },
+        //         has_tangents: false,
+        //         primitive_topology: mesh.primitive_topology(),
+        //     }
+        // };
 
         Self {
-            mesh2d_pipeline: FromWorld::from_world(world),
+            // mesh2d_pipeline: FromWorld::from_world(world),
+            view_layout,
             // quad_handle: Default::default(), // this is initialized later when we can actually use Assets!
-            quad,
+            // quad,
         }
     }
 }
@@ -258,23 +320,32 @@ impl SpecializedPipeline for SmudPipeline {
         // Customize how to store the meshes' vertex attributes in the vertex buffer
         // Our meshes only have position and color
         let vertex_attributes = vec![
-            // Position (GOTCHA! Vertex_Position isn't first in the buffer due to how Mesh sorts attributes(alphabetically))
+            // (GOTCHA! attributes are sorted alphabetically, and offsets need to reflect this)
+            // Position
             VertexAttribute {
-                format: VertexFormat::Float32x2,
+                format: VertexFormat::Float32x3,
                 // this offset is the size of the color attribute, which is stored first
-                offset: 16,
+                // offset: 16,
+                offset: 0,
                 // position is available at location 0 in the shader
                 shader_location: 0,
             },
-            //Color
+            // UV
             VertexAttribute {
-                format: VertexFormat::Float32x4,
-                offset: 0,
+                format: VertexFormat::Float32x2,
+                offset: 12,
                 shader_location: 1,
             },
+            //Color
+            // VertexAttribute {
+            //     format: VertexFormat::Float32x4,
+            //     offset: 0,
+            //     shader_location: 1,
+            // },
         ];
         // This is the sum of the size of position and color attributes (8 + 16 = 24)
-        let vertex_array_stride = 24;
+        // let vertex_array_stride = 24;
+        let vertex_array_stride = 4 * 3 + 4 * 2;
 
         RenderPipelineDescriptor {
             vertex: VertexState {
@@ -299,9 +370,10 @@ impl SpecializedPipeline for SmudPipeline {
             }),
             layout: Some(vec![
                 // Bind group 0 is the view uniform
-                self.mesh2d_pipeline.view_layout.clone(),
+                self.view_layout.clone(),
+                // self.mesh2d_pipeline.view_layout.clone(),
                 // Bind group 1 is the mesh uniform
-                self.mesh2d_pipeline.mesh_layout.clone(),
+                // self.mesh2d_pipeline.mesh_layout.clone(),
             ]),
             primitive: PrimitiveState {
                 front_face: FrontFace::Ccw,
@@ -323,69 +395,208 @@ impl SpecializedPipeline for SmudPipeline {
     }
 }
 
+#[derive(Component, Clone, Copy)]
+struct ExtractedShape {
+    transform: GlobalTransform,
+    color: Color,
+}
+
+#[derive(Default)]
+struct ExtractedShapes(Vec<ExtractedShape>);
+
 fn extract_shapes(
-    mut commands: Commands,
-    mut previous_len: Local<usize>,
-    query: Query<(Entity, &ComputedVisibility, &GlobalTransform), With<SmudShape>>,
+    // mut commands: Commands,
+    // mut previous_len: Local<usize>,
+    mut render_world: ResMut<RenderWorld>,
+    query: Query<(&SmudShape, &ComputedVisibility, &GlobalTransform)>,
 ) {
-    let mut values = Vec::with_capacity(*previous_len);
-    for (entity, computed_visibility, transform) in query.iter() {
+    let mut extracted_shapes = render_world.get_resource_mut::<ExtractedShapes>().unwrap();
+    extracted_shapes.0.clear();
+    // let mut values = Vec::with_capacity(*previous_len);
+    for (shape, computed_visibility, transform) in query.iter() {
         if !computed_visibility.is_visible {
             continue;
         }
-        // TODO: copy over other data as well?
-        let transform = transform.compute_matrix();
-        values.push((
-            entity,
-            (Mesh2dUniform {
-                flags: 0, // TODO: I probably don't need all these...
-                transform,
-                inverse_transpose_model: transform.inverse().transpose(),
-            },),
-        ));
+        // // TODO: copy over other data as well?
+        // let transform = transform.compute_matrix();
+        // values.push((
+        //     entity,
+        //     (Mesh2dUniform {
+        //         flags: 0, // TODO: I probably don't need all these...
+        //         transform,
+        //         inverse_transpose_model: transform.inverse().transpose(),
+        //     },),
+        // ));
+
+        // info!("transform {:?}", transform);
+        extracted_shapes.0.alloc().init(ExtractedShape {
+            color: shape.color,
+            transform: *transform,
+            // rect: None,
+            // // Pass the custom size
+            // custom_size: sprite.custom_size,
+            // flip_x: sprite.flip_x,
+            // flip_y: sprite.flip_y,
+            // image_handle_id: handle.id,
+        });
     }
-    *previous_len = values.len();
-    commands.insert_or_spawn_batch(values);
+    // *previous_len = values.len();
+    // commands.insert_or_spawn_batch(values);
 }
 
+const QUAD_INDICES: [usize; 6] = [0, 2, 3, 0, 1, 2];
+
+const QUAD_VERTEX_POSITIONS: [Vec2; 4] = [
+    const_vec2!([-0.5, -0.5]),
+    const_vec2!([0.5, -0.5]),
+    const_vec2!([0.5, 0.5]),
+    const_vec2!([-0.5, 0.5]),
+];
+
+// const QUAD_UVS: [Vec2; 4] = [
+//     const_vec2!([0., 1.]),
+//     const_vec2!([1., 1.]),
+//     const_vec2!([1., 0.]),
+//     const_vec2!([0., 0.]),
+// ];
+
+const QUAD_UVS: [Vec2; 4] = [
+    const_vec2!([-1., 1.]),
+    const_vec2!([1., 1.]),
+    const_vec2!([1., -1.]),
+    const_vec2!([-1., -1.]),
+];
+
 fn queue_shapes(
+    mut commands: Commands,
     mut views: Query<(&mut RenderPhase<Transparent2d>, &VisibleEntities)>,
     mut pipelines: ResMut<SpecializedPipelines<SmudPipeline>>,
     mut pipeline_cache: ResMut<RenderPipelineCache>,
+    mut extracted_shapes: ResMut<ExtractedShapes>, // todo needs mut?
+    mut shape_meta: ResMut<ShapeMeta>,
     transparent_draw_functions: Res<DrawFunctions<Transparent2d>>,
+    render_device: Res<RenderDevice>,
     smud_pipeline: Res<SmudPipeline>,
-    shape_query: Query<&Mesh2dUniform, With<SmudShape>>,
     msaa: Res<Msaa>,
+    view_uniforms: Res<ViewUniforms>,
+    render_queue: Res<RenderQueue>,
 ) {
-    if shape_query.is_empty() {
-        return;
-    }
+    // Clear the vertex buffer
+    shape_meta.vertices.clear();
+
+    let view_binding = match view_uniforms.uniforms.binding() {
+        Some(binding) => binding,
+        None => return,
+    };
+
+    shape_meta.view_bind_group = Some(render_device.create_bind_group(&BindGroupDescriptor {
+        entries: &[BindGroupEntry {
+            binding: 0,
+            resource: view_binding,
+        }],
+        label: Some("smud_shape_view_bind_group"),
+        layout: &smud_pipeline.view_layout,
+    }));
+
+    // Vertex buffer index
+    let mut index = 0;
+
+    // TODO: check bind group?
+
+    let draw_smud_shape = transparent_draw_functions
+        .read()
+        .get_id::<DrawSmudShape>()
+        .unwrap();
+
+    let shape_meta = &mut shape_meta;
+
     // Iterate over each view (a camera is a view)
-    for (mut transparent_phase, visible_entities) in views.iter_mut() {
-        let draw_smud_shape = transparent_draw_functions
-            .read()
-            .get_id::<DrawSmudShape>()
-            .unwrap();
+    for (mut transparent_phase, _visible_entities) in views.iter_mut() {
+        // todo: check visible entities?
 
-        // TODO: point of this key is?
+        let extracted_shapes = &mut extracted_shapes.0;
+
         let mesh_key = Mesh2dPipelineKey::from_msaa_samples(msaa.samples)
-            | Mesh2dPipelineKey::from_primitive_topology(PrimitiveTopology::TriangleStrip);
+            | Mesh2dPipelineKey::from_primitive_topology(PrimitiveTopology::TriangleList);
 
-        for visible_entity in &visible_entities.entities {
-            if let Ok(mesh2d_uniform) = shape_query.get(*visible_entity) {
-                let pipeline_id =
-                    pipelines.specialize(&mut pipeline_cache, &smud_pipeline, mesh_key);
+        let pipeline_id = pipelines.specialize(&mut pipeline_cache, &smud_pipeline, mesh_key);
 
-                let mesh_z = mesh2d_uniform.transform.w_axis.z;
+        // Everything is one batch for now
+        let current_batch = ShapeBatch {};
+        let current_batch_entity = commands.spawn_bundle((current_batch,)).id();
 
-                transparent_phase.add(Transparent2d {
-                    entity: *visible_entity,
-                    draw_function: draw_smud_shape,
-                    pipeline: pipeline_id,
-                    sort_key: FloatOrd(mesh_z),
-                    batch_range: None, // TODO: use this?
-                });
+        // Add a phase item for each shape, and detect when successive items can be batched.
+        // Spawn an entity with a `ShapeBatch` component for each possible batch.
+        // Compatible items share the same entity.
+        // Batches are merged later (in `batch_phase_system()`), so that they can be interrupted
+        // by any other phase item (and they can interrupt other items from batching).
+        for extracted_shape in extracted_shapes.iter() {
+            // let mesh_z = mesh2d_uniform.transform.w_axis.z;
+
+            let quad_size = 30.; // todo
+
+            // Apply size and global transform
+            let positions = QUAD_VERTEX_POSITIONS.map(|quad_pos| {
+                extracted_shape
+                    .transform
+                    .mul_vec3((quad_pos * quad_size).extend(0.))
+                    .into()
+            });
+            // info!("positions {:?}", positions);
+
+            for i in QUAD_INDICES.iter() {
+                let vertex = ShapeVertex {
+                    position: positions[*i],
+                    uv: QUAD_UVS[*i].into(), // todo: can be moved into shader?
+                };
+                // info!("vertex {:?}", vertex);
+                shape_meta.vertices.push(vertex);
             }
+
+            let item_start = index;
+            index += QUAD_INDICES.len() as u32;
+            let item_end = index;
+
+            transparent_phase.add(Transparent2d {
+                entity: current_batch_entity,
+                draw_function: draw_smud_shape,
+                pipeline: pipeline_id,
+                sort_key: FloatOrd(0.), // todo
+                batch_range: Some(item_start..item_end),
+            });
         }
     }
+
+    shape_meta
+        .vertices
+        .write_buffer(&render_device, &render_queue);
+}
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone, Pod, Zeroable)]
+struct ShapeVertex {
+    pub position: [f32; 3],
+    pub uv: [f32; 2],
+}
+
+pub struct ShapeMeta {
+    vertices: BufferVec<ShapeVertex>,
+    // colored_vertices: BufferVec<ColoredSpriteVertex>,
+    view_bind_group: Option<BindGroup>,
+}
+
+impl Default for ShapeMeta {
+    fn default() -> Self {
+        Self {
+            vertices: BufferVec::new(BufferUsages::VERTEX),
+            // colored_vertices: BufferVec::new(BufferUsages::VERTEX),
+            view_bind_group: None,
+        }
+    }
+}
+
+#[derive(Component, Eq, PartialEq, Copy, Clone)]
+pub struct ShapeBatch {
+    // image_handle_id: HandleId,
+// colored: bool,
 }

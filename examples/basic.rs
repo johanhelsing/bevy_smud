@@ -17,7 +17,7 @@ fn main() {
 
 fn setup(mut commands: Commands) {
     commands.spawn_bundle(ShapeBundle {
-        shape: SmudShape::Arc(1.),
+        shape: SmudShape::default(),
         ..Default::default()
     });
     commands.spawn_bundle(OrthographicCameraBundle::new_2d());
