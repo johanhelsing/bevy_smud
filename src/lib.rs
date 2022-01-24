@@ -9,7 +9,6 @@ use bevy::{
     prelude::*,
     reflect::TypeUuid,
     render::{
-        render_component::UniformComponentPlugin,
         render_phase::{
             AddRenderCommand, BatchedPhaseItem, DrawFunctions, EntityRenderCommand, RenderCommand,
             RenderCommandResult, RenderPhase, SetItemPipeline, TrackedRenderPass,
@@ -28,7 +27,7 @@ use bevy::{
         view::{ViewUniform, ViewUniformOffset, ViewUniforms, VisibleEntities},
         RenderApp, RenderStage, RenderWorld,
     },
-    sprite::{Mesh2dPipeline, Mesh2dPipelineKey, Mesh2dUniform},
+    sprite::Mesh2dPipelineKey,
 };
 use bytemuck::{Pod, Zeroable};
 use copyless::VecHelper;
@@ -177,16 +176,6 @@ impl Plugin for SoSmoothPlugin {
     }
 }
 
-// type DrawSmudShape = (
-//     SetItemPipeline,
-//     // Set the view uniform as bind group 0
-//     SetMesh2dViewBindGroup<0>,
-//     // Set the mesh uniform as bind group 1
-//     SetMesh2dBindGroup<1>,
-//     // DrawMesh2d,
-//     DrawQuad,
-// );
-
 type DrawSmudShape = (
     SetItemPipeline,
     SetShapeViewBindGroup<0>,
@@ -305,7 +294,6 @@ impl FromWorld for SmudPipeline {
         // };
 
         Self {
-            // mesh2d_pipeline: FromWorld::from_world(world),
             view_layout,
             // quad_handle: Default::default(), // this is initialized later when we can actually use Assets!
             // quad,
@@ -330,10 +318,7 @@ impl SpecializedPipeline for SmudPipeline {
             // Position
             VertexAttribute {
                 format: VertexFormat::Float32x3,
-                // this offset is the size of the color attribute, which is stored first
-                // offset: 16,
                 offset: 4 * 4,
-                // position is available at location 0 in the shader
                 shader_location: 0,
             },
             // UV
@@ -371,9 +356,6 @@ impl SpecializedPipeline for SmudPipeline {
             layout: Some(vec![
                 // Bind group 0 is the view uniform
                 self.view_layout.clone(),
-                // self.mesh2d_pipeline.view_layout.clone(),
-                // Bind group 1 is the mesh uniform
-                // self.mesh2d_pipeline.mesh_layout.clone(),
             ]),
             primitive: PrimitiveState {
                 front_face: FrontFace::Ccw,
@@ -405,43 +387,26 @@ struct ExtractedShape {
 struct ExtractedShapes(Vec<ExtractedShape>);
 
 fn extract_shapes(
-    // mut commands: Commands,
-    // mut previous_len: Local<usize>,
     mut render_world: ResMut<RenderWorld>,
     query: Query<(&SmudShape, &ComputedVisibility, &GlobalTransform)>,
 ) {
     let mut extracted_shapes = render_world.get_resource_mut::<ExtractedShapes>().unwrap();
     extracted_shapes.0.clear();
-    // let mut values = Vec::with_capacity(*previous_len);
+
     for (shape, computed_visibility, transform) in query.iter() {
         if !computed_visibility.is_visible {
             continue;
         }
-        // // TODO: copy over other data as well?
-        // let transform = transform.compute_matrix();
-        // values.push((
-        //     entity,
-        //     (Mesh2dUniform {
-        //         flags: 0, // TODO: I probably don't need all these...
-        //         transform,
-        //         inverse_transpose_model: transform.inverse().transpose(),
-        //     },),
-        // ));
 
-        // info!("transform {:?}", transform);
         extracted_shapes.0.alloc().init(ExtractedShape {
             color: shape.color,
             transform: *transform,
             // rect: None,
             // // Pass the custom size
             // custom_size: sprite.custom_size,
-            // flip_x: sprite.flip_x,
-            // flip_y: sprite.flip_y,
             // image_handle_id: handle.id,
         });
     }
-    // *previous_len = values.len();
-    // commands.insert_or_spawn_batch(values);
 }
 
 const QUAD_INDICES: [usize; 6] = [0, 2, 3, 0, 1, 2];
@@ -452,13 +417,6 @@ const QUAD_VERTEX_POSITIONS: [Vec2; 4] = [
     const_vec2!([0.5, 0.5]),
     const_vec2!([-0.5, 0.5]),
 ];
-
-// const QUAD_UVS: [Vec2; 4] = [
-//     const_vec2!([0., 1.]),
-//     const_vec2!([1., 1.]),
-//     const_vec2!([1., 0.]),
-//     const_vec2!([0., 0.]),
-// ];
 
 const QUAD_UVS: [Vec2; 4] = [
     const_vec2!([-1., 1.]),
@@ -501,8 +459,6 @@ fn queue_shapes(
     // Vertex buffer index
     let mut index = 0;
 
-    // TODO: check bind group?
-
     let draw_smud_shape = transparent_draw_functions
         .read()
         .get_id::<DrawSmudShape>()
@@ -542,7 +498,6 @@ fn queue_shapes(
                     .mul_vec3((quad_pos * quad_size).extend(0.))
                     .into()
             });
-            // info!("positions {:?}", positions);
 
             // let color = extracted_shape.color.as_linear_rgba_f32();
             // // encode color as a single u32 to save space
@@ -559,7 +514,6 @@ fn queue_shapes(
                     uv: QUAD_UVS[*i].into(), // todo: can be moved into shader?
                     color,
                 };
-                // info!("vertex {:?}", vertex);
                 shape_meta.vertices.push(vertex);
             }
 
@@ -592,7 +546,6 @@ struct ShapeVertex {
 
 pub struct ShapeMeta {
     vertices: BufferVec<ShapeVertex>,
-    // colored_vertices: BufferVec<ColoredSpriteVertex>,
     view_bind_group: Option<BindGroup>,
 }
 
@@ -600,14 +553,10 @@ impl Default for ShapeMeta {
     fn default() -> Self {
         Self {
             vertices: BufferVec::new(BufferUsages::VERTEX),
-            // colored_vertices: BufferVec::new(BufferUsages::VERTEX),
             view_bind_group: None,
         }
     }
 }
 
 #[derive(Component, Eq, PartialEq, Copy, Clone)]
-pub struct ShapeBatch {
-    // image_handle_id: HandleId,
-// colored: bool,
-}
+pub struct ShapeBatch {}

@@ -30,7 +30,7 @@ fn main() {
         .add_plugin(PanCamPlugin)
         .add_plugin(bevy_lospec::PalettePlugin)
         .add_system_set(SystemSet::on_enter(GameState::Running).with_system(setup))
-        .add_system_set(SystemSet::on_update(GameState::Running).with_system(update))
+        // .add_system_set(SystemSet::on_update(GameState::Running).with_system(update))
         .run();
 }
 

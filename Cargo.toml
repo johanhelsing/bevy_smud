@@ -20,7 +20,8 @@ bevy_asset_loader = "0.8"
 rand = "0.8"
 
 [patch.crates-io]
-bevy = { git = "https://github.com/superdump/bevy", branch = "hot-reload-core-shaders" }
+# bevy = { git = "https://github.com/superdump/bevy", branch = "hot-reload-core-shaders" }
+bevy = { path = "../bevy" }
 
 [profile.dev]
 opt-level = 1
