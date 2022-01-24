@@ -5,7 +5,6 @@ use bevy::{
         lifetimeless::{Read, SQuery, SRes},
         SystemParamItem,
     },
-    math::const_vec2,
     prelude::*,
     render::{
         render_phase::{
@@ -99,7 +98,8 @@ impl<P: BatchedPhaseItem> RenderCommand<P> for DrawShapeBatch {
         // let sprite_batch = query_batch.get(item.entity()).unwrap();
         let shape_meta = shape_meta.into_inner();
         pass.set_vertex_buffer(0, shape_meta.vertices.buffer().unwrap().slice(..));
-        pass.draw(item.batch_range().as_ref().unwrap().clone(), 0..1);
+        // pass.draw(item.batch_range().as_ref().unwrap().clone(), 0..1);
+        pass.draw(0..4, item.batch_range().as_ref().unwrap().clone());
         RenderCommandResult::Success
     }
 }
@@ -197,7 +197,7 @@ impl SpecializedPipeline for SmudPipeline {
             VertexAttribute {
                 format: VertexFormat::Float32x4,
                 offset: 0,
-                shader_location: 2,
+                shader_location: 1,
             },
             // Position
             VertexAttribute {
@@ -205,16 +205,9 @@ impl SpecializedPipeline for SmudPipeline {
                 offset: 4 * 4,
                 shader_location: 0,
             },
-            // UV
-            VertexAttribute {
-                format: VertexFormat::Float32x2,
-                offset: 4 * 4 + 4 * 3,
-                shader_location: 1,
-            },
         ];
-        // This is the sum of the size of position and color attributes (8 + 16 = 24)
-        // let vertex_array_stride = 24;
-        let vertex_array_stride = 4 * 4 + 4 * 3 + 4 * 2;
+        // This is the sum of the size of the attributes above
+        let vertex_array_stride = 4 * 4 + 4 * 3;
 
         RenderPipelineDescriptor {
             vertex: VertexState {
@@ -223,7 +216,7 @@ impl SpecializedPipeline for SmudPipeline {
                 shader_defs: Vec::new(),
                 buffers: vec![VertexBufferLayout {
                     array_stride: vertex_array_stride,
-                    step_mode: VertexStepMode::Vertex,
+                    step_mode: VertexStepMode::Instance,
                     attributes: vertex_attributes,
                 }],
             },
@@ -293,22 +286,6 @@ fn extract_shapes(
     }
 }
 
-const QUAD_INDICES: [usize; 6] = [0, 2, 3, 0, 1, 2];
-
-const QUAD_VERTEX_POSITIONS: [Vec2; 4] = [
-    const_vec2!([-0.5, -0.5]),
-    const_vec2!([0.5, -0.5]),
-    const_vec2!([0.5, 0.5]),
-    const_vec2!([-0.5, 0.5]),
-];
-
-const QUAD_UVS: [Vec2; 4] = [
-    const_vec2!([-1., 1.]),
-    const_vec2!([1., 1.]),
-    const_vec2!([1., -1.]),
-    const_vec2!([-1., -1.]),
-];
-
 fn queue_shapes(
     mut commands: Commands,
     mut views: Query<(&mut RenderPhase<Transparent2d>, &VisibleEntities)>,
@@ -357,7 +334,7 @@ fn queue_shapes(
         let extracted_shapes = &mut extracted_shapes.0;
 
         let mesh_key = Mesh2dPipelineKey::from_msaa_samples(msaa.samples)
-            | Mesh2dPipelineKey::from_primitive_topology(PrimitiveTopology::TriangleList);
+            | Mesh2dPipelineKey::from_primitive_topology(PrimitiveTopology::TriangleStrip);
 
         let pipeline_id = pipelines.specialize(&mut pipeline_cache, &smud_pipeline, mesh_key);
 
@@ -373,16 +350,6 @@ fn queue_shapes(
         for extracted_shape in extracted_shapes.iter() {
             // let mesh_z = mesh2d_uniform.transform.w_axis.z;
 
-            let quad_size = 30.; // todo
-
-            // Apply size and global transform
-            let positions = QUAD_VERTEX_POSITIONS.map(|quad_pos| {
-                extracted_shape
-                    .transform
-                    .mul_vec3((quad_pos * quad_size).extend(0.))
-                    .into()
-            });
-
             // let color = extracted_shape.color.as_linear_rgba_f32();
             // // encode color as a single u32 to save space
             // let color = (color[0] * 255.0) as u32
@@ -392,17 +359,16 @@ fn queue_shapes(
 
             let color = extracted_shape.color.as_linear_rgba_f32();
 
-            for i in QUAD_INDICES.iter() {
-                let vertex = ShapeVertex {
-                    position: positions[*i],
-                    uv: QUAD_UVS[*i].into(), // todo: can be moved into shader?
-                    color,
-                };
-                shape_meta.vertices.push(vertex);
-            }
+            let center = extracted_shape.transform.mul_vec3(Vec3::ZERO).into(); // todo
+
+            let vertex = ShapeVertex {
+                position: center,
+                color,
+            };
+            shape_meta.vertices.push(vertex);
 
             let item_start = index;
-            index += QUAD_INDICES.len() as u32;
+            index += 1;
             let item_end = index;
 
             transparent_phase.add(Transparent2d {
@@ -425,7 +391,7 @@ fn queue_shapes(
 struct ShapeVertex {
     pub color: [f32; 4],
     pub position: [f32; 3],
-    pub uv: [f32; 2],
+    // pub uv: [f32; 2],
 }
 
 pub struct ShapeMeta {

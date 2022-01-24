@@ -16,8 +16,8 @@ var<uniform> view: View;
 // as specified in `specialize()`
 struct Vertex {
     [[location(0)]] position: vec3<f32>;
-    [[location(1)]] uv: vec2<f32>; // TODO: could be just index?
-    [[location(2)]] color: vec4<f32>;
+    // [[location(1)]] uv: vec2<f32>; // TODO: could be just index?
+    [[location(1)]] color: vec4<f32>;
 };
 
 struct VertexOutput {
@@ -27,16 +27,22 @@ struct VertexOutput {
 };
 
 [[stage(vertex)]]
-fn vertex(vertex: Vertex) -> VertexOutput {
+fn vertex(
+    vertex: Vertex,
+    [[builtin(vertex_index)]] i: u32
+) -> VertexOutput {
     var out: VertexOutput;
     // Project the world position of the mesh into screen position
-    let pos = vertex.position;
+    let x = select(-1., 1., i % 2u == 0u);
+    let y = select(-1., 1., (i / 2u) % 2u == 0u);
+    let pos = vertex.position + vec3<f32>(x, y, 0.) * 20.;
     // out.clip_position = view.view_proj * mesh.model * vec4<f32>(pos, 0.0, 1.0);
     out.clip_position = view.view_proj * vec4<f32>(pos, 1.0);
     // out.color = vertex.color;
     // out.color = vec4<f32>(1.0, 0.0, 0.0, 1.0);
     out.color = vertex.color;
-    out.pos = vertex.uv * 20.0;
+    out.pos = vec2<f32>(x, y) * 20.;
+    // out.pos = vertex.uv * 20.0;
     return out;
 }
 
