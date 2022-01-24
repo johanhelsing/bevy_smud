@@ -2,11 +2,18 @@ use bevy::{
     diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin},
     prelude::*,
 };
+use bevy_asset_loader::{AssetCollection, AssetLoader};
 use bevy_pancam::*;
 use bevy_so_smooth::*;
+use rand::prelude::*;
 
 fn main() {
     let mut app = App::new();
+
+    AssetLoader::new(GameState::Loading)
+        .continue_to_state(GameState::Running)
+        .with_collection::<AssetHandles>()
+        .build(&mut app);
 
     #[cfg(feature = "smud_shader_hot_reloading")]
     app.insert_resource(bevy::asset::AssetServerSettings {
@@ -14,33 +21,81 @@ fn main() {
         ..Default::default()
     });
 
-    app.insert_resource(Msaa { samples: 4 })
+    app.add_state(GameState::Loading)
+        .insert_resource(Msaa { samples: 4 })
         .add_plugins(DefaultPlugins)
         .add_plugin(LogDiagnosticsPlugin::default())
         .add_plugin(FrameTimeDiagnosticsPlugin)
         .add_plugin(SoSmoothPlugin)
         .add_plugin(PanCamPlugin)
-        .add_startup_system(setup)
+        .add_plugin(bevy_lospec::PalettePlugin)
+        .add_system_set(SystemSet::on_enter(GameState::Running).with_system(setup))
+        .add_system_set(SystemSet::on_update(GameState::Running).with_system(update))
         .run();
 }
-fn setup(mut commands: Commands) {
+
+#[derive(Clone, Eq, PartialEq, Debug, Hash)]
+enum GameState {
+    Loading,
+    Running,
+}
+
+#[derive(AssetCollection)]
+struct AssetHandles {
+    #[asset(path = "vinik24.json")]
+    palette: Handle<bevy_lospec::Palette>,
+}
+
+#[derive(Component)]
+struct Index(usize);
+
+fn setup(
+    mut commands: Commands,
+    assets: Res<AssetHandles>,
+    palettes: Res<Assets<bevy_lospec::Palette>>,
+) {
+    let palette = palettes.get(assets.palette.clone()).unwrap();
+    let mut rng = rand::thread_rng();
     let spacing = 50.0;
     let w = 316;
+    // let w = 100;
     let h = w;
+
+    let clear_color = palette.lightest();
+    commands.insert_resource(ClearColor(clear_color));
+
     for i in 0..w {
         for j in 0..h {
-            commands.spawn_bundle(ShapeBundle {
-                transform: Transform::from_translation(Vec3::new(
-                    i as f32 * spacing - w as f32 * spacing / 2.,
-                    j as f32 * spacing - h as f32 * spacing / 2.,
-                    0.,
-                )),
-                shape: SmudShape::default(),
-                ..Default::default()
-            });
+            let color = palette
+                .iter()
+                .filter(|c| *c != &clear_color)
+                .choose(&mut rng)
+                .copied()
+                .unwrap_or(Color::PINK);
+
+            commands
+                .spawn_bundle(ShapeBundle {
+                    transform: Transform::from_translation(Vec3::new(
+                        i as f32 * spacing - w as f32 * spacing / 2.,
+                        j as f32 * spacing - h as f32 * spacing / 2.,
+                        0.,
+                    )),
+                    shape: SmudShape { color },
+                    ..Default::default()
+                })
+                .insert(Index(i + j * w));
         }
     }
     commands
         .spawn_bundle(OrthographicCameraBundle::new_2d())
         .insert(PanCam::default());
+}
+
+fn update(mut query: Query<(&mut Transform, &Index), With<SmudShape>>, time: Res<Time>) {
+    let t = time.time_since_startup().as_secs_f64();
+
+    for (mut tx, index) in query.iter_mut() {
+        let s = f64::sin(t + (index.0 as f64) / 1.0) as f32;
+        tx.scale = Vec3::splat(s);
+    }
 }

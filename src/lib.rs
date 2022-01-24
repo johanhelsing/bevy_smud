@@ -321,31 +321,31 @@ impl SpecializedPipeline for SmudPipeline {
         // Our meshes only have position and color
         let vertex_attributes = vec![
             // (GOTCHA! attributes are sorted alphabetically, and offsets need to reflect this)
+            // Color
+            VertexAttribute {
+                format: VertexFormat::Float32x4,
+                offset: 0,
+                shader_location: 2,
+            },
             // Position
             VertexAttribute {
                 format: VertexFormat::Float32x3,
                 // this offset is the size of the color attribute, which is stored first
                 // offset: 16,
-                offset: 0,
+                offset: 4 * 4,
                 // position is available at location 0 in the shader
                 shader_location: 0,
             },
             // UV
             VertexAttribute {
                 format: VertexFormat::Float32x2,
-                offset: 12,
+                offset: 4 * 4 + 4 * 3,
                 shader_location: 1,
             },
-            //Color
-            // VertexAttribute {
-            //     format: VertexFormat::Float32x4,
-            //     offset: 0,
-            //     shader_location: 1,
-            // },
         ];
         // This is the sum of the size of position and color attributes (8 + 16 = 24)
         // let vertex_array_stride = 24;
-        let vertex_array_stride = 4 * 3 + 4 * 2;
+        let vertex_array_stride = 4 * 4 + 4 * 3 + 4 * 2;
 
         RenderPipelineDescriptor {
             vertex: VertexState {
@@ -544,10 +544,20 @@ fn queue_shapes(
             });
             // info!("positions {:?}", positions);
 
+            // let color = extracted_shape.color.as_linear_rgba_f32();
+            // // encode color as a single u32 to save space
+            // let color = (color[0] * 255.0) as u32
+            //     | ((color[1] * 255.0) as u32) << 8
+            //     | ((color[2] * 255.0) as u32) << 16
+            //     | ((color[3] * 255.0) as u32) << 24;
+
+            let color = extracted_shape.color.as_linear_rgba_f32();
+
             for i in QUAD_INDICES.iter() {
                 let vertex = ShapeVertex {
                     position: positions[*i],
                     uv: QUAD_UVS[*i].into(), // todo: can be moved into shader?
+                    color,
                 };
                 // info!("vertex {:?}", vertex);
                 shape_meta.vertices.push(vertex);
@@ -575,6 +585,7 @@ fn queue_shapes(
 #[repr(C)]
 #[derive(Debug, Copy, Clone, Pod, Zeroable)]
 struct ShapeVertex {
+    pub color: [f32; 4],
     pub position: [f32; 3],
     pub uv: [f32; 2],
 }

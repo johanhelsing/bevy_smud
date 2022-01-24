@@ -17,7 +17,7 @@ var<uniform> view: View;
 struct Vertex {
     [[location(0)]] position: vec3<f32>;
     [[location(1)]] uv: vec2<f32>; // TODO: could be just index?
-    // [[location(1)]] color: vec4<f32>;
+    [[location(2)]] color: vec4<f32>;
 };
 
 struct VertexOutput {
@@ -35,7 +35,7 @@ fn vertex(vertex: Vertex) -> VertexOutput {
     out.clip_position = view.view_proj * vec4<f32>(pos, 1.0);
     // out.color = vertex.color;
     // out.color = vec4<f32>(1.0, 0.0, 0.0, 1.0);
-    out.color = vec4<f32>(0.5, 0.3, 0.1, 1.0);
+    out.color = vertex.color;
     out.pos = vertex.uv * 20.0;
     return out;
 }
