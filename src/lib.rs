@@ -138,7 +138,7 @@ impl<P: BatchedPhaseItem> RenderCommand<P> for DrawShapeBatch {
 
 struct SmudPipeline {
     view_layout: BindGroupLayout,
-    shape_shaders: ShapeShaders,
+    shaders: ShapeShaders,
 }
 
 impl FromWorld for SmudPipeline {
@@ -183,7 +183,7 @@ impl FromWorld for SmudPipeline {
 
         Self {
             view_layout,
-            shape_shaders: Default::default()
+            shaders: Default::default()
             // quad_handle: Default::default(), // this is initialized later when we can actually use Assets!
             // quad,
         }
@@ -193,14 +193,15 @@ impl FromWorld for SmudPipeline {
 #[derive(Clone, Hash, PartialEq, Eq)]
 struct SmudPipelineKey {
     mesh: Mesh2dPipelineKey,
-    shader: Handle<Shader>,
+    shader: HandleId,
 }
 
 impl SpecializedPipeline for SmudPipeline {
     type Key = SmudPipelineKey;
 
     fn specialize(&self, key: Self::Key) -> RenderPipelineDescriptor {
-        let shader = self.shape_shaders.0.get(&key.shader.id).unwrap();
+        let shader = self.shaders.0.get(&key.shader).unwrap();
+        info!("specializing for {shader:?}");
 
         // Customize how to store the meshes' vertex attributes in the vertex buffer
         // Our meshes only have position and color
@@ -283,16 +284,20 @@ fn extract_sdf_shaders(
     for shape in shapes.iter() {
         let sdf_shader_handle = shape.sdf_shader.as_ref().unwrap();
 
-        if pipeline.shape_shaders.0.contains_key(&sdf_shader_handle.id) {
+        if pipeline.shaders.0.contains_key(&sdf_shader_handle.id) {
             continue;
         }
 
-        // todo: wait to see if the shader has actually loaded
+        // todo use asset events instead?
+        let sdf_shader = match shaders.get_mut(sdf_shader_handle.clone()) {
+            Some(shader) => shader,
+            None => continue,
+        };
 
         let id = Uuid::new_v4();
         let import_path = format!("bevy_smud::generated::{id}");
 
-        let sdf_shader = shaders.get_mut(sdf_shader_handle.clone()).unwrap();
+        info!("Generating {import_path}");
         sdf_shader.set_import_path(import_path);
 
         let generated_shader = Shader::from_wgsl(format!(
@@ -307,7 +312,7 @@ fn extract_sdf_shaders(
         let generated_shader_handle = shaders.add(generated_shader);
 
         pipeline
-            .shape_shaders
+            .shaders
             .0
             .insert(sdf_shader_handle.id, generated_shader_handle);
     }
@@ -407,9 +412,20 @@ fn queue_shapes(
         // Batches are merged later (in `batch_phase_system()`), so that they can be interrupted
         // by any other phase item (and they can interrupt other items from batching).
         for extracted_shape in extracted_shapes.iter() {
+            // todo: move this out of the inner loop
+            if smud_pipeline
+                .shaders
+                .0
+                .get(&extracted_shape.shader.id)
+                .is_none()
+            {
+                // todo pass the value retrieved above to specialize
+                continue; // skip shapes that are not ready yet
+            }
+
             let specialize_key = SmudPipelineKey {
                 mesh: mesh_key,
-                shader: extracted_shape.shader.clone_weak(),
+                shader: extracted_shape.shader.id,
             };
             let pipeline_id =
                 pipelines.specialize(&mut pipeline_cache, &smud_pipeline, specialize_key);
