@@ -82,7 +82,7 @@ fn setup(
                         j as f32 * spacing - h as f32 * spacing / 2.,
                         0.,
                     )),
-                    shape: SmudShape { color },
+                    shape: SmudShape { color, sdf_shader: todo!() },
                     ..Default::default()
                 })
                 .insert(Index(i + j * w));

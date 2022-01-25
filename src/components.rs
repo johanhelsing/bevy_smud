@@ -3,14 +3,14 @@ use bevy::{ecs::query::QueryItem, prelude::*, render::render_component::ExtractC
 #[derive(Component, Clone)]
 pub struct SmudShape {
     pub color: Color,
-    pub sdf_shader: Option<Handle<Shader>>,
+    pub sdf_shader: Handle<Shader>,
 }
 
 impl Default for SmudShape {
     fn default() -> Self {
         Self {
             color: Color::PINK,
-            sdf_shader: None,
+            sdf_shader: Default::default(), // todo
         }
     }
 }

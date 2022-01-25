@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bevy_pancam::*;
 use bevy_so_smooth::*;
 
 fn main() {
@@ -11,8 +12,10 @@ fn main() {
     });
 
     app.insert_resource(Msaa { samples: 4 })
+        .insert_resource(ClearColor(Color::rgb(0.7, 0.8, 0.7)))
         .add_plugins(DefaultPlugins)
         .add_plugin(SoSmoothPlugin)
+        .add_plugin(PanCamPlugin)
         .add_startup_system(setup)
         .run();
 }
@@ -22,11 +25,14 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
 
     commands.spawn_bundle(ShapeBundle {
         shape: SmudShape {
-            sdf_shader: Some(bevy_shape_shader),
+            color: Color::rgb(0.36, 0.41, 0.45),
+            sdf_shader: bevy_shape_shader,
             ..Default::default()
         },
         ..Default::default()
     });
 
-    commands.spawn_bundle(OrthographicCameraBundle::new_2d());
+    commands
+        .spawn_bundle(OrthographicCameraBundle::new_2d())
+        .insert(PanCam::default());
 }

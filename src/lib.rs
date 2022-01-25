@@ -282,14 +282,12 @@ fn extract_sdf_shaders(
     let mut pipeline = render_world.get_resource_mut::<SmudPipeline>().unwrap();
 
     for shape in shapes.iter() {
-        let sdf_shader_handle = shape.sdf_shader.as_ref().unwrap();
-
-        if pipeline.shaders.0.contains_key(&sdf_shader_handle.id) {
+        if pipeline.shaders.0.contains_key(&shape.sdf_shader.id) {
             continue;
         }
 
         // todo use asset events instead?
-        let sdf_shader = match shaders.get_mut(sdf_shader_handle.clone()) {
+        let sdf_shader = match shaders.get_mut(&shape.sdf_shader.clone()) {
             Some(shader) => shader,
             None => continue,
         };
@@ -302,8 +300,8 @@ fn extract_sdf_shaders(
 
         let generated_shader = Shader::from_wgsl(format!(
             r#"
-#import bevy_smud::generated::{id}
 #import bevy_smud::vertex
+#import bevy_smud::generated::{id}
 #import bevy_smud::fragment
 "#
         ));
@@ -314,7 +312,7 @@ fn extract_sdf_shaders(
         pipeline
             .shaders
             .0
-            .insert(sdf_shader_handle.id, generated_shader_handle);
+            .insert(shape.sdf_shader.id, generated_shader_handle);
     }
 }
 
@@ -343,7 +341,7 @@ fn extract_shapes(
         extracted_shapes.0.alloc().init(ExtractedShape {
             color: shape.color,
             transform: *transform,
-            shader: shape.sdf_shader.as_ref().unwrap().clone_weak(),
+            shader: shape.sdf_shader.clone_weak(),
             // rect: None,
             // // Pass the custom size
             // custom_size: sprite.custom_size,
