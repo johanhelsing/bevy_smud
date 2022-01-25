@@ -276,7 +276,7 @@ struct ShapeShaders(HashMap<HandleId, Handle<Shader>>);
 
 fn extract_sdf_shaders(
     mut render_world: ResMut<RenderWorld>,
-    shapes: Query<&SmudShape, Changed<SmudShape>>, // does changed help?
+    shapes: Query<&SmudShape>, //, Changed<SmudShape>>, // does changed help? need to make sure it is not racey then!
     mut shaders: ResMut<Assets<Shader>>,
 ) {
     let mut pipeline = render_world.get_resource_mut::<SmudPipeline>().unwrap();

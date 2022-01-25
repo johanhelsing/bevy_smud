@@ -53,6 +53,7 @@ fn setup(
     mut commands: Commands,
     assets: Res<AssetHandles>,
     palettes: Res<Assets<bevy_lospec::Palette>>,
+    asset_server: Res<AssetServer>,
 ) {
     let palette = palettes.get(assets.palette.clone()).unwrap();
     let mut rng = rand::thread_rng();
@@ -65,6 +66,8 @@ fn setup(
 
     let clear_color = palette.lightest();
     commands.insert_resource(ClearColor(clear_color));
+
+    let bevy_shape_shader = asset_server.load("bevy.wgsl");
 
     for i in 0..w {
         for j in 0..h {
@@ -82,7 +85,10 @@ fn setup(
                         j as f32 * spacing - h as f32 * spacing / 2.,
                         0.,
                     )),
-                    shape: SmudShape { color, sdf_shader: todo!() },
+                    shape: SmudShape {
+                        color,
+                        sdf_shader: bevy_shape_shader.clone(),
+                    },
                     ..Default::default()
                 })
                 .insert(Index(i + j * w));
