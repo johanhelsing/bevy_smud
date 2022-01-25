@@ -1,4 +1,5 @@
 use bevy::{
+    asset::HandleId,
     core::FloatOrd,
     core_pipeline::Transparent2d,
     ecs::system::{
@@ -6,6 +7,7 @@ use bevy::{
         SystemParamItem,
     },
     prelude::*,
+    reflect::Uuid,
     render::{
         render_phase::{
             AddRenderCommand, BatchedPhaseItem, DrawFunctions, EntityRenderCommand, RenderCommand,
@@ -26,6 +28,7 @@ use bevy::{
         RenderApp, RenderStage, RenderWorld,
     },
     sprite::Mesh2dPipelineKey,
+    utils::HashMap,
 };
 use bytemuck::{Pod, Zeroable};
 use copyless::VecHelper;
@@ -54,6 +57,7 @@ impl Plugin for SoSmoothPlugin {
                 .init_resource::<SmudPipeline>()
                 .init_resource::<SpecializedPipelines<SmudPipeline>>()
                 .add_system_to_stage(RenderStage::Extract, extract_shapes)
+                .add_system_to_stage(RenderStage::Extract, extract_sdf_shaders)
                 .add_system_to_stage(RenderStage::Queue, queue_shapes);
         }
     }
@@ -98,7 +102,6 @@ impl<P: BatchedPhaseItem> RenderCommand<P> for DrawShapeBatch {
         // let sprite_batch = query_batch.get(item.entity()).unwrap();
         let shape_meta = shape_meta.into_inner();
         pass.set_vertex_buffer(0, shape_meta.vertices.buffer().unwrap().slice(..));
-        // pass.draw(item.batch_range().as_ref().unwrap().clone(), 0..1);
         pass.draw(0..4, item.batch_range().as_ref().unwrap().clone());
         RenderCommandResult::Success
     }
@@ -135,6 +138,7 @@ impl<P: BatchedPhaseItem> RenderCommand<P> for DrawShapeBatch {
 
 struct SmudPipeline {
     view_layout: BindGroupLayout,
+    shape_shaders: ShapeShaders,
 }
 
 impl FromWorld for SmudPipeline {
@@ -179,16 +183,25 @@ impl FromWorld for SmudPipeline {
 
         Self {
             view_layout,
+            shape_shaders: Default::default()
             // quad_handle: Default::default(), // this is initialized later when we can actually use Assets!
             // quad,
         }
     }
 }
 
+#[derive(Clone, Hash, PartialEq, Eq)]
+struct SmudPipelineKey {
+    mesh: Mesh2dPipelineKey,
+    shader: Handle<Shader>,
+}
+
 impl SpecializedPipeline for SmudPipeline {
-    type Key = Mesh2dPipelineKey;
+    type Key = SmudPipelineKey;
 
     fn specialize(&self, key: Self::Key) -> RenderPipelineDescriptor {
+        let shader = self.shape_shaders.0.get(&key.shader.id).unwrap();
+
         // Customize how to store the meshes' vertex attributes in the vertex buffer
         // Our meshes only have position and color
         let vertex_attributes = vec![
@@ -211,7 +224,8 @@ impl SpecializedPipeline for SmudPipeline {
 
         RenderPipelineDescriptor {
             vertex: VertexState {
-                shader: SMUD_SHADER_HANDLE.typed::<Shader>(),
+                shader: shader.clone_weak(),
+                // shader: SMUD_SHADER_HANDLE.typed::<Shader>(),
                 entry_point: "vertex".into(),
                 shader_defs: Vec::new(),
                 buffers: vec![VertexBufferLayout {
@@ -221,7 +235,8 @@ impl SpecializedPipeline for SmudPipeline {
                 }],
             },
             fragment: Some(FragmentState {
-                shader: SMUD_SHADER_HANDLE.typed::<Shader>(),
+                shader: shader.clone_weak(),
+                // shader: SMUD_SHADER_HANDLE.typed::<Shader>(),
                 entry_point: "fragment".into(),
                 shader_defs: Vec::new(),
                 targets: vec![ColorTargetState {
@@ -240,12 +255,12 @@ impl SpecializedPipeline for SmudPipeline {
                 unclipped_depth: false, // What is this?
                 polygon_mode: PolygonMode::Fill,
                 conservative: false, // What is this?
-                topology: key.primitive_topology(),
+                topology: key.mesh.primitive_topology(),
                 strip_index_format: None, // TODO: what does this do?
             },
             depth_stencil: None,
             multisample: MultisampleState {
-                count: key.msaa_samples(),
+                count: key.mesh.msaa_samples(),
                 mask: !0,                         // what does the mask do?
                 alpha_to_coverage_enabled: false, // what is this?
             },
@@ -254,10 +269,55 @@ impl SpecializedPipeline for SmudPipeline {
     }
 }
 
-#[derive(Component, Clone, Copy)]
+// rethink about key type (probably needs to be a pair?)
+#[derive(Default)]
+struct ShapeShaders(HashMap<HandleId, Handle<Shader>>);
+
+fn extract_sdf_shaders(
+    mut render_world: ResMut<RenderWorld>,
+    shapes: Query<&SmudShape, Changed<SmudShape>>, // does changed help?
+    mut shaders: ResMut<Assets<Shader>>,
+) {
+    let mut pipeline = render_world.get_resource_mut::<SmudPipeline>().unwrap();
+
+    for shape in shapes.iter() {
+        let sdf_shader_handle = shape.sdf_shader.as_ref().unwrap();
+
+        if pipeline.shape_shaders.0.contains_key(&sdf_shader_handle.id) {
+            continue;
+        }
+
+        // todo: wait to see if the shader has actually loaded
+
+        let id = Uuid::new_v4();
+        let import_path = format!("bevy_smud::generated::{id}");
+
+        let sdf_shader = shaders.get_mut(sdf_shader_handle.clone()).unwrap();
+        sdf_shader.set_import_path(import_path);
+
+        let generated_shader = Shader::from_wgsl(format!(
+            r#"
+#import bevy_smud::generated::{id}
+#import bevy_smud::vertex
+#import bevy_smud::fragment
+"#
+        ));
+
+        // todo does this work, or is it too late?
+        let generated_shader_handle = shaders.add(generated_shader);
+
+        pipeline
+            .shape_shaders
+            .0
+            .insert(sdf_shader_handle.id, generated_shader_handle);
+    }
+}
+
+#[derive(Component, Clone)]
 struct ExtractedShape {
     transform: GlobalTransform,
     color: Color,
+    shader: Handle<Shader>, // todo could be HandleId?
 }
 
 #[derive(Default)]
@@ -278,6 +338,7 @@ fn extract_shapes(
         extracted_shapes.0.alloc().init(ExtractedShape {
             color: shape.color,
             transform: *transform,
+            shader: shape.sdf_shader.as_ref().unwrap().clone_weak(),
             // rect: None,
             // // Pass the custom size
             // custom_size: sprite.custom_size,
@@ -336,8 +397,6 @@ fn queue_shapes(
         let mesh_key = Mesh2dPipelineKey::from_msaa_samples(msaa.samples)
             | Mesh2dPipelineKey::from_primitive_topology(PrimitiveTopology::TriangleStrip);
 
-        let pipeline_id = pipelines.specialize(&mut pipeline_cache, &smud_pipeline, mesh_key);
-
         // Everything is one batch for now
         let current_batch = ShapeBatch {};
         let current_batch_entity = commands.spawn_bundle((current_batch,)).id();
@@ -348,6 +407,13 @@ fn queue_shapes(
         // Batches are merged later (in `batch_phase_system()`), so that they can be interrupted
         // by any other phase item (and they can interrupt other items from batching).
         for extracted_shape in extracted_shapes.iter() {
+            let specialize_key = SmudPipelineKey {
+                mesh: mesh_key,
+                shader: extracted_shape.shader.clone_weak(),
+            };
+            let pipeline_id =
+                pipelines.specialize(&mut pipeline_cache, &smud_pipeline, specialize_key);
+
             // let mesh_z = mesh2d_uniform.transform.w_axis.z;
 
             // let color = extracted_shape.color.as_linear_rgba_f32();
@@ -410,3 +476,37 @@ impl Default for ShapeMeta {
 
 #[derive(Component, Eq, PartialEq, Copy, Clone)]
 pub struct ShapeBatch {}
+
+// TODO: is RenderAsset asking too much?
+// pub trait SdfShapeShader: 'static + Send + Sync {
+//     /// Shader must include a handle to a shader with a wgsl function with signature fn distance(pos: vec2<f32>) -> f32
+//     fn shader(asset_server: &AssetServer) -> Handle<Shader>;
+// }
+
+// /// Adds the necessary ECS resources and render logic to enable rendering entities using the given [`SdfShapeShader`]
+// /// asset type
+// pub struct SdfShapePlugin<S: SdfShapeShader>(PhantomData<S>);
+
+// impl<S: SdfShapeShader> Default for SdfShapePlugin<S> {
+//     fn default() -> Self {
+//         Self(Default::default())
+//     }
+// }
+
+// impl<S: SdfShapeShader> Plugin for SdfShapePlugin<S> {
+//     fn build(&self, app: &mut App) {
+//         // TODO:
+//         // app.add_asset::<S>()
+//         //     .add_plugin(ExtractComponentPlugin::<Handle<S>>::default())
+//         //     .add_plugin(RenderAssetPlugin::<S>::default());
+//         // if let Ok(render_app) = app.get_sub_app_mut(RenderApp) {
+//         //     render_app
+//         //         .add_render_command::<Transparent3d, DrawMaterial<S>>()
+//         //         .add_render_command::<Opaque3d, DrawMaterial<S>>()
+//         //         .add_render_command::<AlphaMask3d, DrawMaterial<S>>()
+//         //         .init_resource::<MaterialPipeline<S>>()
+//         //         .init_resource::<SpecializedPipelines<MaterialPipeline<S>>>()
+//         //         .add_system_to_stage(RenderStage::Queue, queue_material_meshes::<S>);
+//         // }
+//     }
+// }

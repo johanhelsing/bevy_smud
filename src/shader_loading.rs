@@ -16,6 +16,24 @@ pub const SMUD_SHADER_HANDLE: HandleUntyped =
     HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 5645555317811706725);
 const SMUD_SHADER_IMPORT: &str = "bevy_smud::smud";
 
+pub const VERTEX_SHADER_HANDLE: HandleUntyped =
+    HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 16846632126033267571);
+const VERTEX_SHADER_IMPORT: &str = "bevy_smud::vertex";
+
+pub const FRAGMENT_SHADER_HANDLE: HandleUntyped =
+    HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 10370213491934870425);
+const FRAGMENT_SHADER_IMPORT: &str = "bevy_smud::fragment";
+
+// unused:
+// 18184663565780163454
+// 16286090377316294491
+// 16950619110804285379
+// 4146091551367169642
+// 8080191226000727371
+// 17031499878237077924
+// 17982773815777006860
+// 1530570659737977289
+
 #[cfg(feature = "smud_shader_hot_reloading")]
 struct HotShader {
     strong_handle: Handle<Shader>,
@@ -80,6 +98,12 @@ impl Plugin for ShaderLoadingPlugin {
                             COLORIZE_SHADER_HANDLE,
                         ),
                         ("smud.wgsl", SMUD_SHADER_IMPORT, SMUD_SHADER_HANDLE),
+                        ("vertex.wgsl", VERTEX_SHADER_IMPORT, VERTEX_SHADER_HANDLE),
+                        (
+                            "fragment.wgsl",
+                            FRAGMENT_SHADER_IMPORT,
+                            FRAGMENT_SHADER_HANDLE,
+                        ),
                     ]
                     .into_iter()
                     .map(|(path, import_path, untyped_handle)| HotShader {
@@ -122,6 +146,14 @@ impl Plugin for ShaderLoadingPlugin {
             let smud = Shader::from_wgsl(include_str!("../assets/smud.wgsl"))
                 .with_import_path(SMUD_SHADER_IMPORT);
             shaders.set_untracked(SMUD_SHADER_HANDLE, smud);
+
+            let vertex = Shader::from_wgsl(include_str!("../assets/vertex.wgsl"))
+                .with_import_path(VERTEX_SHADER_IMPORT);
+            shaders.set_untracked(VERTEX_SHADER_HANDLE, vertex);
+
+            let fragment = Shader::from_wgsl(include_str!("../assets/fragment.wgsl"))
+                .with_import_path(FRAGMENT_SHADER_IMPORT);
+            shaders.set_untracked(FRAGMENT_SHADER_HANDLE, fragment);
         }
     }
 }
