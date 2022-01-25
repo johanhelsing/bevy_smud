@@ -23,9 +23,3 @@ impl ExtractComponent for SmudShape {
         item.clone()
     }
 }
-
-// #[derive(Clone, Hash, Eq, PartialEq)]
-// pub struct SdfShader(pub Handle<Shader>);
-
-// #[derive(Clone)]
-// pub struct FillShader(pub Handle<Shader>);
