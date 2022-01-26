@@ -1,3 +1,5 @@
+use std::cmp::Ordering;
+
 use bevy::{
     asset::HandleId,
     core::FloatOrd,
@@ -397,6 +399,19 @@ fn queue_shapes(
         // todo: check visible entities?
 
         let extracted_shapes = &mut extracted_shapes.0;
+
+        // Sort shapes by z for correct transparency and then by handle to improve batching
+        extracted_shapes.sort_unstable_by(|a, b| {
+            match a
+                .transform
+                .translation
+                .z
+                .partial_cmp(&b.transform.translation.z)
+            {
+                Some(Ordering::Equal) | None => a.shader.cmp(&b.shader),
+                Some(other) => other,
+            }
+        });
 
         let mesh_key = Mesh2dPipelineKey::from_msaa_samples(msaa.samples)
             | Mesh2dPipelineKey::from_primitive_topology(PrimitiveTopology::TriangleStrip);
