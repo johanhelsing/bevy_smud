@@ -16,11 +16,12 @@ use bevy::{
         render_resource::{
             std140::AsStd140, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout,
             BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingType, BlendState,
-            BufferBindingType, BufferSize, BufferUsages, BufferVec, ColorTargetState, ColorWrites,
-            Face, FragmentState, FrontFace, MultisampleState, PolygonMode, PrimitiveState,
-            PrimitiveTopology, RenderPipelineCache, RenderPipelineDescriptor, ShaderStages,
-            SpecializedPipeline, SpecializedPipelines, TextureFormat, VertexAttribute,
-            VertexBufferLayout, VertexFormat, VertexState, VertexStepMode,
+            BufferBindingType, BufferSize, BufferUsages, BufferVec, CachedPipelineId,
+            ColorTargetState, ColorWrites, Face, FragmentState, FrontFace, MultisampleState,
+            PolygonMode, PrimitiveState, PrimitiveTopology, RenderPipelineCache,
+            RenderPipelineDescriptor, ShaderStages, SpecializedPipeline, SpecializedPipelines,
+            TextureFormat, VertexAttribute, VertexBufferLayout, VertexFormat, VertexState,
+            VertexStepMode,
         },
         renderer::{RenderDevice, RenderQueue},
         texture::BevyDefault,
@@ -400,9 +401,12 @@ fn queue_shapes(
         let mesh_key = Mesh2dPipelineKey::from_msaa_samples(msaa.samples)
             | Mesh2dPipelineKey::from_primitive_topology(PrimitiveTopology::TriangleStrip);
 
-        // Everything is one batch for now
-        let current_batch = ShapeBatch {};
-        let current_batch_entity = commands.spawn_bundle((current_batch,)).id();
+        // Impossible starting values that will be replaced on the first iteration
+        let mut current_batch = ShapeBatch {
+            shader: HandleId::Id(Uuid::nil(), u64::MAX),
+        };
+        let mut current_batch_entity = Entity::from_raw(u32::MAX);
+        let mut current_batch_pipeline = CachedPipelineId::INVALID;
 
         // Add a phase item for each shape, and detect when successive items can be batched.
         // Spawn an entity with a `ShapeBatch` component for each possible batch.
@@ -410,23 +414,29 @@ fn queue_shapes(
         // Batches are merged later (in `batch_phase_system()`), so that they can be interrupted
         // by any other phase item (and they can interrupt other items from batching).
         for extracted_shape in extracted_shapes.iter() {
-            // todo: move this out of the inner loop
-            if smud_pipeline
-                .shaders
-                .0
-                .get(&extracted_shape.shader.id)
-                .is_none()
-            {
-                // todo pass the value retrieved above to specialize
-                continue; // skip shapes that are not ready yet
-            }
-
-            let specialize_key = SmudPipelineKey {
-                mesh: mesh_key,
+            let new_batch = ShapeBatch {
                 shader: extracted_shape.shader.id,
             };
-            let pipeline_id =
-                pipelines.specialize(&mut pipeline_cache, &smud_pipeline, specialize_key);
+
+            if new_batch != current_batch {
+                current_batch_entity = commands.spawn_bundle((current_batch,)).id();
+
+                current_batch = new_batch;
+
+                if let Some(_shader) = smud_pipeline.shaders.0.get(&extracted_shape.shader.id) {
+                    // todo pass the shader into specialize
+                    let specialize_key = SmudPipelineKey {
+                        mesh: mesh_key,
+                        shader: extracted_shape.shader.id,
+                    };
+                    current_batch_pipeline =
+                        pipelines.specialize(&mut pipeline_cache, &smud_pipeline, specialize_key);
+                }
+            }
+
+            if current_batch_pipeline == CachedPipelineId::INVALID {
+                continue; // skip shapes that are not ready yet
+            }
 
             // let mesh_z = mesh2d_uniform.transform.w_axis.z;
 
@@ -454,7 +464,7 @@ fn queue_shapes(
             transparent_phase.add(Transparent2d {
                 entity: current_batch_entity,
                 draw_function: draw_smud_shape,
-                pipeline: pipeline_id,
+                pipeline: current_batch_pipeline,
                 sort_key: FloatOrd(0.), // todo
                 batch_range: Some(item_start..item_end),
             });
@@ -489,7 +499,9 @@ impl Default for ShapeMeta {
 }
 
 #[derive(Component, Eq, PartialEq, Copy, Clone)]
-pub struct ShapeBatch {}
+pub struct ShapeBatch {
+    shader: HandleId,
+}
 
 // TODO: is RenderAsset asking too much?
 // pub trait SdfShapeShader: 'static + Send + Sync {

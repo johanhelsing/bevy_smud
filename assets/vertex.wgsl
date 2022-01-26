@@ -28,7 +28,8 @@ fn vertex(
     var out: VertexOutput;
     let x = select(-1., 1., i % 2u == 0u);
     let y = select(-1., 1., (i / 2u) % 2u == 0u);
-    let w = 400.;
+    // let w = 400.;
+    let w = 80.;
     let pos = vertex.position + vec3<f32>(x, y, 0.) * w / 20.;
     // Project the world position of the mesh into screen position
     out.clip_position = view.view_proj * vec4<f32>(pos, 1.0);
