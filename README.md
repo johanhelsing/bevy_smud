@@ -10,4 +10,4 @@ However if you keep the number of different sdf shapes to a minimum it's still b
 
 ## Usage
 
-See <examples>
+See [examples](examples)
