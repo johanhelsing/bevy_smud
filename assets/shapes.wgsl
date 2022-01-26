@@ -4,13 +4,339 @@ fn sd_circle(p: vec2<f32>, r: f32) -> f32 {
     return length(p) - r;
 }
 
+fn sd_rounded_box(p: vec2<f32>, b: vec2<f32>, r: vec4<f32>) -> f32 {
+    var r = r;
+    // swizzle assigment isn't supported yet
+    // r.xy = select(r.zw, r.xy, p.x > 0.);
+    let tmp = select(r.zw, r.xy, p.x > 0.);
+    r.x = tmp.x;
+    r.y = tmp.y;
+    r.x = select(r.y, r.x, p.y > 0.);
+    let q = abs(p) - b + r.x;
+    return min(
+        max(q.x, q.y),
+        0.
+    ) + length(max(q, vec2<f32>(0.))) - r.x;
+}
+
+fn sd_box(p: vec2<f32>, b: vec2<f32>) -> f32 {
+    let d = abs(p) - b;
+    return length(max(d, vec2<f32>(0.))) + min(max(d.x, d.y), 0.);
+}
+
+fn sd_oriented_box(p: vec2<f32>, a: vec2<f32>, b: vec2<f32>, th: f32) -> f32 {
+    let l = length(b - a);
+    let d = (b - a) / l;
+    var q = (p - (a + b) * 0.5);
+    q = mat2x2<f32>(d.x, -d.y, d.y, d.x) * q;
+    q = abs(q) - vec2<f32>(l, th) * 0.5;
+    return length(max(q, vec2<f32>(0.))) + min(max(q.x, q.y), 0.);
+}
+
+fn sd_segment(p: vec2<f32>, a: vec2<f32>, b: vec2<f32>) -> f32 {
+    let pa = p - a;
+    let ba = b - a;
+    let h = clamp(dot(pa, ba)/dot(ba, ba), 0., 1.);
+    return length(pa - ba * h);
+}
+
+fn ndot(a: vec2<f32>, b: vec2<f32>) -> f32 {
+    return a.x * b.x - a.y * b.y;
+}
+
+fn dot2(a: vec2<f32>) -> f32 {
+    return dot(a, a);
+}
+
+fn sd_rhombus(p: vec2<f32>, b: vec2<f32>)  -> f32 {
+    let p = abs(p);
+    let h = clamp(ndot(b - 2. * p, b) / dot(b, b), -1., 1.);
+    let d = length(p - 0.5 * b * vec2<f32>(1. - h, 1. + h));
+    return d * sign(p.x * b.y + p.y * b.x - b.x * b.y);
+}
+
+fn sd_trapezoid(p: vec2<f32>, r1: f32, r2: f32, he: f32) -> f32 {
+    var p = p;
+    let k1 = vec2<f32>(r2, he);
+    let k2 = vec2<f32>(r2 - r1, 2. * he);
+    p.x = abs(p.x);
+    let r = select(r2, r1, p.y < 0.);
+    let ca = vec2<f32>(p.x - min(p.x, r), abs(p.y) - he);
+    let cb = p - k1 + k2 * clamp(dot(k1 - p, k2) / dot2(k2), 0., 1.);
+    let s = select(1., -1., cb.x < 0. && ca.y < 0.);
+    return s * sqrt(min(dot2(ca), dot2(cb)));
+}
+
+fn sd_parallelogram(p: vec2<f32>, wi: f32, he: f32, sk: f32) -> f32 {
+    let e = vec2<f32>(sk, he);
+    let p = select(p, -p, p.y < 0.);
+    var w = p - e;
+    w.x = w.x - clamp(w.x, -wi, wi);
+    let d = vec2<f32>(dot(w, w), -w.y);
+    let s = p.x*e.y - p.y*e.x;
+    let p = select(p, -p, s < 0.);
+    var v = p - vec2<f32>(wi, 0.);
+    v = v - e * clamp(dot(v, e) / dot(e, e), -1., 1.);
+    let d = min(d, vec2<f32>(dot(v, v), wi * he - abs(s)));
+    return sqrt(d.x)*sign(-d.y);
+}
+
+fn sd_equilateral_triangle(p: vec2<f32>) -> f32 {
+    var p = p;
+    let k = sqrt(3.);
+    p.x = abs(p.x) - 1.;
+    p.y = p.y + 1./k;
+    if (p.x + k * p.y > 0.) {
+        p = vec2<f32>(p.x - k * p.y, -k * p.x - p.y) / 2.;
+    }
+    p.x = p.x - clamp(p.x, -2., 0.);
+    return -length(p) * sign(p.y);
+}
+
+fn sd_triangle_isosceles(p: vec2<f32>, q: vec2<f32>) -> f32 {
+    var p = p;
+    p.x = abs(p.x);
+    let a = p - q * clamp(dot(p, q)/dot(q, q), 0., 1.);
+    let b = p - q * vec2<f32>(clamp(p.x / q.x, 0., 1.), 1.);
+    let s = -sign(q.y);
+    let d = min(vec2<f32>(dot(a, a), s * (p.x * q.y - p.y * q.x)),
+                  vec2<f32>(dot(b, b), s * (p.y - q.y)));
+    return -sqrt(d.x) * sign(d.y);
+}
+
+fn sd_triangle(p: vec2<f32>, p0: vec2<f32>, p1: vec2<f32>, p2: vec2<f32>) -> f32 {
+    let e0 = p1 - p0;
+    let e1 = p2 - p1;
+    let e2 = p0 - p2;
+
+    let v0 = p - p0;
+    let v1 = p - p1;
+    let v2 = p - p2;
+
+    let pq0 = v0 - e0*clamp(dot(v0, e0)/dot(e0, e0), 0., 1.);
+    let pq1 = v1 - e1*clamp(dot(v1, e1)/dot(e1, e1), 0., 1.);
+    let pq2 = v2 - e2*clamp(dot(v2, e2)/dot(e2, e2), 0., 1.);
+
+    let s = sign(e0.x*e2.y - e0.y*e2.x);
+    let d = min(min(vec2<f32>(dot(pq0, pq0), s*(v0.x*e0.y-v0.y*e0.x)),
+                     vec2<f32>(dot(pq1, pq1), s*(v1.x*e1.y-v1.y*e1.x))),
+                     vec2<f32>(dot(pq2, pq2), s*(v2.x*e2.y-v2.y*e2.x)));
+    return -sqrt(d.x)*sign(d.y);
+}
+
+fn sd_uneven_capsule(p: vec2<f32>, r1: f32, r2: f32, h: f32) -> f32 {
+    var p = p;
+    p.x = abs(p.x);
+    let b = (r1 - r2) / h;
+    let a = sqrt(1. - b * b);
+    let k = dot(p, vec2<f32>(-b, a));
+    if (k < 0.) {
+        return length(p) - r1;
+    }
+    if (k > a*h) {
+        return length(p - vec2<f32>(0., h)) - r2;
+    }
+    return dot(p, vec2<f32>(a, b)) - r1;
+}
+
+fn sd_pentagon(p: vec2<f32>, r: f32) -> f32 {
+    let k = vec3<f32>(0.809016994, 0.587785252, 0.726542528);
+    var p = p;
+    p.x = abs(p.x);
+    p = p - 2. * min(dot(vec2<f32>(-k.x, k.y), p), 0.) * vec2<f32>(-k.x, k.y);
+    p = p - 2. * min(dot(vec2<f32>(k.x, k.y), p), 0.) * vec2<f32>(k.x, k.y);
+    p = p - vec2<f32>(clamp(p.x, -r * k.z, r * k.z), r);
+    return length(p) * sign(p.y);
+}
+
+fn sd_hexagon(p: vec2<f32>, r: f32) -> f32 {
+    let k = vec3<f32>(-0.866025404, 0.5, 0.577350269);
+    var p = abs(p);
+    p = p - 2. * min(dot(k.xy, p), 0.) * k.xy;
+    p = p - vec2<f32>(clamp(p.x, -k.z * r, k.z * r), r);
+    return length(p) * sign(p.y);
+}
+
+fn sd_octagon(p: vec2<f32>, r: f32) -> f32 {
+    let k = vec3<f32>(-0.9238795325, 0.3826834323, 0.4142135623);
+    var p = abs(p);
+    p = p - 2. * min(dot(vec2<f32>(k.x, k.y), p), 0.) * vec2<f32>(k.x, k.y);
+    p = p - 2. * min(dot(vec2<f32>(-k.x, k.y), p), 0.) * vec2<f32>(-k.x, k.y);
+    p = p - vec2<f32>(clamp(p.x, -k.z * r, k.z * r), r);
+    return length(p) * sign(p.y);
+}
+
+fn sd_hexagram(p: vec2<f32>, r: f32) -> f32 {
+    let k = vec4<f32>(-0.5, 0.8660254038, 0.5773502692, 1.7320508076);
+    var p = abs(p);
+    p = p - 2. * min(dot(k.xy, p), 0.) * k.xy;
+    p = p - 2. * min(dot(k.yx, p), 0.) * k.yx;
+    p = p - vec2<f32>(clamp(p.x, r * k.z, r * k.w), r);
+    return length(p) * sign(p.y);
+}
+
+fn sd_star_5(p: vec2<f32>, r: f32, rf: f32) -> f32 {
+    let k1 = vec2<f32>(0.809016994375, -0.587785252292);
+    let k2 = vec2<f32>(-k1.x, k1.y);
+    var p = p;
+    p.x = abs(p.x);
+    p = p - 2. * max(dot(k1, p), 0.) * k1;
+    p = p - 2. * max(dot(k2, p), 0.) * k2;
+    p.x = abs(p.x);
+    p.y = p.y - r;
+    let ba = rf*vec2<f32>(-k1.y, k1.x) - vec2<f32>(0., 1.);
+    let h = clamp(dot(p, ba) / dot(ba, ba), 0., r);
+    return length(p - ba * h) * sign(p.y * ba.x - p.x * ba.y);
+}
+
+fn sd_star(p: vec2<f32>, r: f32, n: i32, m: f32) -> f32 {
+    // next 4 lines can be precomputed for a given shape
+    let an = 3.141593 / f32(n);
+    let en = 3.141593 / m; // m is between 2 and n
+    let acs = vec2<f32>(cos(an), sin(an));
+    let ecs = vec2<f32>(cos(en), sin(en)); // ecs=vec2(0, 1) for regular polygon
+
+    let bn = atan2(p.x, p.y) % (2. * an) - an;
+    var p = length(p) * vec2<f32>(cos(bn), abs(sin(bn)));
+    p = p - r * acs;
+    p = p + ecs * clamp(-dot(p, ecs), 0., r * acs.y / ecs.y);
+    return length(p) * sign(p.x);
+}
+
+fn sd_pie(p: vec2<f32>, c: vec2<f32>, r: f32) -> f32 {
+    var p = p;
+    p.x = abs(p.x);
+    let l = length(p) - r;
+    let m = length(p - c * clamp(dot(p, c), 0., r)); // c=sin/cos of aperture
+    return max(l, m * sign(c.y * p.x - c.x * p.y));
+}
+
+fn sd_cut_disk(p: vec2<f32>, r: f32, h: f32) -> f32 {
+    let w = sqrt(r * r - h * h); // constant for any given shape
+    var p = p;
+    p.x = abs(p.x);
+    let s = max(
+        (h - r) * p.x * p.x + w * w * (h + r - 2. * p.y),
+        h * p.x - w * p.y
+    );
+    return select(
+        select(length(p-vec2<f32>(w, h)), h - p.y, p.x< w),
+        length(p)-r,
+        s < 0.
+    );
+}
+
+// sc is the sin/cos of the arc's aperture
+fn sd_arc(p: vec2<f32>, sc: vec2<f32>, ra: f32, rb: f32) -> f32 {
+    var p = p;
+    p.x = abs(p.x);
+    return select(
+        abs(length(p)-ra),
+        length(p - sc * ra),
+        sc.y * p.x > sc.x * p.y
+    ) - rb;
+}
+
+fn sd_horseshoe(p: vec2<f32>, c: vec2<f32>, r: f32, w: vec2<f32>) -> f32 {
+    var p = p;
+    p.x = abs(p.x);
+    let l = length(p);
+    p = mat2x2<f32>(-c.x, c.y, c.y, c.x) * p;
+    p = vec2<f32>(
+        select(l*sign(-c.x), p.x, p.y > 0. || p.x > 0.),
+        select(l, p.y, p.x > 0.)
+    );
+    p = vec2<f32>(p.x, abs(p.y - r)) - w;
+    return length(max(p, vec2<f32>(0.))) + min(0., max(p.x, p.y));
+}
+
+fn sd_rounded_cross(p: vec2<f32>, h: f32) -> f32 {
+    let k = 0.5 * (h + 1. / h); // k should be const at modeling time
+    var p = abs(p);
+    return select(
+        sqrt(min(
+            dot2(p - vec2<f32>(0., h)),
+            dot2(p - vec2<f32>(1., 0.))
+        )),
+        k - sqrt(dot2(p - vec2<f32>(1., k))),
+        p.x < 1. && p.y < p.x * (k - h) + h
+    );
+}
+
+fn sd_egg(p: vec2<f32>, ra: f32, rb: f32) -> f32 {
+    var p = p;
+    let k = sqrt(3.);
+    p.x = abs(p.x);
+    let r = ra - rb;
+    return select(
+        select(
+            length(vec2<f32>(p.x + r, p.y)) - 2. * r,
+            length(vec2<f32>(p.x, p.y - k * r)),
+            k * (p.x + r) < p.y
+        ),
+        length(vec2<f32>(p.x, p.y)) - r,
+        p.y < 0.
+    ) - rb;
+}
+
+fn sd_heart(p: vec2<f32>) -> f32 {
+    var p = p;
+    p.x = abs(p.x);
+
+    if (p.y + p.x > 1.) {
+        return sqrt(dot2(p - vec2<f32>(0.25, 0.75))) - sqrt(2.) / 4.;
+    }
+
+    return sqrt(min(
+        dot2(p - vec2<f32>(0., 1.)),
+        dot2(p - 0.5 * max(p.x + p.y, 0.))
+    )) * sign(p.x - p.y);
+}
+
+fn sd_cross(p: vec2<f32>, b: vec2<f32>, r: f32)  -> f32 {
+    var p = abs(p);
+    p = select(p.xy, p.yx, p.y > p.x);
+    let q = p - b;
+    let k = max(q.y, q.x);
+    let w = select(
+        vec2<f32>(b.y - p.x, -k),
+        q,
+        k > 0.
+    );
+    return sign(k) * length(max(w, vec2<f32>(0.))) + r;
+}
+
+fn sd_rounded_x(p: vec2<f32>, w: f32, r: f32) -> f32 {
+    let p = abs(p);
+    return length(p - min(p.x + p.y, w) * 0.5) - r;
+}
+
+// fn sd_polygon(vec2[N] v, p: vec2<f32>) -> f32 {
+//     var d = dot(p - v[0], p - v[0]);
+//     var s = 1.;
+//     for(int i = 0, j = N - 1; i < N; j = i, i++) {
+//         let e = v[j] - v[i];
+//         let w = p - v[i];
+//         let b = w - e * clamp(dot(w, e) / dot(e, e), 0., 1.);
+//         d = min(d, dot(b, b));
+//         let c = vec3<bool>(
+//             p.y >= v[i].y,
+//             p.y < v[j].y,
+//             e.x * w.y > e.y * w.x
+//         );
+//         if (all(c) || all(not(c))) {
+//             s *= -1.;
+//         }
+//     }
+//     return s * sqrt(d);
+// }
+
 // https://www.iquilezles.org/www/articles/distfunctions2d/distfunctions2d.htm
 // Has huge issues with instability when close to a circle or very eccentric
 fn sd_ellipse(p: vec2<f32>, a: f32, b: f32) -> f32 {
     var p = abs(p);
     var ab = vec2<f32>(a, b);
-    if (p.x > p.y)
-    {
+    if (p.x > p.y) {
         p = p.yx;
         ab = ab.yx;
     }
@@ -19,58 +345,191 @@ fn sd_ellipse(p: vec2<f32>, a: f32, b: f32) -> f32 {
     let m2 = m * m;
     let n = ab.y * p.y / l;
     let n2 = n * n;
-    let c = (m2 + n2 - 1.0) / 3.0;
+    let c = (m2 + n2 - 1.) / 3.;
     let c3 = c * c * c;
-    let q = c3 + m2 * n2 * 2.0;
+    let q = c3 + m2 * n2 * 2.;
     let d = c3 + m2 * n2;
     let g = m + m * n2;
     var co: f32;
-    if (d < 0.0)
-    {
-        let h = acos(q / c3) / 3.0;
+    if (d < 0.) {
+        let h = acos(q / c3) / 3.;
         let s = cos(h);
-        let t = sin(h) * sqrt(3.0);
-        let rx = sqrt(-c * (s + t + 2.0) + m2);
-        let ry = sqrt(-c * (s - t + 2.0) + m2);
-        co = (ry + sign(l) * rx + abs(g) / (rx * ry) - m) / 2.0;
+        let t = sin(h) * sqrt(3.);
+        let rx = sqrt(-c * (s + t + 2.) + m2);
+        let ry = sqrt(-c * (s - t + 2.) + m2);
+        co = (ry + sign(l) * rx + abs(g) / (rx * ry) - m) / 2.;
+    } else {
+        let h = 2. * m * n * sqrt(d);
+        let s = sign(q + h) * pow(abs(q + h), 1. / 3.);
+        let u = sign(q - h) * pow(abs(q - h), 1. / 3.);
+        let rx = -s - u - c * 4. + 2. * m2;
+        let ry = (s - u) * sqrt(3.);
+        let rm = sqrt(rx * rx + ry * ry);
+        co = (ry / sqrt(rm - rx) + 2. * g / rm - m) / 2.;
+    }
+    let r = ab * vec2<f32>(co, sqrt(1. - co * co));
+    return length(r - p) * sign(p.y - r.y);
+}
+
+fn sd_parabola(pos: vec2<f32>, k: f32) -> f32 {
+    var pos = pos;
+    pos.x = abs(pos.x);
+    let ik = 1. / k;
+    let p = ik * (pos.y - 0.5 * ik) / 3.;
+    let q = 0.25 * ik * ik * pos.x;
+    let h = q * q - p * p * p;
+    let r = sqrt(abs(h));
+    let x = select(
+        2. * cos(atan2(r, q) / 3.) * sqrt(p),
+        pow(q + r, 1. / 3.) - pow(abs(q - r), 1. / 3.) * sign(r - q),
+        h > 0.
+    );
+    return length(pos-vec2<f32>(x, k*x*x)) * sign(pos.x-x);
+}
+
+fn sd_parabola_segment(pos: vec2<f32>, wi: f32, he: f32) -> f32 {
+    var pos = pos;
+    pos.x = abs(pos.x);
+    let ik = wi * wi / he;
+    let p = ik * (he - pos.y - 0.5 * ik) / 3.;
+    let q = pos.x * ik * ik * 0.25;
+    let h = q * q - p * p * p;
+    let r = sqrt(abs(h));
+    var x = select(
+        2. * cos(atan(r / q) / 3.) * sqrt(p),
+        pow(q + r, 1. / 3.) - pow(abs(q - r), 1. / 3.) * sign(r - q),
+        h > 0.
+    );
+    x = min(x, wi);
+    return length(pos - vec2<f32>(x, he - x * x / ik)) *
+        sign(ik * (pos.y - he) + pos.x * pos.x);
+}
+
+fn sd_bezier(pos: vec2<f32>, A: vec2<f32>, B: vec2<f32>, C: vec2<f32>) -> f32 {
+    let a = B - A;
+    let b = A - 2. * B + C;
+    let c = a * 2.;
+    let d = A - pos;
+    let kk = 1. / dot(b, b);
+    let kx = kk * dot(a, b);
+    let ky = kk * (2. * dot(a, a) + dot(d, b)) / 3.;
+    let kz = kk * dot(d, a);
+    var res = 0.;
+    let p = ky - kx * kx;
+    let p3 = p * p * p;
+    let q = kx * (2. * kx * kx - 3. * ky) + kz;
+    var h = q * q + 4. * p3;
+    if (h >= 0.)
+    {
+        h = sqrt(h);
+        let x = (vec2<f32>(h, -h) - q) / 2.;
+        let uv = sign(x) * pow(abs(x), vec2<f32>(1. / 3.));
+        let t = clamp(uv.x + uv.y - kx, 0., 1.);
+        res = dot2(d + (c + b * t) * t);
     }
     else
     {
-        let h = 2.0 * m * n * sqrt(d);
-        let s = sign(q + h) * pow(abs(q + h), 1.0 / 3.0);
-        let u = sign(q - h) * pow(abs(q - h), 1.0 / 3.0);
-        let rx = -s - u - c * 4.0 + 2.0 * m2;
-        let ry = (s - u) * sqrt(3.0);
-        let rm = sqrt(rx * rx + ry * ry);
-        co = (ry / sqrt(rm - rx) + 2.0 * g / rm - m) / 2.0;
+        let z = sqrt(-p);
+        let v = acos(q / (p * z * 2.)) / 3.;
+        let m = cos(v);
+        let n = sin(v) * 1.732050808;
+        let u = vec3<f32>(m + m, -n - m, n - m) * z - vec3<f32>(kx);
+        let t = clamp(u, vec3<f32>(0.), vec3<f32>(1.));
+        res = min(
+            dot2(d + (c + b * t.x) * t.x),
+            dot2(d + (c + b * t.y) * t.y)
+        );
+        // the third root cannot be the closest
+        // res = min(res, dot2(d+(c+b*t.z)*t.z));
     }
-    let r = ab * vec2<f32>(co, sqrt(1.0 - co * co));
-    return length(r - p) * sign(p.y - r.y);
+    return sqrt(res);
+}
+
+fn sd_blobby_cross(pos: vec2<f32>, he: f32) -> f32 {
+    var pos = abs(pos);
+    pos = vec2<f32>(
+        abs(pos.x - pos.y),
+        1. - pos.x - pos.y
+    ) / sqrt(2.);
+
+    let p = (he - pos.y - 0.25 / he) / (6. * he);
+    let q = pos.x / (he * he * 16.);
+    let h = q * q - p * p * p;
+
+    var x: f32;
+    if (h > 0.) {
+        let r = sqrt(h);
+        x = pow(q + r, 1. / 3.) - pow(abs(q - r), 1. / 3.) * sign(r - q);
+    } else {
+        let r = sqrt(p);
+        x = 2. * r * cos(acos(q / (p * r))/3.);
+    }
+    x = min(x, sqrt(2.) / 2.);
+
+    let z = vec2<f32>(x, he * (1. - 2. * x * x)) - pos;
+    return length(z) * sign(z.y);
+}
+
+fn sd_tunnel(p: vec2<f32>, wh: vec2<f32>) -> f32 {
+    let p = vec2<f32>(abs(p.x), -p.y);
+    var q = p - wh;
+
+    let d1 = dot2(vec2<f32>(max(q.x, 0.), q.y));
+    q.x = select(length(p) - wh.x, q.x, p.y > 0.);
+    let d2 = dot2(vec2<f32>(q.x, max(q.y, 0.)));
+    let d = sqrt(min(d1, d2));
+
+    return select(d, -d, max(q.x, q.y) < 0.);
+}
+
+fn sd_stairs(p: vec2<f32>, wh: vec2<f32>, n: f32) -> f32 {
+    let ba = wh * n;
+    var d = min(
+        dot2(p - vec2<f32>(clamp(p.x, 0., ba.x), 0.)),
+        dot2(p - vec2<f32>(ba.x, clamp(p.y, 0., ba.y)))
+    );
+    var s = sign(max(-p.y, p.x - ba.x));
+
+    let dia = length(wh);
+    var p = mat2x2<f32>(wh.x, -wh.y, wh.y, wh.x) * p / dia;
+    let id = clamp(round(p.x / dia), 0., n - 1.);
+    p.x = p.x - id * dia;
+    p = mat2x2<f32>(wh.x, wh.y,-wh.y, wh.x) * p / dia;
+
+    let hh = wh.y / 2.;
+    p.y = p.y - hh;
+    if (p.y > hh * sign(p.x)) {
+        s = 1.;
+    }
+    p = select(-p, p, id < 0.5 || p.x > 0.);
+    d = min(d, dot2(p - vec2<f32>(0., clamp(p.y, -hh, hh))));
+    d = min(d, dot2(p - vec2<f32>(clamp(p.x, 0., wh.x), hh)));
+
+    return sqrt(d) * s;
 }
 
 fn sd_vesica(p: vec2<f32>, r: f32, d: f32) -> f32 {
     let p = abs(p);
     let b = sqrt(r * r - d * d);
     return select(
-        length(p - vec2<f32>(-d, 0.0)) - r,
-        length(p - vec2<f32>(0.0, b)),
+        length(p - vec2<f32>(-d, 0.)) - r,
+        length(p - vec2<f32>(0., b)),
         (p.y - b) * d > p.x * b
     );
 }
 
-fn sd_moon(p: vec2<f32>, d: f32, ra: f32, rb: f32) -> f32
-{
+fn sd_moon(p: vec2<f32>, d: f32, ra: f32, rb: f32) -> f32 {
     var p = p;
     p.y = abs(p.y);
     let a = (ra * ra - rb * rb + d * d) / (2. * d);
-    let b = sqrt(max(ra*ra - a*a, 0.));
+    let b = sqrt(max(ra * ra - a * a, 0.));
 
     if (d * (p.x * b - p.y * a) > d * d * max(b - p.y, 0.)) {
-        return length(p-vec2<f32>(a,b));
+        return length(p-vec2<f32>(a, b));
     }
 
     return max(
-        length(p)-ra,
+        length(p) - ra,
         -(length(p - vec2<f32>(d, 0.)) - rb)
     );
 }
@@ -134,16 +593,16 @@ fn sd_rotate_45(p: vec2<f32>) -> vec2<f32> {
 }
 
 fn sd_smooth_subtract(d1: f32, d2: f32, k: f32) -> f32 {
-    let h = clamp(0.5 - 0.5 * (d2 + d1) / k, 0.0, 1.0);
-    return mix(d2, -d1, h) + k * h * (1.0 - h);
+    let h = clamp(0.5 - 0.5 * (d2 + d1) / k, 0., 1.);
+    return mix(d2, -d1, h) + k * h * (1. - h);
 }
 
 fn sd_smooth_union(d1: f32, d2: f32, k: f32) -> f32 {
-    let h = clamp(0.5 + 0.5 * (d2 - d1) / k, 0.0, 1.0);
-    return mix(d2, d1, h) - k * h * (1.0 - h);
+    let h = clamp(0.5 + 0.5 * (d2 - d1) / k, 0., 1.);
+    return mix(d2, d1, h) - k * h * (1. - h);
 }
 
 fn sd_smooth_intersect(d1: f32, d2: f32, k: f32) -> f32 {
-    let h = clamp(0.5 - 0.5 * (d2 - d1) / k, 0.0, 1.0);
-    return mix(d2, d1, h) + k * h * (1.0 - h);
+    let h = clamp(0.5 - 0.5 * (d2 - d1) / k, 0., 1.);
+    return mix(d2, d1, h) + k * h * (1. - h);
 }

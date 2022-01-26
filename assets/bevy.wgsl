@@ -13,8 +13,6 @@ fn sdf(p: vec2<f32>) -> f32 {
     var p = p / scale;
 
     let frame = -(max(abs(p.x), abs(p.y)) - 1.);
-    // return length(p) - 1.0;
-    let wing_1 = sd_circle(p - vec2<f32>(0., 0.5), 0.4);
 
     let p_upper_wing = p - vec2<f32>(-0.3, -0.25);
     let upper_wing = max(
@@ -27,8 +25,6 @@ fn sdf(p: vec2<f32>) -> f32 {
         sd_ellipse(p_lower_wing, 0.7, 0.5),
         -p.y - 0.5
     );
-
-    // -sd_ellipse(p_lower_wing - vec2<f32>(-0.2, -0.1), 0.4, 0.3)
 
     let wings = max(min(lower_wing, upper_wing), max(-p.y - 0.5, p.x - 0.10));
 
