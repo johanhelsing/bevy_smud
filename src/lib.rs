@@ -66,12 +66,7 @@ impl Plugin for SoSmoothPlugin {
     }
 }
 
-type DrawSmudShape = (
-    SetItemPipeline,
-    SetShapeViewBindGroup<0>,
-    // SetSpriteTextureBindGroup<1>,
-    DrawShapeBatch,
-);
+type DrawSmudShape = (SetItemPipeline, SetShapeViewBindGroup<0>, DrawShapeBatch);
 struct SetShapeViewBindGroup<const I: usize>;
 impl<const I: usize> EntityRenderCommand for SetShapeViewBindGroup<I> {
     type Param = (SRes<ShapeMeta>, SQuery<Read<ViewUniformOffset>>);
@@ -79,13 +74,13 @@ impl<const I: usize> EntityRenderCommand for SetShapeViewBindGroup<I> {
     fn render<'w>(
         view: Entity,
         _item: Entity,
-        (sprite_meta, view_query): SystemParamItem<'w, '_, Self::Param>,
+        (shape_meta, view_query): SystemParamItem<'w, '_, Self::Param>,
         pass: &mut TrackedRenderPass<'w>,
     ) -> RenderCommandResult {
         let view_uniform = view_query.get(view).unwrap();
         pass.set_bind_group(
             I,
-            sprite_meta.into_inner().view_bind_group.as_ref().unwrap(),
+            shape_meta.into_inner().view_bind_group.as_ref().unwrap(),
             &[view_uniform.offset],
         );
         RenderCommandResult::Success
@@ -102,7 +97,7 @@ impl<P: BatchedPhaseItem> RenderCommand<P> for DrawShapeBatch {
         (shape_meta, _query_batch): SystemParamItem<'w, '_, Self::Param>,
         pass: &mut TrackedRenderPass<'w>,
     ) -> RenderCommandResult {
-        // let sprite_batch = query_batch.get(item.entity()).unwrap();
+        // let shape_batch = query_batch.get(item.entity()).unwrap();
         let shape_meta = shape_meta.into_inner();
         pass.set_vertex_buffer(0, shape_meta.vertices.buffer().unwrap().slice(..));
         pass.draw(0..4, item.batch_range().as_ref().unwrap().clone());
@@ -159,7 +154,7 @@ impl FromWorld for SmudPipeline {
                 },
                 count: None,
             }],
-            label: Some("sprite_view_layout"),
+            label: Some("shape_view_layout"),
         });
         // let quad = {
         //     let mut mesh = Mesh::new(PrimitiveTopology::TriangleStrip);
@@ -347,8 +342,7 @@ fn extract_shapes(
             shader: shape.sdf_shader.clone_weak(),
             // rect: None,
             // // Pass the custom size
-            // custom_size: sprite.custom_size,
-            // image_handle_id: handle.id,
+            // custom_size: shape.custom_size,
         });
     }
 }
@@ -464,12 +458,9 @@ fn queue_shapes(
 
             let color = extracted_shape.color.as_linear_rgba_f32();
 
-            let center = extracted_shape.transform.mul_vec3(Vec3::ZERO).into(); // todo
+            let position = extracted_shape.transform.translation.into();
 
-            let vertex = ShapeVertex {
-                position: center,
-                color,
-            };
+            let vertex = ShapeVertex { position, color };
             shape_meta.vertices.push(vertex);
 
             let item_start = index;

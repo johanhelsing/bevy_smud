@@ -1,4 +1,4 @@
-// most of these are ported versions of the ones on inigo quilez website, https://iquilezles.org
+// Most of these are ported versions of the ones on Inigo Quilez website, https://iquilezles.org
 
 fn sd_circle(p: vec2<f32>, r: f32) -> f32 {
     return length(p) - r;
@@ -462,7 +462,7 @@ fn sd_blobby_cross(pos: vec2<f32>, he: f32) -> f32 {
         x = pow(q + r, 1. / 3.) - pow(abs(q - r), 1. / 3.) * sign(r - q);
     } else {
         let r = sqrt(p);
-        x = 2. * r * cos(acos(q / (p * r))/3.);
+        x = 2. * r * cos(acos(q / (p * r)) / 3.);
     }
     x = min(x, sqrt(2.) / 2.);
 
