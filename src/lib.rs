@@ -8,6 +8,7 @@ use bevy::{
         lifetimeless::{Read, SQuery, SRes},
         SystemParamItem,
     },
+    math::Vec3Swizzles,
     prelude::*,
     reflect::Uuid,
     render::{
@@ -211,33 +212,33 @@ impl SpecializedPipeline for SmudPipeline {
                 offset: 0,
                 shader_location: 1,
             },
+            // Frame
+            VertexAttribute {
+                format: VertexFormat::Float32,
+                offset: (4) * 4,
+                shader_location: 4,
+            },
             // Position
             VertexAttribute {
                 format: VertexFormat::Float32x3,
-                offset: 4 * 4,
+                offset: (4 + 1) * 4,
                 shader_location: 0,
             },
             // Rotation
             VertexAttribute {
                 format: VertexFormat::Float32x2,
-                offset: (4 + 3) * 4,
+                offset: (4 + 1 + 3) * 4,
                 shader_location: 2,
             },
             // Scale
             VertexAttribute {
                 format: VertexFormat::Float32,
-                offset: (4 + 3 + 2) * 4,
+                offset: (4 + 1 + 3 + 2) * 4,
                 shader_location: 3,
-            },
-            // Frame
-            VertexAttribute {
-                format: VertexFormat::Float32,
-                offset: (4 + 3 + 2 + 1) * 4,
-                shader_location: 4,
             },
         ];
         // This is the sum of the size of the attributes above
-        let vertex_array_stride = (4 + 3 + 2 + 1 + 1) * 4;
+        let vertex_array_stride = (4 + 1 + 3 + 2 + 1) * 4;
 
         RenderPipelineDescriptor {
             vertex: VertexState {
@@ -334,10 +335,10 @@ fn extract_sdf_shaders(
 
 #[derive(Component, Clone, Debug)]
 struct ExtractedShape {
-    transform: GlobalTransform,
     color: Color,
-    shader: Handle<Shader>, // todo could be HandleId?
     frame: f32,
+    shader: Handle<Shader>, // todo could be HandleId?
+    transform: GlobalTransform,
 }
 
 #[derive(Default)]
@@ -484,10 +485,13 @@ fn queue_shapes(
 
             let position = extracted_shape.transform.translation.into();
 
+            let rotation = extracted_shape.transform.rotation * Vec3::X;
+            let rotation = rotation.xy().into();
+
             let vertex = ShapeVertex {
                 position,
                 color,
-                rotation: Vec2::new(1., 0.).into(), // todo
+                rotation,
                 scale: extracted_shape.transform.scale.x,
                 frame: extracted_shape.frame,
             };
@@ -516,10 +520,10 @@ fn queue_shapes(
 #[derive(Debug, Copy, Clone, Pod, Zeroable)]
 struct ShapeVertex {
     pub color: [f32; 4],
+    pub frame: f32,
     pub position: [f32; 3],
     pub rotation: [f32; 2],
     pub scale: f32,
-    pub frame: f32,
     // pub uv: [f32; 2],
 }
 

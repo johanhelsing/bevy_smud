@@ -31,10 +31,10 @@ fn vertex(
     var out: VertexOutput;
     let x = select(-1., 1., i % 2u == 0u);
     let y = select(-1., 1., (i / 2u) % 2u == 0u);
-    let s = vertex.rotation.x;
-    let c = vertex.rotation.y;
-    // let rotated = vec2<f32>(x * c - y * s, x * s + y * c);
-    let rotated = vec2<f32>(x, y);
+    let c = vertex.rotation.x;
+    let s = vertex.rotation.y;
+    let rotated = vec2<f32>(x * c - y * s, x * s + y * c);
+    // let rotated = vec2<f32>(x, y);
     // let w = 400.;
     // let w = 80.;
     let pos = vertex.position + vec3<f32>(rotated * vertex.scale * vertex.frame, vertex.position.z);

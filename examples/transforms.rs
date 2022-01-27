@@ -28,8 +28,9 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
 
     let transform = Transform {
         scale: Vec3::splat(0.05),
-        translation: Vec3::new(63., 135., 0.),
+        translation: Vec3::new(62., 137., 0.),
         rotation: Quat::from_rotation_z(1.0),
+        // rotation: Quat::IDENTITY,
     };
 
     let shape = SmudShape {
