@@ -217,9 +217,27 @@ impl SpecializedPipeline for SmudPipeline {
                 offset: 4 * 4,
                 shader_location: 0,
             },
+            // Rotation
+            VertexAttribute {
+                format: VertexFormat::Float32x2,
+                offset: (4 + 3) * 4,
+                shader_location: 2,
+            },
+            // Scale
+            VertexAttribute {
+                format: VertexFormat::Float32,
+                offset: (4 + 3 + 2) * 4,
+                shader_location: 3,
+            },
+            // Frame
+            VertexAttribute {
+                format: VertexFormat::Float32,
+                offset: (4 + 3 + 2 + 1) * 4,
+                shader_location: 4,
+            },
         ];
         // This is the sum of the size of the attributes above
-        let vertex_array_stride = 4 * 4 + 4 * 3;
+        let vertex_array_stride = (4 + 3 + 2 + 1 + 1) * 4;
 
         RenderPipelineDescriptor {
             vertex: VertexState {
@@ -263,7 +281,7 @@ impl SpecializedPipeline for SmudPipeline {
                 mask: !0,                         // what does the mask do?
                 alpha_to_coverage_enabled: false, // what is this?
             },
-            label: Some("smud_pipeline".into()),
+            label: Some("bevy_so_smooth_pipeline".into()),
         }
     }
 }
@@ -314,11 +332,12 @@ fn extract_sdf_shaders(
     }
 }
 
-#[derive(Component, Clone)]
+#[derive(Component, Clone, Debug)]
 struct ExtractedShape {
     transform: GlobalTransform,
     color: Color,
     shader: Handle<Shader>, // todo could be HandleId?
+    frame: f32,
 }
 
 #[derive(Default)]
@@ -336,10 +355,15 @@ fn extract_shapes(
             continue;
         }
 
+        let frame = match shape.frame {
+            Frame::Quad(s) => s,
+        };
+
         extracted_shapes.0.alloc().init(ExtractedShape {
             color: shape.color,
             transform: *transform,
             shader: shape.sdf_shader.clone_weak(),
+            frame
             // rect: None,
             // // Pass the custom size
             // custom_size: shape.custom_size,
@@ -460,7 +484,13 @@ fn queue_shapes(
 
             let position = extracted_shape.transform.translation.into();
 
-            let vertex = ShapeVertex { position, color };
+            let vertex = ShapeVertex {
+                position,
+                color,
+                rotation: Vec2::new(1., 0.).into(), // todo
+                scale: extracted_shape.transform.scale.x,
+                frame: extracted_shape.frame,
+            };
             shape_meta.vertices.push(vertex);
 
             let item_start = index;
@@ -487,6 +517,9 @@ fn queue_shapes(
 struct ShapeVertex {
     pub color: [f32; 4],
     pub position: [f32; 3],
+    pub rotation: [f32; 2],
+    pub scale: f32,
+    pub frame: f32,
     // pub uv: [f32; 2],
 }
 

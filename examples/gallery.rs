@@ -22,6 +22,8 @@ fn main() {
         .insert_resource(Msaa { samples: 4 })
         .add_plugins(DefaultPlugins)
         .add_plugin(SoSmoothPlugin)
+        .add_plugin(bevy::diagnostic::LogDiagnosticsPlugin::default())
+        .add_plugin(bevy::diagnostic::FrameTimeDiagnosticsPlugin)
         .add_plugin(PanCamPlugin)
         .add_plugin(bevy_lospec::PalettePlugin)
         .add_system_set(SystemSet::on_enter(GameState::Running).with_system(setup))
@@ -52,7 +54,7 @@ fn setup(
 ) {
     let palette = palettes.get(assets.palette.clone()).unwrap();
     let mut rng = rand::thread_rng();
-    let spacing = 5.0;
+    let spacing = 100.0;
     // let w = 316;
     // let w = 420;
     // let w = 10;
@@ -60,8 +62,8 @@ fn setup(
     let h = w;
     info!("Adding {} shapes", w * h);
 
-    let clear_color = palette.lightest();
-    // let clear_color = palette.darkest();
+    // let clear_color = palette.lightest();
+    let clear_color = palette.darkest();
     commands.insert_resource(ClearColor(clear_color));
 
     let shaders = vec![
@@ -106,6 +108,7 @@ fn setup(
                         color,
                         // sdf_shader: shaders[index % shaders.len()].clone(),
                         sdf_shader: shaders.choose(&mut rng).unwrap().clone(),
+                        frame: Frame::Quad(50.),
                     },
                     ..Default::default()
                 })
@@ -114,7 +117,7 @@ fn setup(
     }
 
     let mut camera_bundle = OrthographicCameraBundle::new_2d();
-    camera_bundle.orthographic_projection.scale = 1. / 50.;
+    // camera_bundle.orthographic_projection.scale = 1. / 10.;
     commands
         .spawn_bundle(camera_bundle)
         .insert(PanCam::default());

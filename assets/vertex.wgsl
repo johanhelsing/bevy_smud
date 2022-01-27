@@ -12,6 +12,9 @@ var<uniform> view: View;
 struct Vertex {
     [[location(0)]] position: vec3<f32>;
     [[location(1)]] color: vec4<f32>;
+    [[location(2)]] rotation: vec2<f32>;
+    [[location(3)]] scale: f32;
+    [[location(4)]] frame: f32;
 };
 
 struct VertexOutput {
@@ -28,12 +31,16 @@ fn vertex(
     var out: VertexOutput;
     let x = select(-1., 1., i % 2u == 0u);
     let y = select(-1., 1., (i / 2u) % 2u == 0u);
+    let s = vertex.rotation.x;
+    let c = vertex.rotation.y;
+    // let rotated = vec2<f32>(x * c - y * s, x * s + y * c);
+    let rotated = vec2<f32>(x, y);
     // let w = 400.;
-    let w = 80.;
-    let pos = vertex.position + vec3<f32>(x, y, 0.) * w / 20.;
+    // let w = 80.;
+    let pos = vertex.position + vec3<f32>(rotated * vertex.scale * vertex.frame, vertex.position.z);
     // Project the world position of the mesh into screen position
-    out.clip_position = view.view_proj * vec4<f32>(pos, 1.0);
+    out.clip_position = view.view_proj * vec4<f32>(pos, 1.);
     out.color = vertex.color;
-    out.pos = vec2<f32>(x, y) * w;
+    out.pos = vec2<f32>(x, y) * vertex.frame;
     return out;
 }
