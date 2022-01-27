@@ -57,7 +57,7 @@ fn setup(
 ) {
     let palette = palettes.get(assets.palette.clone()).unwrap();
     let mut rng = rand::thread_rng();
-    let spacing = 50.0;
+    let spacing = 800.0;
     let w = 316;
     // let w = 420;
     // let w = 10;
@@ -88,6 +88,8 @@ fn setup(
                     shape: SmudShape {
                         color,
                         sdf_shader: bevy_shape_shader.clone(),
+                        // frame: Frame::Quad(400.),
+                        frame: Frame::Quad(295.),
                     },
                     ..Default::default()
                 })

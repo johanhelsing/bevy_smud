@@ -56,14 +56,15 @@ fn setup(
     let mut rng = rand::thread_rng();
     let spacing = 100.0;
     // let w = 316;
+    let w = 200;
     // let w = 420;
     // let w = 10;
-    let w = 80;
+    // let w = 80;
     let h = w;
     info!("Adding {} shapes", w * h);
 
-    // let clear_color = palette.lightest();
-    let clear_color = palette.darkest();
+    let clear_color = palette.lightest();
+    // let clear_color = palette.darkest();
     commands.insert_resource(ClearColor(clear_color));
 
     let shaders = vec![
