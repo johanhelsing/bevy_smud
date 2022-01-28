@@ -43,7 +43,12 @@ pub use components::*;
 
 mod bundle;
 mod components;
+mod sdf_assets;
 mod shader_loading;
+
+pub mod prelude {
+    pub use crate::{sdf_assets::SdfAssets, Frame, ShapeBundle, SmudShape, SoSmoothPlugin};
+}
 
 #[derive(Default)]
 pub struct SoSmoothPlugin;
