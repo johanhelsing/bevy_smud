@@ -88,6 +88,12 @@ fn setup(
         asset_server.load("gallery/donut.wgsl"),
     ];
 
+    let fills = vec![
+        // asset_server.load("fills/simple.wgsl"),
+        asset_server.load("fills/cubic_falloff.wgsl"),
+        asset_server.load("fills/outline.wgsl"),
+    ];
+
     for i in 0..w {
         for j in 0..h {
             let color = palette
@@ -111,6 +117,7 @@ fn setup(
                         // sdf_shader: shaders[index % shaders.len()].clone(),
                         sdf_shader: shaders.choose(&mut rng).unwrap().clone(),
                         frame: Frame::Quad(50.),
+                        fill_shader: fills.choose(&mut rng).unwrap().clone(),
                     },
                     ..Default::default()
                 })
