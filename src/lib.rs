@@ -40,7 +40,7 @@ use shader_loading::*;
 
 pub use bundle::ShapeBundle;
 pub use components::*;
-pub use shader_loading::DEFAULT_FILL_HANDLE;
+pub use shader_loading::{DEFAULT_FILL_HANDLE, SIMPLE_FILL_HANDLE};
 
 mod bundle;
 mod components;
@@ -195,7 +195,7 @@ impl FromWorld for SmudPipeline {
     }
 }
 
-#[derive(Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 struct SmudPipelineKey {
     mesh: Mesh2dPipelineKey,
     shader: (HandleId, HandleId),
@@ -463,7 +463,10 @@ fn queue_shapes(
 
         // Impossible starting values that will be replaced on the first iteration
         let mut current_batch = ShapeBatch {
-            shader: HandleId::Id(Uuid::nil(), u64::MAX),
+            shader: (
+                HandleId::Id(Uuid::nil(), u64::MAX),
+                HandleId::Id(Uuid::nil(), u64::MAX),
+            ),
         };
         let mut current_batch_entity = Entity::from_raw(u32::MAX);
         let mut current_batch_pipeline = CachedPipelineId::INVALID;
@@ -475,7 +478,10 @@ fn queue_shapes(
         // by any other phase item (and they can interrupt other items from batching).
         for extracted_shape in extracted_shapes.iter() {
             let new_batch = ShapeBatch {
-                shader: extracted_shape.sdf_shader.id,
+                shader: (
+                    extracted_shape.sdf_shader.id,
+                    extracted_shape.fill_shader.id,
+                ),
             };
 
             if new_batch != current_batch {
@@ -483,15 +489,11 @@ fn queue_shapes(
 
                 current_batch = new_batch;
 
-                let shader_key = (
-                    extracted_shape.sdf_shader.id,
-                    extracted_shape.fill_shader.id,
-                );
-                if let Some(_shader) = smud_pipeline.shaders.0.get(&shader_key) {
+                if let Some(_shader) = smud_pipeline.shaders.0.get(&current_batch.shader) {
                     // todo pass the shader into specialize
                     let specialize_key = SmudPipelineKey {
                         mesh: mesh_key,
-                        shader: shader_key,
+                        shader: current_batch.shader,
                     };
                     current_batch_pipeline =
                         pipelines.specialize(&mut pipeline_cache, &smud_pipeline, specialize_key);
@@ -573,7 +575,7 @@ impl Default for ShapeMeta {
 
 #[derive(Component, Eq, PartialEq, Copy, Clone)]
 pub struct ShapeBatch {
-    shader: HandleId,
+    shader: (HandleId, HandleId),
 }
 
 // TODO: is RenderAsset asking too much?

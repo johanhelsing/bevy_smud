@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use bevy_pancam::*;
-use bevy_so_smooth::prelude::*;
+use bevy_so_smooth::{prelude::*, SIMPLE_FILL_HANDLE};
 
 fn main() {
     let mut app = App::new();
@@ -12,7 +12,8 @@ fn main() {
     });
 
     app.insert_resource(Msaa { samples: 4 })
-        .insert_resource(ClearColor(Color::rgb(0.7, 0.8, 0.7)))
+        // .insert_resource(ClearColor(Color::rgb(0.7, 0.8, 0.7)))
+        .insert_resource(ClearColor(Color::BLACK))
         .add_plugins(DefaultPlugins)
         .add_plugin(SoSmoothPlugin)
         .add_plugin(PanCamPlugin)
@@ -33,6 +34,37 @@ fn setup(
             color: Color::TEAL,
             sdf_shader: asset_server.load("bevy.wgsl"),
             fill_shader: sin_fill,
+            frame: Frame::Quad(295.),
+            ..Default::default()
+        },
+        ..Default::default()
+    });
+
+    commands.spawn_bundle(ShapeBundle {
+        transform: Transform::from_translation(Vec3::X * 600.),
+        shape: SmudShape {
+            color: Color::BLUE,
+            sdf_shader: asset_server.load("bevy.wgsl"),
+            fill_shader: SIMPLE_FILL_HANDLE.typed(),
+            frame: Frame::Quad(295.),
+            ..Default::default()
+        },
+        ..Default::default()
+    });
+
+    commands.spawn_bundle(ShapeBundle {
+        transform: Transform::from_translation(Vec3::X * -600.),
+        shape: SmudShape {
+            color: Color::ORANGE,
+            sdf_shader: asset_server.load("bevy.wgsl"),
+            fill_shader: shaders.add_fill_body(
+                r"
+let d_2 = abs(d - 1.) - 1.;
+let a = sd_fill_alpha_fwidth(d_2);
+return vec4<f32>(color.rgb, a * color.a);
+            ",
+            ),
+
             frame: Frame::Quad(295.),
             ..Default::default()
         },

@@ -28,8 +28,11 @@ pub const DEFAULT_FILL_HANDLE: HandleUntyped =
     HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 18184663565780163454);
 const DEFAULT_FILL_IMPORT: &str = "bevy_smud::default_fill";
 
+pub const SIMPLE_FILL_HANDLE: HandleUntyped =
+    HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 16286090377316294491);
+const SIMPLE_FILL_IMPORT: &str = "bevy_smud::simple_fill";
+
 // unused:
-// 16286090377316294491
 // 16950619110804285379
 // 4146091551367169642
 // 8080191226000727371
@@ -112,6 +115,7 @@ impl Plugin for ShaderLoadingPlugin {
                             DEFAULT_FILL_IMPORT,
                             DEFAULT_FILL_HANDLE,
                         ),
+                        ("fills/simple.wgsl", SIMPLE_FILL_IMPORT, SIMPLE_FILL_HANDLE),
                     ]
                     .into_iter()
                     .map(|(path, import_path, untyped_handle)| HotShader {
@@ -166,6 +170,10 @@ impl Plugin for ShaderLoadingPlugin {
             let fill = Shader::from_wgsl(include_str!("../assets/fills/cubic_falloff.wgsl"))
                 .with_import_path(DEFAULT_FILL_IMPORT);
             shaders.set_untracked(DEFAULT_FILL_HANDLE, fill);
+
+            let simple_fill = Shader::from_wgsl(include_str!("../assets/fills/simple.wgsl"))
+                .with_import_path(SIMPLE_FILL_IMPORT);
+            shaders.set_untracked(SIMPLE_FILL_HANDLE, simple_fill);
         }
     }
 }
