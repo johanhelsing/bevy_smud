@@ -2,6 +2,7 @@ use bevy::prelude::*;
 
 pub trait SdfAssets {
     fn add_sdf_body<T: Into<String>>(&mut self, sdf: T) -> Handle<Shader>;
+    fn add_fill_body<T: Into<String>>(&mut self, fill: T) -> Handle<Shader>;
 }
 
 impl SdfAssets for Assets<Shader> {
@@ -11,6 +12,18 @@ impl SdfAssets for Assets<Shader> {
             r#"
 #import bevy_smud::shapes
 fn sdf(p: vec2<f32>) -> f32 {{
+    {body}
+}}
+"#
+        ));
+        self.add(shader)
+    }
+
+    fn add_fill_body<T: Into<String>>(&mut self, fill: T) -> Handle<Shader> {
+        let body = fill.into();
+        let shader = Shader::from_wgsl(format!(
+            r#"
+fn fill(d: f32, color: vec4<f32>) -> vec4<f32> {{
     {body}
 }}
 "#

@@ -6,6 +6,6 @@ struct FragmentInput {
 [[stage(fragment)]]
 fn fragment(in: FragmentInput) -> [[location(0)]] vec4<f32> {
     let d = sdf(in.pos);
-    return colorize_normal(d, 0., in.color.rgb);
+    return fill(d, in.color);
     // return vec4<f32>(1.0, 1.0, 0.0, 1.0);
 }

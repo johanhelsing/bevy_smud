@@ -22,9 +22,9 @@ use bevy::{
             BufferBindingType, BufferSize, BufferUsages, BufferVec, CachedPipelineId,
             ColorTargetState, ColorWrites, Face, FragmentState, FrontFace, MultisampleState,
             PolygonMode, PrimitiveState, PrimitiveTopology, RenderPipelineCache,
-            RenderPipelineDescriptor, ShaderStages, SpecializedPipeline, SpecializedPipelines,
-            TextureFormat, VertexAttribute, VertexBufferLayout, VertexFormat, VertexState,
-            VertexStepMode,
+            RenderPipelineDescriptor, ShaderImport, ShaderStages, SpecializedPipeline,
+            SpecializedPipelines, TextureFormat, VertexAttribute, VertexBufferLayout, VertexFormat,
+            VertexState, VertexStepMode,
         },
         renderer::{RenderDevice, RenderQueue},
         texture::BevyDefault,
@@ -197,7 +197,7 @@ impl FromWorld for SmudPipeline {
 #[derive(Clone, Hash, PartialEq, Eq)]
 struct SmudPipelineKey {
     mesh: Mesh2dPipelineKey,
-    shader: HandleId,
+    shader: (HandleId, HandleId),
 }
 
 impl SpecializedPipeline for SmudPipeline {
@@ -294,7 +294,7 @@ impl SpecializedPipeline for SmudPipeline {
 
 // rethink about key type (probably needs to be a pair?)
 #[derive(Default)]
-struct ShapeShaders(HashMap<HandleId, Handle<Shader>>);
+struct ShapeShaders(HashMap<(HandleId, HandleId), Handle<Shader>>);
 
 fn extract_sdf_shaders(
     mut render_world: ResMut<RenderWorld>,
@@ -304,26 +304,44 @@ fn extract_sdf_shaders(
     let mut pipeline = render_world.get_resource_mut::<SmudPipeline>().unwrap();
 
     for shape in shapes.iter() {
-        if pipeline.shaders.0.contains_key(&shape.sdf_shader.id) {
+        let shader_key = (shape.sdf_shader.id, shape.fill_shader.id);
+        if pipeline.shaders.0.contains_key(&shader_key) {
             continue;
         }
 
         // todo use asset events instead?
-        let sdf_shader = match shaders.get_mut(&shape.sdf_shader.clone()) {
-            Some(shader) => shader,
+        let sdf_import_path = match shaders.get_mut(&shape.sdf_shader.clone()) {
+            Some(shader) => match shader.import_path() {
+                Some(ShaderImport::Custom(p)) => p.to_owned(),
+                _ => {
+                    let id = Uuid::new_v4();
+                    let path = format!("bevy_smud::generated::{id}");
+                    shader.set_import_path(&path);
+                    path
+                }
+            },
             None => continue,
         };
 
-        let id = Uuid::new_v4();
-        let import_path = format!("bevy_smud::generated::{id}");
+        let fill_import_path = match shaders.get_mut(&shape.fill_shader.clone()) {
+            Some(shader) => match shader.import_path() {
+                Some(ShaderImport::Custom(p)) => p.to_owned(),
+                _ => {
+                    let id = Uuid::new_v4();
+                    let path = format!("bevy_smud::generated::{id}");
+                    shader.set_import_path(&path);
+                    path
+                }
+            },
+            None => continue,
+        };
 
-        info!("Generating {import_path}");
-        sdf_shader.set_import_path(import_path);
-
+        info!("Generating shader");
         let generated_shader = Shader::from_wgsl(format!(
             r#"
 #import bevy_smud::vertex
-#import bevy_smud::generated::{id}
+#import {sdf_import_path}
+#import {fill_import_path}
 #import bevy_smud::fragment
 "#
         ));
@@ -334,7 +352,7 @@ fn extract_sdf_shaders(
         pipeline
             .shaders
             .0
-            .insert(shape.sdf_shader.id, generated_shader_handle);
+            .insert(shader_key, generated_shader_handle);
     }
 }
 
@@ -342,7 +360,8 @@ fn extract_sdf_shaders(
 struct ExtractedShape {
     color: Color,
     frame: f32,
-    shader: Handle<Shader>, // todo could be HandleId?
+    sdf_shader: Handle<Shader>,  // todo could be HandleId?
+    fill_shader: Handle<Shader>, // todo could be HandleId?
     transform: GlobalTransform,
 }
 
@@ -368,7 +387,8 @@ fn extract_shapes(
         extracted_shapes.0.alloc().init(ExtractedShape {
             color: shape.color,
             transform: *transform,
-            shader: shape.sdf_shader.clone_weak(),
+            sdf_shader: shape.sdf_shader.clone_weak(),
+            fill_shader: shape.fill_shader.clone_weak(),
             frame
             // rect: None,
             // // Pass the custom size
@@ -432,7 +452,7 @@ fn queue_shapes(
                 .z
                 .partial_cmp(&b.transform.translation.z)
             {
-                Some(Ordering::Equal) | None => a.shader.cmp(&b.shader),
+                Some(Ordering::Equal) | None => a.sdf_shader.cmp(&b.sdf_shader),
                 Some(other) => other,
             }
         });
@@ -454,7 +474,7 @@ fn queue_shapes(
         // by any other phase item (and they can interrupt other items from batching).
         for extracted_shape in extracted_shapes.iter() {
             let new_batch = ShapeBatch {
-                shader: extracted_shape.shader.id,
+                shader: extracted_shape.sdf_shader.id,
             };
 
             if new_batch != current_batch {
@@ -462,11 +482,15 @@ fn queue_shapes(
 
                 current_batch = new_batch;
 
-                if let Some(_shader) = smud_pipeline.shaders.0.get(&extracted_shape.shader.id) {
+                let shader_key = (
+                    extracted_shape.sdf_shader.id,
+                    extracted_shape.fill_shader.id,
+                );
+                if let Some(_shader) = smud_pipeline.shaders.0.get(&shader_key) {
                     // todo pass the shader into specialize
                     let specialize_key = SmudPipelineKey {
                         mesh: mesh_key,
-                        shader: extracted_shape.shader.id,
+                        shader: shader_key,
                     };
                     current_batch_pipeline =
                         pipelines.specialize(&mut pipeline_cache, &smud_pipeline, specialize_key);

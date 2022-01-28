@@ -67,6 +67,7 @@ fn setup(
     // let clear_color = palette.darkest();
     commands.insert_resource(ClearColor(clear_color));
 
+    // TODO: These could be inlined with .add_sdf_body
     let shaders = vec![
         asset_server.load("gallery/box.wgsl"),
         asset_server.load("gallery/circle.wgsl"),
@@ -117,7 +118,7 @@ fn setup(
         }
     }
 
-    let mut camera_bundle = OrthographicCameraBundle::new_2d();
+    let camera_bundle = OrthographicCameraBundle::new_2d();
     // camera_bundle.orthographic_projection.scale = 1. / 10.;
     commands
         .spawn_bundle(camera_bundle)

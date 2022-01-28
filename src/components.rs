@@ -4,6 +4,7 @@ use bevy::{ecs::query::QueryItem, prelude::*, render::render_component::ExtractC
 pub struct SmudShape {
     pub color: Color,
     pub sdf_shader: Handle<Shader>,
+    pub fill_shader: Handle<Shader>, // todo: wrap in newtypes?
     pub frame: Frame,
 }
 
@@ -13,6 +14,7 @@ impl Default for SmudShape {
             color: Color::PINK,
             sdf_shader: Default::default(),
             frame: Default::default(),
+            fill_shader: Default::default(), // TODO:
         }
     }
 }
