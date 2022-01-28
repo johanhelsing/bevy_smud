@@ -1,5 +1,7 @@
 use bevy::{ecs::query::QueryItem, prelude::*, render::render_component::ExtractComponent};
 
+use crate::DEFAULT_FILL_HANDLE;
+
 #[derive(Component, Clone)]
 pub struct SmudShape {
     pub color: Color,
@@ -14,7 +16,7 @@ impl Default for SmudShape {
             color: Color::PINK,
             sdf_shader: Default::default(),
             frame: Default::default(),
-            fill_shader: Default::default(), // TODO:
+            fill_shader: DEFAULT_FILL_HANDLE.typed(),
         }
     }
 }

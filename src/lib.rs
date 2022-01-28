@@ -40,6 +40,7 @@ use shader_loading::*;
 
 pub use bundle::ShapeBundle;
 pub use components::*;
+pub use shader_loading::DEFAULT_FILL_HANDLE;
 
 mod bundle;
 mod components;
