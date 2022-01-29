@@ -26,7 +26,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn_bundle(ShapeBundle {
         shape: SmudShape {
             color: Color::rgb(0.36, 0.41, 0.45),
-            sdf_shader: bevy_shape_shader,
+            sdf: bevy_shape_shader,
             frame: Frame::Quad(400.),
             ..Default::default()
         },

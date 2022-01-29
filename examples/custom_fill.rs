@@ -32,8 +32,8 @@ fn setup(
     commands.spawn_bundle(ShapeBundle {
         shape: SmudShape {
             color: Color::TEAL,
-            sdf_shader: asset_server.load("bevy.wgsl"),
-            fill_shader: sin_fill,
+            sdf: asset_server.load("bevy.wgsl"),
+            fill: sin_fill,
             frame: Frame::Quad(295.),
             ..Default::default()
         },
@@ -44,8 +44,8 @@ fn setup(
         transform: Transform::from_translation(Vec3::X * 600.),
         shape: SmudShape {
             color: Color::BLUE,
-            sdf_shader: asset_server.load("bevy.wgsl"),
-            fill_shader: SIMPLE_FILL_HANDLE.typed(),
+            sdf: asset_server.load("bevy.wgsl"),
+            fill: SIMPLE_FILL_HANDLE.typed(),
             frame: Frame::Quad(295.),
             ..Default::default()
         },
@@ -56,8 +56,8 @@ fn setup(
         transform: Transform::from_translation(Vec3::X * -600.),
         shape: SmudShape {
             color: Color::ORANGE,
-            sdf_shader: asset_server.load("bevy.wgsl"),
-            fill_shader: shaders.add_fill_body(
+            sdf: asset_server.load("bevy.wgsl"),
+            fill: shaders.add_fill_body(
                 r"
 let d_2 = abs(d - 1.) - 1.;
 let a = sd_fill_alpha_fwidth(d_2);

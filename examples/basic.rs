@@ -1,37 +1,29 @@
-use bevy::{
-    diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin},
-    prelude::*,
-};
-use bevy_smud::*;
-
-// struct BevyShape;
-
-// TODO: check if I can just use handles render assets instead?
-// impl SdfShapeShader for BevyShape {
-//     fn shader(asset_server: &AssetServer) -> Handle<Shader> {
-//         asset_server.load("bevy.wgsl")
-//     }
-// }
+use bevy::prelude::*;
+use bevy_smud::prelude::*;
 
 fn main() {
     App::new()
         .insert_resource(Msaa { samples: 4 })
         .add_plugins(DefaultPlugins)
-        // .add_plugin(SdfShapePlugin::<BevyShape>::default())
-        .add_plugin(LogDiagnosticsPlugin::default())
-        .add_plugin(FrameTimeDiagnosticsPlugin)
         .add_plugin(SmudPlugin)
         .add_startup_system(setup)
         .run();
 }
 
 fn setup(mut commands: Commands, mut shaders: ResMut<Assets<Shader>>) {
-    let bevy_shader = Shader::from_wgsl(include_str!("../assets/bevy.wgsl"));
-    let bevy_shape_shader = shaders.add(bevy_shader.into());
+    // add_sdf_body expects a wgsl function body
+    // p is the position of a fragment within the sdf shape, with 0, 0 at the center.
+    // Here we are using the built-in sd_circle function, which accepts the
+    // radius as a parameter.
+    let circle = shaders.add_sdf_body("return sd_circle(p, 70.);");
 
     commands.spawn_bundle(ShapeBundle {
         shape: SmudShape {
-            sdf_shader: Some(bevy_shape_shader),
+            color: Color::OLIVE,
+            sdf: circle,
+            // The frame needs to be bigger than the shape we're drawing
+            // Since the circle has radius 70, we make the half-size of the quad 80.
+            frame: Frame::Quad(80.),
             ..Default::default()
         },
         ..Default::default()

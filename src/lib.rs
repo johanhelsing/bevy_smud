@@ -305,13 +305,13 @@ fn extract_sdf_shaders(
     let mut pipeline = render_world.get_resource_mut::<SmudPipeline>().unwrap();
 
     for shape in shapes.iter() {
-        let shader_key = (shape.sdf_shader.id, shape.fill_shader.id);
+        let shader_key = (shape.sdf.id, shape.fill.id);
         if pipeline.shaders.0.contains_key(&shader_key) {
             continue;
         }
 
         // todo use asset events instead?
-        let sdf_import_path = match shaders.get_mut(&shape.sdf_shader.clone()) {
+        let sdf_import_path = match shaders.get_mut(&shape.sdf.clone()) {
             Some(shader) => match shader.import_path() {
                 Some(ShaderImport::Custom(p)) => p.to_owned(),
                 _ => {
@@ -324,7 +324,7 @@ fn extract_sdf_shaders(
             None => continue,
         };
 
-        let fill_import_path = match shaders.get_mut(&shape.fill_shader.clone()) {
+        let fill_import_path = match shaders.get_mut(&shape.fill.clone()) {
             Some(shader) => match shader.import_path() {
                 Some(ShaderImport::Custom(p)) => p.to_owned(),
                 _ => {
@@ -388,8 +388,8 @@ fn extract_shapes(
         extracted_shapes.0.alloc().init(ExtractedShape {
             color: shape.color,
             transform: *transform,
-            sdf_shader: shape.sdf_shader.clone_weak(),
-            fill_shader: shape.fill_shader.clone_weak(),
+            sdf_shader: shape.sdf.clone_weak(),
+            fill_shader: shape.fill.clone_weak(),
             frame
             // rect: None,
             // // Pass the custom size

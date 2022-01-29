@@ -6,7 +6,7 @@ Some people might be offended by generating lots of shaders at runtime, minimizi
 
 > When everything is a nail, all you need is a hammer!
 
-However if you keep the number of different sdf shapes to a minimum it's still blazingly fast.
+However if you keep the number of different sdf shape and fill combinations relatively low it's still blazingly fast.
 
 ## Usage
 

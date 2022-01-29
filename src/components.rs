@@ -5,8 +5,8 @@ use crate::DEFAULT_FILL_HANDLE;
 #[derive(Component, Clone)]
 pub struct SmudShape {
     pub color: Color,
-    pub sdf_shader: Handle<Shader>,
-    pub fill_shader: Handle<Shader>, // todo: wrap in newtypes?
+    pub sdf: Handle<Shader>,
+    pub fill: Handle<Shader>, // todo: wrap in newtypes?
     pub frame: Frame,
 }
 
@@ -14,9 +14,9 @@ impl Default for SmudShape {
     fn default() -> Self {
         Self {
             color: Color::PINK,
-            sdf_shader: Default::default(),
+            sdf: Default::default(),
             frame: Default::default(),
-            fill_shader: DEFAULT_FILL_HANDLE.typed(),
+            fill: DEFAULT_FILL_HANDLE.typed(),
         }
     }
 }
@@ -32,7 +32,8 @@ impl ExtractComponent for SmudShape {
 
 #[derive(Debug, Clone, Copy)]
 pub enum Frame {
-    Quad(f32),
+    /// A quad with a given half-size (!)
+    Quad(f32), // todo: it probably makes sense for this to be the full width instead...
 }
 
 impl Frame {
