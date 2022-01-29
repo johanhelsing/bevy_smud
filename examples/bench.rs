@@ -4,7 +4,7 @@ use bevy::{
 };
 use bevy_asset_loader::{AssetCollection, AssetLoader};
 use bevy_pancam::*;
-use bevy_so_smooth::*;
+use bevy_smud::*;
 use rand::prelude::*;
 
 fn main() {
@@ -26,7 +26,7 @@ fn main() {
         .add_plugins(DefaultPlugins)
         .add_plugin(LogDiagnosticsPlugin::default())
         .add_plugin(FrameTimeDiagnosticsPlugin)
-        .add_plugin(SoSmoothPlugin)
+        .add_plugin(SmudPlugin)
         .add_plugin(PanCamPlugin)
         .add_plugin(bevy_lospec::PalettePlugin)
         .add_system_set(SystemSet::on_enter(GameState::Running).with_system(setup))

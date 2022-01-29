@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use bevy_pancam::*;
-use bevy_so_smooth::{prelude::*, SIMPLE_FILL_HANDLE};
+use bevy_smud::{prelude::*, SIMPLE_FILL_HANDLE};
 
 fn main() {
     let mut app = App::new();
@@ -15,7 +15,7 @@ fn main() {
         // .insert_resource(ClearColor(Color::rgb(0.7, 0.8, 0.7)))
         .insert_resource(ClearColor(Color::BLACK))
         .add_plugins(DefaultPlugins)
-        .add_plugin(SoSmoothPlugin)
+        .add_plugin(SmudPlugin)
         .add_plugin(PanCamPlugin)
         .add_startup_system(setup)
         .run();

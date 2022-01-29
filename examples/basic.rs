@@ -2,7 +2,7 @@ use bevy::{
     diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin},
     prelude::*,
 };
-use bevy_so_smooth::*;
+use bevy_smud::*;
 
 // struct BevyShape;
 
@@ -20,7 +20,7 @@ fn main() {
         // .add_plugin(SdfShapePlugin::<BevyShape>::default())
         .add_plugin(LogDiagnosticsPlugin::default())
         .add_plugin(FrameTimeDiagnosticsPlugin)
-        .add_plugin(SoSmoothPlugin)
+        .add_plugin(SmudPlugin)
         .add_startup_system(setup)
         .run();
 }

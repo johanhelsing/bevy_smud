@@ -1,4 +1,4 @@
-# bevy_so_smooth
+# bevy_smud
 
 Sdf 2d shape rendering for bevy.
 

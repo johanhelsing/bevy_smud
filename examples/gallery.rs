@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy_asset_loader::{AssetCollection, AssetLoader};
 use bevy_pancam::*;
-use bevy_so_smooth::*;
+use bevy_smud::*;
 use rand::prelude::*;
 
 fn main() {
@@ -21,7 +21,7 @@ fn main() {
     app.add_state(GameState::Loading)
         .insert_resource(Msaa { samples: 4 })
         .add_plugins(DefaultPlugins)
-        .add_plugin(SoSmoothPlugin)
+        .add_plugin(SmudPlugin)
         .add_plugin(bevy::diagnostic::LogDiagnosticsPlugin::default())
         .add_plugin(bevy::diagnostic::FrameTimeDiagnosticsPlugin)
         .add_plugin(PanCamPlugin)

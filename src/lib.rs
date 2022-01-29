@@ -48,13 +48,13 @@ mod sdf_assets;
 mod shader_loading;
 
 pub mod prelude {
-    pub use crate::{sdf_assets::SdfAssets, Frame, ShapeBundle, SmudShape, SoSmoothPlugin};
+    pub use crate::{sdf_assets::SdfAssets, Frame, ShapeBundle, SmudShape, SmudPlugin};
 }
 
 #[derive(Default)]
-pub struct SoSmoothPlugin;
+pub struct SmudPlugin;
 
-impl Plugin for SoSmoothPlugin {
+impl Plugin for SmudPlugin {
     fn build(&self, app: &mut App) {
         // All the messy boiler-plate for loading a bunch of shaders
         app.add_plugin(ShaderLoadingPlugin);
@@ -288,7 +288,7 @@ impl SpecializedPipeline for SmudPipeline {
                 mask: !0,                         // what does the mask do?
                 alpha_to_coverage_enabled: false, // what is this?
             },
-            label: Some("bevy_so_smooth_pipeline".into()),
+            label: Some("bevy_smud_pipeline".into()),
         }
     }
 }
