@@ -48,7 +48,10 @@ mod sdf_assets;
 mod shader_loading;
 
 pub mod prelude {
-    pub use crate::{sdf_assets::SdfAssets, Frame, ShapeBundle, SmudShape, SmudPlugin};
+    pub use crate::{
+        sdf_assets::SdfAssets, Frame, ShapeBundle, SmudPlugin, SmudShape, DEFAULT_FILL_HANDLE,
+        SIMPLE_FILL_HANDLE,
+    };
 }
 
 #[derive(Default)]
