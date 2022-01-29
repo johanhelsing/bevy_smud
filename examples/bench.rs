@@ -88,8 +88,8 @@ fn setup(
                     shape: SmudShape {
                         color,
                         sdf: bevy_shape_shader.clone(),
-                        // frame: Frame::Quad(400.),
                         frame: Frame::Quad(295.),
+                        ..Default::default()
                     },
                     ..Default::default()
                 })

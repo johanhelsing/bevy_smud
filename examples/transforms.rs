@@ -14,8 +14,7 @@ fn main() {
     });
 
     app.insert_resource(Msaa { samples: 4 })
-        // .insert_resource(ClearColor(Color::rgb(0.7, 0.8, 0.7)))
-        .insert_resource(ClearColor(Color::rgb(0., 0., 0.)))
+        .insert_resource(ClearColor(Color::rgb(0.7, 0.8, 0.7)))
         .add_plugins(DefaultPlugins)
         .add_plugin(SmudPlugin)
         .add_plugin(PanCamPlugin)
@@ -30,13 +29,13 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         scale: Vec3::splat(0.05),
         translation: Vec3::new(62., 137., 0.),
         rotation: Quat::from_rotation_z(1.0),
-        // rotation: Quat::IDENTITY,
     };
 
     let shape = SmudShape {
         color: Color::rgb(0.36, 0.41, 0.45),
         sdf: bevy_shape_shader.clone(),
         frame: Frame::Quad(295.),
+        ..Default::default()
     };
 
     // Bevies, all the way down
