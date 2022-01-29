@@ -110,12 +110,13 @@ impl Plugin for ShaderLoadingPlugin {
                             FRAGMENT_SHADER_IMPORT,
                             FRAGMENT_SHADER_HANDLE,
                         ),
-                        (
-                            "fills/cubic_falloff.wgsl",
-                            DEFAULT_FILL_IMPORT,
-                            DEFAULT_FILL_HANDLE,
-                        ),
-                        ("fills/simple.wgsl", SIMPLE_FILL_IMPORT, SIMPLE_FILL_HANDLE),
+                        // Hot-loading is borked-ish for these for some reason, so always load normally
+                        // (
+                        //     "fills/cubic_falloff.wgsl",
+                        //     DEFAULT_FILL_IMPORT,
+                        //     DEFAULT_FILL_HANDLE,
+                        // ),
+                        // ("fills/simple.wgsl", SIMPLE_FILL_IMPORT, SIMPLE_FILL_HANDLE),
                     ]
                     .into_iter()
                     .map(|(path, import_path, untyped_handle)| HotShader {
@@ -166,7 +167,11 @@ impl Plugin for ShaderLoadingPlugin {
             let fragment = Shader::from_wgsl(include_str!("../assets/fragment.wgsl"))
                 .with_import_path(FRAGMENT_SHADER_IMPORT);
             shaders.set_untracked(FRAGMENT_SHADER_HANDLE, fragment);
+        }
 
+        // Hot-loading is borked-ish for these for some reason, so always load normally
+        {
+            let mut shaders = app.world.get_resource_mut::<Assets<Shader>>().unwrap();
             let fill = Shader::from_wgsl(include_str!("../assets/fills/cubic_falloff.wgsl"))
                 .with_import_path(DEFAULT_FILL_IMPORT);
             shaders.set_untracked(DEFAULT_FILL_HANDLE, fill);
