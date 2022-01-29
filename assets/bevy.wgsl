@@ -4,15 +4,12 @@ fn bevy_head(p: vec2<f32>) -> f32 {
     let skull = sd_ellipse(p, 0.22, 0.20);
     let p_beak = sd_rotate_rad(p - vec2<f32>(0.12, 0.02), 1.2);
     let beak = sd_vesica(p_beak, 0.3, 0.2);
-    // let eye = sd_circle(p, 0.1);
     return min(skull, beak);
 }
 
 fn sdf(p: vec2<f32>) -> f32 {
     let scale = 300.0;
     var p = p / scale;
-
-    let frame = -(max(abs(p.x), abs(p.y)) - 1.);
 
     let p_upper_wing = p - vec2<f32>(-0.3, -0.25);
     let upper_wing = max(
@@ -52,15 +49,7 @@ fn sdf(p: vec2<f32>) -> f32 {
     );
 
     let eye = sd_circle(p - vec2<f32>(0.20, 0.45), 0.05);
-    let b = max(body, -eye);
+    let bevy = max(body, -eye);
 
-    // let bevy = sd_smooth_union(body, , 0.07);
-    let debug = b;
-    let unscaled = min(frame, debug);
-    return unscaled * scale;
+    return bevy * scale;
 }
-    // let p_upper_wing = sd_rotate_rad(p - vec2<f32>(-0.2, -0.2), -0.3);
-    // let upper_wing = sd_moon(p_upper_wing, -0.5, 0.6, 0.7);
-
-    // let p_lower_wing = sd_rotate_rad(p - vec2<f32>(-0.4, -0.4), -0.6);
-    // let lower_wing = sd_moon(p_lower_wing, -0.3, 0.6, 0.6);
