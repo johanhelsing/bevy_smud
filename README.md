@@ -24,7 +24,7 @@ For instance:
 sd_circle(p, 50.)
 ```
 
-Will return the distance from p to the edge of a circle, with negative values being inside the circle.
+Will return the distance from p to the edge of a circle with radius 50, with negative values being inside the circle.
 
 Other than that, make sure you understand how to combine shapes, use symmetries and change domains. For instance, the [bevy](assets/bevy.wgsl) above is built up of circles, ellipses, and a vesica for the beak.
 
@@ -33,6 +33,16 @@ Other than that, make sure you understand how to combine shapes, use symmetries 
 This crate should still be considered highly experimental.
 
 If you want something more finished, you should probably check out [bevy_prototype_lyon](https://github.com/Nilirad/bevy_prototype_lyon).
+
+## Bevy version support
+
+The `main` branch targets the latest bevy release.
+
+I intend to support the `main` branch of Bevy in the `bevy-main` branch.
+
+|bevy|bevy_smud|
+|---|---|
+|0.6|main|
 
 ## Thanks!
 
