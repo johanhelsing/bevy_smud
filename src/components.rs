@@ -2,7 +2,7 @@ use bevy::{ecs::query::QueryItem, prelude::*, render::render_component::ExtractC
 
 use crate::DEFAULT_FILL_HANDLE;
 
-#[derive(Component, Clone)]
+#[derive(Component, Debug, Clone)]
 pub struct SmudShape {
     pub color: Color,
     pub sdf: Handle<Shader>,
