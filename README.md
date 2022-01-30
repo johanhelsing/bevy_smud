@@ -1,17 +1,39 @@
 # bevy_smud
 
-Sdf 2d shape rendering for bevy.
+Sdf 2d shape rendering for [Bevy](https://bevyengine.org).
 
-Some people might be offended by generating lots of shaders at runtime, minimizing draw calls and all that stuff... but you know what they say:
+![screenshot of a bird drawn with bevy_smud](https://johanhelsing.studio/assets/bevy_smud.png)
 
-> When everything is a nail, all you need is a hammer!
+Bevy smud is a way to conveniently construct and render sdf shapes with Bevy.
 
-However, if you keep the number of different sdf shape and fill combinations relatively low it's still blazingly fast.
+Given a shape function/expression, a fill type, it generates shaders at run-time.
 
-## Thanks!
-
-Little of this crate is original work. It's mostly a mishmash of [`bevy_sprite`](https://github.com/bevyengine/bevy/tree/main/crates/bevy_sprite) and [Inigo Quilez sdf rendering primitives](https://iquilezles.org/www/articles/distfunctions2d/distfunctions2d.htm) ported to wgsl. I just the two together in a way I found convenient.
+That might rub some people the wrong way... minimizing draw calls and all that stuff. However, if you keep the number of different sdf and fill combinations relatively low it's still blazingly fast. My machine easily handles 100k shapes at 60 fps, even with 40 different shape/fill combinations in randomized order (see [gallery](examples/gallery) example).
 
 ## Usage
 
-See [examples](examples). In particular, the [basic](examples/basic.rs) should be a good place to start.
+See [examples](examples). In particular, the [basic](examples/basic.rs) example should be a good place to start.
+
+There are many built-in sdf primitives, which are automatically imported when using the single expression or body shorthand for adding sdfs.
+
+In .wgsl files, the shape library can be imported through the [`bevy_smud::shapes`](assets/shapes.wgsl) import. Most of the shapes are direct ports of the ones on [this page](https://iquilezles.org/www/articles/distfunctions2d/distfunctions2d.htm), which includes screenshots of the various shapes.
+
+For instance:
+
+```wgsl
+sd_circle(p, 50.)
+```
+
+Will return the distance from p to the edge of a circle, with negative values being inside the circle.
+
+Other than that, make sure you understand how to combine shapes, use symmetries and change domains. For instance, the [bevy](assets/bevy.wgsl) above is built up of circles, ellipses, and a vesica for the beak.
+
+## Word of caution
+
+This crate should still be considered highly experimental.
+
+If you want something more finished, you should probably check out [bevy_prototype_lyon](https://github.com/Nilirad/bevy_prototype_lyon).
+
+## Thanks!
+
+Little of this crate is original work. It's mostly a mishmash of [`bevy_sprite`](https://github.com/bevyengine/bevy/tree/main/crates/bevy_sprite) and [Inigo Quilez sdf rendering primitives](https://iquilezles.org/www/articles/distfunctions2d/distfunctions2d.htm) ported to wgsl. I just put the two together in a way I found convenient.
