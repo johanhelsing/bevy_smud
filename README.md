@@ -26,6 +26,29 @@ sd_circle(p, 50.)
 
 Will return the distance from p to the edge of a circle with radius 50, with negative values being inside the circle.
 
+So to put together a shape, you can do:
+
+```rust
+fn spawn_circle(
+    mut commands: Commands,
+    mut shaders: ResMut<Assets<Shader>>,
+) {
+    let circle = shaders.add_sdf_expr("sd_circle(p, 50.)");
+T
+    commands.spawn_bundle(ShapeBundle {
+        shape: SmudShape {
+            color: Color::TOMATO,
+            sdf: circle,
+            frame: Frame::Quad(55.),
+            ..Default::default()
+        },
+        ..Default::default()
+    });
+}
+```
+
+Make sure you reuse the shaders, i.e. don't call `add_sdf_expr` every frame.
+
 Other than that, make sure you understand how to combine shapes, use symmetries and change domains. For instance, the [bevy](assets/bevy.wgsl) above is built up of circles, ellipses, and a vesica for the beak.
 
 ## Word of caution
