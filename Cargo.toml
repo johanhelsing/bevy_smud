@@ -3,9 +3,6 @@ name = "bevy_smud"
 version = "0.1.0"
 edition = "2021"
 
-[features]
-smud_shader_hot_reloading = ["bevy/bevy_shader_hot_reloading"]
-
 [dependencies]
 bevy = { version = "0.6.0", default-features = false, features = ["render"] }
 bytemuck = "1.7"
@@ -19,9 +16,12 @@ bevy_lospec = { git = "https://github.com/johanhelsing/bevy_lospec", branch = "m
 bevy_asset_loader = "0.8"
 rand = "0.8"
 
-[patch.crates-io]
+# [features]
+# smud_shader_hot_reloading = ["bevy/bevy_shader_hot_reloading"]
+
+# [patch.crates-io]
 # bevy = { git = "https://github.com/superdump/bevy", branch = "hot-reload-core-shaders" }
-bevy = { path = "../bevy" }
+# bevy = { path = "../bevy" }
 
 [profile.dev]
 opt-level = 1
