@@ -324,7 +324,10 @@ fn extract_sdf_shaders(
                     path
                 }
             },
-            None => continue,
+            None => {
+                debug!("Waiting for sdf to load");
+                continue;
+            }
         };
 
         let fill_import_path = match shaders.get_mut(&shape.fill.clone()) {
@@ -337,7 +340,10 @@ fn extract_sdf_shaders(
                     path
                 }
             },
-            None => continue,
+            None => {
+                debug!("Waiting for fill to load");
+                continue;
+            }
         };
 
         info!("Generating shader");
@@ -504,6 +510,7 @@ fn queue_shapes(
             }
 
             if current_batch_pipeline == CachedPipelineId::INVALID {
+                debug!("Shape not ready yet, skipping");
                 continue; // skip shapes that are not ready yet
             }
 
