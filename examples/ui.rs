@@ -5,7 +5,7 @@ use bevy_smud::*;
 fn main() {
     App::new()
         .insert_resource(Msaa { samples: 4 })
-        .insert_resource(ClearColor(Color::rgb(0.7, 0.8, 0.7)))
+        .insert_resource(ClearColor(Color::rgb(0.9, 0.9, 0.75)))
         .add_plugins(DefaultPlugins)
         .add_plugin(SmudPlugin)
         .add_plugin(PanCamPlugin)
@@ -14,9 +14,9 @@ fn main() {
         .run();
 }
 
-const NORMAL_BUTTON: Color = Color::WHITE;
-const HOVERED_BUTTON: Color = Color::rgb(0.8, 0.8, 0.8);
-const PRESSED_BUTTON: Color = Color::GRAY;
+const NORMAL_BUTTON: Color = Color::rgb(0.9, 0.9, 0.9);
+const HOVERED_BUTTON: Color = Color::WHITE;
+const PRESSED_BUTTON: Color = Color::rgba(1., 1., 1., 0.8);
 
 fn button_system(
     mut interaction_query: Query<
@@ -52,7 +52,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
             },
             shape: SmudShape {
                 // color: Color::rgb(0.36, 0.41, 0.45),
-                color: Color::TOMATO.into(),
+                color: Color::rgb(0.9, 0.5, 0.4),
                 sdf: bevy_shape_shader,
                 frame: Frame::Quad(800.),
                 ..Default::default()
