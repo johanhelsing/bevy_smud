@@ -296,13 +296,12 @@ impl SpecializedPipeline for SmudPipeline {
     }
 }
 
-// rethink about key type (probably needs to be a pair?)
 #[derive(Default)]
 struct ShapeShaders(HashMap<(HandleId, HandleId), Handle<Shader>>);
 
 fn extract_sdf_shaders(
     mut render_world: ResMut<RenderWorld>,
-    shapes: Query<&SmudShape>, //, Changed<SmudShape>>, // does changed help? need to make sure it is not racey then!
+    shapes: Query<&SmudShape>, //, Changed<SmudShape>>, // does changed help? need to make sure it is not racy then!
     mut shaders: ResMut<Assets<Shader>>,
 ) {
     let mut pipeline = render_world.get_resource_mut::<SmudPipeline>().unwrap();
@@ -526,7 +525,9 @@ fn queue_shapes(
 
             let color = extracted_shape.color.as_linear_rgba_f32();
 
-            let position = extracted_shape.transform.translation.into();
+            let position = extracted_shape.transform.translation;
+            let z = position.z;
+            let position = position.into();
 
             let rotation = extracted_shape.transform.rotation * Vec3::X;
             let rotation = rotation.xy().into();
@@ -548,7 +549,7 @@ fn queue_shapes(
                 entity: current_batch_entity,
                 draw_function: draw_smud_shape,
                 pipeline: current_batch_pipeline,
-                sort_key: FloatOrd(0.), // todo
+                sort_key: FloatOrd(z),
                 batch_range: Some(item_start..item_end),
             });
         }
