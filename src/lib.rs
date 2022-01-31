@@ -37,8 +37,9 @@ use bevy::{
 use bytemuck::{Pod, Zeroable};
 use copyless::VecHelper;
 use shader_loading::*;
+use ui::UiShapePlugin;
 
-pub use bundle::ShapeBundle;
+pub use bundle::{ShapeBundle, UiShapeBundle};
 pub use components::*;
 pub use shader_loading::{DEFAULT_FILL_HANDLE, SIMPLE_FILL_HANDLE};
 
@@ -46,11 +47,12 @@ mod bundle;
 mod components;
 mod sdf_assets;
 mod shader_loading;
+mod ui;
 
 pub mod prelude {
     pub use crate::{
-        sdf_assets::SdfAssets, Frame, ShapeBundle, SmudPlugin, SmudShape, DEFAULT_FILL_HANDLE,
-        SIMPLE_FILL_HANDLE,
+        sdf_assets::SdfAssets, Frame, ShapeBundle, SmudPlugin, SmudShape, UiShapeBundle,
+        DEFAULT_FILL_HANDLE, SIMPLE_FILL_HANDLE,
     };
 }
 
@@ -61,6 +63,7 @@ impl Plugin for SmudPlugin {
     fn build(&self, app: &mut App) {
         // All the messy boiler-plate for loading a bunch of shaders
         app.add_plugin(ShaderLoadingPlugin);
+        app.add_plugin(UiShapePlugin);
 
         if let Ok(render_app) = app.get_sub_app_mut(RenderApp) {
             render_app
@@ -573,6 +576,7 @@ struct ShapeVertex {
 
 pub struct ShapeMeta {
     vertices: BufferVec<ShapeVertex>,
+    ui_vertices: BufferVec<ShapeVertex>,
     view_bind_group: Option<BindGroup>,
 }
 
@@ -580,6 +584,7 @@ impl Default for ShapeMeta {
     fn default() -> Self {
         Self {
             vertices: BufferVec::new(BufferUsages::VERTEX),
+            ui_vertices: BufferVec::new(BufferUsages::VERTEX),
             view_bind_group: None,
         }
     }
