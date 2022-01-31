@@ -81,15 +81,15 @@ fn sd_parallelogram(p: vec2<f32>, wi: f32, he: f32, sk: f32) -> f32 {
     return sqrt(d.x)*sign(-d.y);
 }
 
-fn sd_equilateral_triangle(p: vec2<f32>) -> f32 {
+fn sd_equilateral_triangle(p: vec2<f32>, r: f32) -> f32 {
     var p = p;
     let k = sqrt(3.);
-    p.x = abs(p.x) - 1.;
-    p.y = p.y + 1./k;
+    p.x = abs(p.x) - r;
+    p.y = p.y + r / k;
     if (p.x + k * p.y > 0.) {
         p = vec2<f32>(p.x - k * p.y, -k * p.x - p.y) / 2.;
     }
-    p.x = p.x - clamp(p.x, -2., 0.);
+    p.x = p.x - clamp(p.x, -2. * r, 0.);
     return -length(p) * sign(p.y);
 }
 
@@ -538,6 +538,20 @@ fn sd_renormalize_uv(uv: vec2<f32>) -> vec2<f32> {
     return uv * 2. - vec2<f32>(1., 1.);
 }
 
+fn sd_exponential_falloff(d: f32, size: f32, power: f32) -> f32 {
+    let a = (size - d) / size;
+    let a = clamp(a, 0.0, 1.0);
+    let a = pow(a, power);
+    return a;
+}
+
+fn sd_exponential_falloff_3(d: f32, size: f32) -> f32 {
+    let a = (size - d) / size;
+    let a = clamp(a, 0.0, 1.0);
+    let a = a * a * a;
+    return a;
+}
+
 fn sd_fill_alpha_fwidth(distance: f32) -> f32 {
     let aaf = 0.71 * fwidth(distance);
     return smoothStep(aaf, -aaf, distance);
@@ -550,7 +564,18 @@ fn sd_fill_alpha_dpd(distance: f32) -> f32 {
 }
 
 // Dirt cheap, but ugly
-fn sd_fill_alpha_nearest(distance: f32) -> f32 { return step(-distance, 0.);
+fn sd_fill_alpha_nearest(distance: f32) -> f32 {
+    return step(-distance, 0.);
+}
+
+fn sd_fill_with_falloff_3(d: f32, falloff_size: f32, falloff_color: vec4<f32>, fill_color: vec4<f32>) -> vec4<f32> {
+    // todo compose with others?
+    let aaf = 0.7 / fwidth(d); // TODO: this could just be a uniform instead
+    let t_color = clamp(d * aaf, 0.0, 1.0);
+    var color = mix(fill_color, falloff_color, t_color);
+    let falloff = sd_exponential_falloff_3(d, falloff_size);
+    color.a = color.a * falloff;
+    return color;
 }
 
 fn sd_union(distance_1: f32, distance_2: f32) -> f32 {
