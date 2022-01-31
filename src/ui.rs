@@ -128,8 +128,9 @@ fn prepare_ui_shapes(
             .z
             .partial_cmp(&b.transform.translation.z)
         {
-            // TODO: also sort by fill!
-            Some(Ordering::Equal) | None => a.sdf_shader.cmp(&b.sdf_shader),
+            Some(Ordering::Equal) | None => {
+                (&a.sdf_shader, &a.fill_shader).cmp(&(&b.sdf_shader, &b.fill_shader))
+            }
             Some(other) => other,
         }
     });
