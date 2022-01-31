@@ -51,10 +51,8 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                 ..Default::default()
             },
             shape: SmudShape {
-                // color: Color::rgb(0.36, 0.41, 0.45),
                 color: Color::rgb(0.9, 0.5, 0.4),
                 sdf: bevy_shape_shader,
-                frame: Frame::Quad(800.),
                 ..Default::default()
             },
             ..Default::default()

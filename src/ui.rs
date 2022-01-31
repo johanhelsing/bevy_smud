@@ -3,7 +3,6 @@ use std::{cmp::Ordering, ops::Range};
 use bevy::{
     asset::HandleId,
     core::FloatOrd,
-    core_pipeline::Transparent2d,
     ecs::system::{
         lifetimeless::{Read, SQuery, SRes},
         SystemParamItem,
@@ -21,7 +20,7 @@ use bevy::{
             RenderPipelineCache, SpecializedPipelines,
         },
         renderer::{RenderDevice, RenderQueue},
-        view::{ViewUniforms, VisibleEntities},
+        view::ViewUniforms,
         RenderApp, RenderStage, RenderWorld,
     },
     sprite::Mesh2dPipelineKey,
@@ -30,8 +29,8 @@ use bevy::{
 use copyless::VecHelper;
 
 use crate::{
-    ExtractedShape, SetShapeViewBindGroup, ShapeBatch, ShapeMeta, ShapeVertex, SmudPipeline,
-    SmudPipelineKey, SmudShape,
+    ExtractedShape, SetShapeViewBindGroup, ShapeMeta, ShapeVertex, SmudPipeline, SmudPipelineKey,
+    SmudShape,
 };
 
 type DrawSmudUiShape = (SetItemPipeline, SetShapeViewBindGroup<0>, DrawUiShapeNode);
@@ -96,7 +95,7 @@ fn extract_ui_shapes(
             continue;
         }
 
-        let size = node.size.x; // todo
+        let size = node.size.x; // TODO: Also pass on the y value
         let frame = size / 2.;
 
         extracted_shapes.0.alloc().init(ExtractedShape {
@@ -116,8 +115,8 @@ fn prepare_ui_shapes(
     mut commands: Commands,
     mut pipelines: ResMut<SpecializedPipelines<SmudPipeline>>,
     mut pipeline_cache: ResMut<RenderPipelineCache>,
-    mut extracted_shapes: ResMut<ExtractedUiShapes>, // todo needs mut?
-    mut shape_meta: ResMut<ShapeMeta>,               // TODO: make UI meta?
+    mut extracted_shapes: ResMut<ExtractedUiShapes>,
+    mut shape_meta: ResMut<ShapeMeta>, // TODO: make UI meta?
     render_device: Res<RenderDevice>,
     smud_pipeline: Res<SmudPipeline>,
     render_queue: Res<RenderQueue>,
@@ -238,8 +237,6 @@ fn queue_ui_shapes(
     smud_pipeline: Res<SmudPipeline>,
     ui_shape_batches: Query<(Entity, &UiShapeBatch)>,
     mut views: Query<&mut RenderPhase<TransparentUi>>,
-    mut pipeline_cache: ResMut<RenderPipelineCache>,
-    mut pipelines: ResMut<SpecializedPipelines<SmudPipeline>>,
 ) {
     // TODO: look at both the shape renderer and the
     // ui renderer and figure out which part to copy here!!!
@@ -277,13 +274,6 @@ fn queue_ui_shapes(
             });
         }
     }
-
-    // transparent_phase.add(TransparentUi {
-    //     entity: current_batch_entity,
-    //     draw_function: draw_smud_ui_shape,
-    //     pipeline: current_batch_pipeline,
-    //     sort_key: FloatOrd(z),
-    // });
 }
 
 #[derive(Component, Eq, PartialEq, Clone)]
