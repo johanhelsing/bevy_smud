@@ -14,9 +14,9 @@ fn main() {
         .run();
 }
 
-const NORMAL_BUTTON: Color = Color::rgb(0.9, 0.9, 0.9);
-const HOVERED_BUTTON: Color = Color::WHITE;
-const PRESSED_BUTTON: Color = Color::rgba(1., 1., 1., 0.8);
+const NORMAL_COLOR: Color = Color::rgb(0.9, 0.9, 0.9);
+const HOVERED_COLOR: Color = Color::WHITE;
+const PRESSED_COLOR: Color = Color::rgba(1., 1., 1., 0.8);
 
 fn button_system(
     mut interaction_query: Query<
@@ -27,13 +27,13 @@ fn button_system(
     for (interaction, mut color) in interaction_query.iter_mut() {
         match *interaction {
             Interaction::Clicked => {
-                *color = PRESSED_BUTTON.into();
+                *color = PRESSED_COLOR.into();
             }
             Interaction::Hovered => {
-                *color = HOVERED_BUTTON.into();
+                *color = HOVERED_COLOR.into();
             }
             Interaction::None => {
-                *color = NORMAL_BUTTON.into();
+                *color = NORMAL_COLOR.into();
             }
         }
     }

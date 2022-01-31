@@ -36,7 +36,6 @@ use crate::{
 type DrawSmudUiShape = (SetItemPipeline, SetShapeViewBindGroup<0>, DrawUiShapeNode);
 pub struct DrawUiShapeNode;
 impl EntityRenderCommand for DrawUiShapeNode {
-    // TODO: uishapemeta?
     type Param = (SRes<ShapeMeta>, SQuery<Read<UiShapeBatch>>);
 
     fn render<'w>(
@@ -95,7 +94,7 @@ fn extract_ui_shapes(
             continue;
         }
 
-        let size = node.size.x; // TODO: Also pass on the y value
+        let size = node.size.x; // TODO: Also pass on the height value
         let frame = size / 2.;
 
         extracted_shapes.0.alloc().init(ExtractedShape {
@@ -103,10 +102,7 @@ fn extract_ui_shapes(
             transform: *transform,
             sdf_shader: shape.sdf.clone_weak(),
             fill_shader: shape.fill.clone_weak(),
-            frame
-            // rect: None,
-            // // Pass the custom size
-            // custom_size: shape.custom_size,
+            frame,
         });
     }
 }
