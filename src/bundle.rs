@@ -2,7 +2,7 @@ use bevy::prelude::*;
 
 use crate::SmudShape;
 
-#[derive(Bundle, Clone)]
+#[derive(Bundle, Default, Clone)]
 pub struct ShapeBundle {
     pub shape: SmudShape,
     pub transform: Transform,

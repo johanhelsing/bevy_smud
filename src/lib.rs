@@ -375,7 +375,7 @@ struct ExtractedShape {
     transform: GlobalTransform,
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 struct ExtractedShapes(Vec<ExtractedShape>);
 
 fn extract_shapes(
@@ -462,6 +462,7 @@ fn queue_shapes(
                 .z
                 .partial_cmp(&b.transform.translation.z)
             {
+                // TODO: also sort by fill!
                 Some(Ordering::Equal) | None => a.sdf_shader.cmp(&b.sdf_shader),
                 Some(other) => other,
             }
