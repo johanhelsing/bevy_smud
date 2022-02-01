@@ -237,6 +237,19 @@ fn sd_arc(p: vec2<f32>, sc: vec2<f32>, ra: f32, rb: f32) -> f32 {
     ) - rb;
 }
 
+fn sd_arc_oriented(p: vec2<f32>, sc_orientation: vec2<f32>, sc_aperture: vec2<f32>, ra: f32, rb: f32) -> f32
+{
+    var p = p;
+    p = p * mat2x2<f32>(sc_orientation.x, sc_orientation.y, -sc_orientation.y, sc_orientation.x);
+    p.x = abs(p.x);
+    let k = select(
+        length(p),
+        dot(p, sc_aperture),
+        sc_aperture.y*p.x > sc_aperture.x*p.y
+    );
+    return sqrt(dot(p, p) + ra * ra - 2. * ra * k) - rb;
+}
+
 fn sd_horseshoe(p: vec2<f32>, c: vec2<f32>, r: f32, w: vec2<f32>) -> f32 {
     var p = p;
     p.x = abs(p.x);
@@ -630,4 +643,12 @@ fn sd_smooth_union(d1: f32, d2: f32, k: f32) -> f32 {
 fn sd_smooth_intersect(d1: f32, d2: f32, k: f32) -> f32 {
     let h = clamp(0.5 - 0.5 * (d2 - d1) / k, 0., 1.);
     return mix(d2, d1, h) + k * h * (1. - h);
+}
+
+// complex (and sometimes inexact shapes:)
+
+fn sd_arrow_head(p: vec2<f32>, w: f32, h: f32) -> f32 {
+    var p = p;
+    p.x = abs(p.x);
+    return sd_segment(p, vec2<f32>(0., 0.), vec2<f32>(w, -h));
 }
