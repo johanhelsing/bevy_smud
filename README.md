@@ -2,7 +2,7 @@
 
 Sdf 2d shape rendering for [Bevy](https://bevyengine.org).
 
-![screenshot of a bird drawn with bevy_smud](https://johanhelsing.studio/assets/bevy_smud.png)
+![screenshot of a bird drawn with bevy_smud](https://johanhelsing.studio/assets/bevy_smud_banner.png)
 
 Bevy smud is a way to conveniently construct and render sdf shapes with Bevy.
 
