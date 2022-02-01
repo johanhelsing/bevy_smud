@@ -69,7 +69,7 @@ I intend to support the `main` branch of Bevy in the `bevy-main` branch.
 
 |bevy|bevy_smud|
 |---|---|
-|0.6|main|
+|0.6|0.1, main|
 
 ## Thanks!
 
