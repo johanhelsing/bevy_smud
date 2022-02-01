@@ -6,18 +6,18 @@ Sdf 2d shape rendering for [Bevy](https://bevyengine.org).
 
 Bevy smud is a way to conveniently construct and render sdf shapes with Bevy.
 
-Given a shape function/expression, a fill type, it generates shaders at run-time.
+Given a shape function/expression, and a fill type, it generates shaders at run-time.
 
 If you keep the number of different sdf and fill combinations relatively low it's pretty performant. My machine easily handles 100k shapes at 60 fps, with 40 different shape/fill combinations in randomized order (see [gallery](examples/gallery) example).
 
 ## Usage
 
-A signed distance field (sdf) is a way to map points in space to distances to a surface. If a point maps to a positive value, it's outside the shape, if it's negative it's inside the shape. These "mappings" can be described by functions, which takes a point as input and returns a distance to a surface. For instance, if you wanted to make a circle, it could be described as `length(position - center) - radius`. That way, all the points that are `radius` away from `center` would be 0 and would define the edge of the shape.
+A signed distance field (sdf) is a way to map points in space to distances to a surface. If a point maps to a positive value, it's outside the shape, if it's negative, it's inside the shape. These "mappings" can be described by functions, which takes a point as input and returns a distance to a surface. For instance, if you wanted to make a circle, it could be described as `length(position - center) - radius`. That way, all the points that are `radius` away from `center` would be 0 and would define the edge of the shape.
 
-However, there are many built-in sdf primitives in this library, which are automatically imported when using the single expression or body shorthand for adding sdfs, so the circle above could also be described as:
+Many such functions describing geometric primitives are included in this library, they are imported automatically when using the single-expression or body shorthand for adding sdfs. For instance, the circle above could also be described as:
 
 ```wgsl
-distance = sd_circle(p - center, 50.)
+sd_circle(p - center, 50.)
 ```
 
 Similarly there are a bunch of other shapes (`sd_ellipse`, `sd_box`, `sd_rounded_box`, `sd_egg` etc. etc.)
@@ -31,7 +31,6 @@ fn spawn_circle(
     mut commands: Commands,
     mut shaders: ResMut<Assets<Shader>>,
 ) {
-    // `p` is the position of the fragment
     let circle = shaders.add_sdf_expr("sd_circle(p, 50.)");
 
     commands.spawn_bundle(ShapeBundle {
@@ -50,7 +49,7 @@ Make sure you reuse the shaders, i.e. don't call `add_sdf_expr` every frame.
 
 You can also define shapes in .wgsl files. Note that in order to use the built-in shapes, you have to import [`bevy_smud::shapes`](assets/shapes.wgsl), and you must create a function named `sdf` that takes a `vec2<f32>` and returns `f32`.
 
-Other than that, make sure you understand how to combine shapes, use symmetries and change domains. For instance, the [bevy](assets/bevy.wgsl) in the screenshot above is built up of circles, ellipses, and a vesica for the beak.
+Other than that, make sure you understand how to combine shapes, use symmetries and change domains. For instance, the [bevy](assets/bevy.wgsl) in the screenshot above is built up of several circles, ellipses, and a vesica for the beak.
 
 Also, check out the [examples](examples). In particular, the [basic](examples/basic.rs) example should be a good place to start.
 
