@@ -82,14 +82,21 @@ struct ExtractedUiShapes(Vec<ExtractedShape>);
 
 fn extract_ui_shapes(
     mut render_world: ResMut<RenderWorld>,
-    query: Query<(&Node, &GlobalTransform, &SmudShape, &Visibility, &UiColor)>,
+    query: Query<(
+        Entity,
+        &Node,
+        &GlobalTransform,
+        &SmudShape,
+        &Visibility,
+        &UiColor,
+    )>,
 ) {
     let mut extracted_shapes = render_world
         .get_resource_mut::<ExtractedUiShapes>()
         .unwrap();
     extracted_shapes.0.clear();
 
-    for (node, transform, shape, visibility, color) in query.iter() {
+    for (entity, node, transform, shape, visibility, color) in query.iter() {
         if !visibility.is_visible {
             continue;
         }
@@ -98,6 +105,7 @@ fn extract_ui_shapes(
         let frame = size / 2.;
 
         extracted_shapes.0.alloc().init(ExtractedShape {
+            entity,
             color: shape.color * Vec4::from(color.0),
             transform: *transform,
             sdf_shader: shape.sdf.clone_weak(),

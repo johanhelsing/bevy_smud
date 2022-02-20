@@ -32,7 +32,7 @@ use bevy::{
         RenderApp, RenderStage, RenderWorld,
     },
     sprite::Mesh2dPipelineKey,
-    utils::HashMap,
+    utils::{HashMap, HashSet},
 };
 use bytemuck::{Pod, Zeroable};
 use copyless::VecHelper;
@@ -370,6 +370,7 @@ fn extract_sdf_shaders(
 
 #[derive(Component, Clone, Debug)]
 struct ExtractedShape {
+    entity: Entity,
     color: Color,
     frame: f32,
     sdf_shader: Handle<Shader>,  // todo could be HandleId?
@@ -382,12 +383,12 @@ struct ExtractedShapes(Vec<ExtractedShape>);
 
 fn extract_shapes(
     mut render_world: ResMut<RenderWorld>,
-    query: Query<(&SmudShape, &ComputedVisibility, &GlobalTransform)>,
+    query: Query<(Entity, &SmudShape, &ComputedVisibility, &GlobalTransform)>,
 ) {
     let mut extracted_shapes = render_world.get_resource_mut::<ExtractedShapes>().unwrap();
     extracted_shapes.0.clear();
 
-    for (shape, computed_visibility, transform) in query.iter() {
+    for (entity, shape, computed_visibility, transform) in query.iter() {
         if !computed_visibility.is_visible {
             continue;
         }
@@ -397,6 +398,7 @@ fn extract_shapes(
         };
 
         extracted_shapes.0.alloc().init(ExtractedShape {
+            entity,
             color: shape.color,
             transform: *transform,
             sdf_shader: shape.sdf.clone_weak(),
@@ -451,8 +453,9 @@ fn queue_shapes(
     let shape_meta = &mut shape_meta;
 
     // Iterate over each view (a camera is a view)
-    for (mut transparent_phase, _visible_entities) in views.iter_mut() {
-        // todo: check visible entities?
+    for (mut transparent_phase, visible_entities) in views.iter_mut() {
+        // todo cache hashmaps?
+        let visible_entities_map = HashSet::from_iter(visible_entities.iter().cloned());
 
         let extracted_shapes = &mut extracted_shapes.0;
 
@@ -490,6 +493,9 @@ fn queue_shapes(
         // Batches are merged later (in `batch_phase_system()`), so that they can be interrupted
         // by any other phase item (and they can interrupt other items from batching).
         for extracted_shape in extracted_shapes.iter() {
+            if !visible_entities_map.contains(&extracted_shape.entity) {
+                continue;
+            }
             let new_batch = ShapeBatch {
                 shader: (
                     extracted_shape.sdf_shader.id,
