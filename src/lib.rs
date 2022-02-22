@@ -254,8 +254,7 @@ impl SpecializedPipeline for SmudPipeline {
 
         RenderPipelineDescriptor {
             vertex: VertexState {
-                shader: shader.clone_weak(),
-                // shader: SMUD_SHADER_HANDLE.typed::<Shader>(),
+                shader: VERTEX_SHADER_HANDLE.typed(),
                 entry_point: "vertex".into(),
                 shader_defs: Vec::new(),
                 buffers: vec![VertexBufferLayout {
@@ -351,7 +350,6 @@ fn extract_sdf_shaders(
         info!("Generating shader");
         let generated_shader = Shader::from_wgsl(format!(
             r#"
-#import bevy_smud::vertex
 #import {sdf_import_path}
 #import {fill_import_path}
 #import bevy_smud::fragment

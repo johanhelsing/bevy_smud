@@ -1,5 +1,4 @@
 #import bevy_smud::prelude
-#import bevy_smud::colorize
 
 struct View {
     view_proj: mat4x4<f32>;
