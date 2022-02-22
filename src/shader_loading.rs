@@ -8,14 +8,6 @@ const SHAPES_SHADER_HANDLE: HandleUntyped =
     HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 10055894596049459186);
 const SHAPES_SHADER_IMPORT: &str = "bevy_smud::shapes";
 
-const COLORIZE_SHADER_HANDLE: HandleUntyped =
-    HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 10050447940405429418);
-const COLORIZE_SHADER_IMPORT: &str = "bevy_smud::colorize";
-
-pub const SMUD_SHADER_HANDLE: HandleUntyped =
-    HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 5645555317811706725);
-const SMUD_SHADER_IMPORT: &str = "bevy_smud::smud";
-
 pub const VERTEX_SHADER_HANDLE: HandleUntyped =
     HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 16846632126033267571);
 const VERTEX_SHADER_IMPORT: &str = "bevy_smud::vertex";
@@ -98,12 +90,6 @@ impl Plugin for ShaderLoadingPlugin {
                     shaders: [
                         ("prelude.wgsl", PRELUDE_SHADER_IMPORT, PRELUDE_SHADER_HANDLE),
                         ("shapes.wgsl", SHAPES_SHADER_IMPORT, SHAPES_SHADER_HANDLE),
-                        (
-                            "colorize.wgsl",
-                            COLORIZE_SHADER_IMPORT,
-                            COLORIZE_SHADER_HANDLE,
-                        ),
-                        ("smud.wgsl", SMUD_SHADER_IMPORT, SMUD_SHADER_HANDLE),
                         ("vertex.wgsl", VERTEX_SHADER_IMPORT, VERTEX_SHADER_HANDLE),
                         (
                             "fragment.wgsl",
@@ -151,14 +137,6 @@ impl Plugin for ShaderLoadingPlugin {
             let shapes = Shader::from_wgsl(include_str!("../assets/shapes.wgsl"))
                 .with_import_path(SHAPES_SHADER_IMPORT);
             shaders.set_untracked(SHAPES_SHADER_HANDLE, shapes);
-
-            let colorize = Shader::from_wgsl(include_str!("../assets/colorize.wgsl"))
-                .with_import_path(COLORIZE_SHADER_IMPORT);
-            shaders.set_untracked(COLORIZE_SHADER_HANDLE, colorize);
-
-            let smud = Shader::from_wgsl(include_str!("../assets/smud.wgsl"))
-                .with_import_path(SMUD_SHADER_IMPORT);
-            shaders.set_untracked(SMUD_SHADER_HANDLE, smud);
 
             let vertex = Shader::from_wgsl(include_str!("../assets/vertex.wgsl"))
                 .with_import_path(VERTEX_SHADER_IMPORT);
