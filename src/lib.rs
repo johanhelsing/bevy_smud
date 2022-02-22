@@ -1,3 +1,7 @@
+//! See the [readme](https://github.com/johanhelsing/bevy_smud) and
+//! [examples](https://github.com/johanhelsing/bevy_smud/tree/main/examples) for
+//! usage.
+
 use std::cmp::Ordering;
 
 use bevy::{
@@ -49,6 +53,12 @@ mod sdf_assets;
 mod shader_loading;
 mod ui;
 
+/// Re-export of the essentials needed for rendering shapes
+///
+/// Intended to be included at the top of your file to minimize the amount of import noise.
+/// ```
+/// use bevy_smud::prelude::*;
+/// ```
 pub mod prelude {
     pub use crate::{
         sdf_assets::SdfAssets, Frame, ShapeBundle, SmudPlugin, SmudShape, UiShapeBundle,
@@ -57,6 +67,7 @@ pub mod prelude {
 }
 
 #[derive(Default)]
+/// Main plugin for enabling rendering of Sdf shapes
 pub struct SmudPlugin;
 
 impl Plugin for SmudPlugin {

@@ -16,10 +16,12 @@ pub const FRAGMENT_SHADER_HANDLE: HandleUntyped =
     HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 10370213491934870425);
 const FRAGMENT_SHADER_IMPORT: &str = "bevy_smud::fragment";
 
+/// The default fill used by `SmudShape`
 pub const DEFAULT_FILL_HANDLE: HandleUntyped =
     HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 18184663565780163454);
 const DEFAULT_FILL_IMPORT: &str = "bevy_smud::default_fill";
 
+/// Simple single-colored filled fill
 pub const SIMPLE_FILL_HANDLE: HandleUntyped =
     HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 16286090377316294491);
 const SIMPLE_FILL_IMPORT: &str = "bevy_smud::simple_fill";
