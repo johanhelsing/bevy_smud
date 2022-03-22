@@ -2,6 +2,8 @@
 //! [examples](https://github.com/johanhelsing/bevy_smud/tree/main/examples) for
 //! usage.
 
+#![allow(clippy::too_many_arguments)]
+
 use std::cmp::Ordering;
 
 use bevy::{
