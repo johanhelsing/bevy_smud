@@ -403,9 +403,7 @@ fn extract_shapes(
             continue;
         }
 
-        let frame = match shape.frame {
-            Frame::Quad(s) => s,
-        };
+        let Frame::Quad(frame) = shape.frame;
 
         extracted_shapes.0.alloc().init(ExtractedShape {
             color: shape.color,
