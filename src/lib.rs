@@ -223,7 +223,7 @@ impl SpecializedPipeline for SmudPipeline {
 
     fn specialize(&self, key: Self::Key) -> RenderPipelineDescriptor {
         let shader = self.shaders.0.get(&key.shader).unwrap();
-        info!("specializing for {shader:?}");
+        debug!("specializing for {shader:?}");
 
         // Customize how to store the meshes' vertex attributes in the vertex buffer
         // Our meshes only have position and color
@@ -358,7 +358,7 @@ fn extract_sdf_shaders(
             }
         };
 
-        info!("Generating shader");
+        debug!("Generating shader");
         let generated_shader = Shader::from_wgsl(format!(
             r#"
 #import {sdf_import_path}
