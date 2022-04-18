@@ -1,6 +1,6 @@
 [package]
 name = "bevy_smud"
-version = "0.1.1"
+version = "0.2.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 authors = ["Johan Helsing <johanhelsing@gmail.com>"]
@@ -10,24 +10,17 @@ categories = ["game-development", "rendering", "graphics"]
 repository = "https://github.com/johanhelsing/bevy_smud"
 
 [dependencies]
-bevy = { version = "0.6.0", default-features = false, features = ["render"] }
+bevy = { version = "0.7.0", default-features = false, features = ["render"] }
 bytemuck = "1.7"
 bitflags = "1.2"
 copyless = "0.1"
 
 [dev-dependencies]
-bevy = "0.6"
-bevy_pancam = "0.2"
-bevy_lospec = { git = "https://github.com/johanhelsing/bevy_lospec", branch = "main" }
-bevy_asset_loader = "0.8"
+bevy = "0.7"
+bevy_pancam = "0.3"
+bevy_lospec = "0.1"
+bevy_asset_loader = "0.10"
 rand = "0.8"
-
-# [features]
-# smud_shader_hot_reloading = ["bevy/bevy_shader_hot_reloading"]
-
-# [patch.crates-io]
-# bevy = { git = "https://github.com/superdump/bevy", branch = "hot-reload-core-shaders" }
-# bevy = { path = "../bevy" }
 
 [profile.dev]
 opt-level = 1

@@ -25,12 +25,12 @@ use bevy::{
         render_resource::{
             std140::AsStd140, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout,
             BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingType, BlendState,
-            BufferBindingType, BufferSize, BufferUsages, BufferVec, CachedPipelineId,
+            BufferBindingType, BufferSize, BufferUsages, BufferVec, CachedRenderPipelineId,
             ColorTargetState, ColorWrites, Face, FragmentState, FrontFace, MultisampleState,
-            PolygonMode, PrimitiveState, PrimitiveTopology, RenderPipelineCache,
-            RenderPipelineDescriptor, ShaderImport, ShaderStages, SpecializedPipeline,
-            SpecializedPipelines, TextureFormat, VertexAttribute, VertexBufferLayout, VertexFormat,
-            VertexState, VertexStepMode,
+            PipelineCache, PolygonMode, PrimitiveState, PrimitiveTopology,
+            RenderPipelineDescriptor, ShaderImport, ShaderStages, SpecializedRenderPipeline,
+            SpecializedRenderPipelines, TextureFormat, VertexAttribute, VertexBufferLayout,
+            VertexFormat, VertexState, VertexStepMode,
         },
         renderer::{RenderDevice, RenderQueue},
         texture::BevyDefault,
@@ -84,7 +84,7 @@ impl Plugin for SmudPlugin {
                 .init_resource::<ExtractedShapes>()
                 .init_resource::<ShapeMeta>()
                 .init_resource::<SmudPipeline>()
-                .init_resource::<SpecializedPipelines<SmudPipeline>>()
+                .init_resource::<SpecializedRenderPipelines<SmudPipeline>>()
                 .add_system_to_stage(RenderStage::Extract, extract_shapes)
                 .add_system_to_stage(RenderStage::Extract, extract_sdf_shaders)
                 .add_system_to_stage(RenderStage::Queue, queue_shapes);
@@ -220,7 +220,7 @@ struct SmudPipelineKey {
     shader: (HandleId, HandleId),
 }
 
-impl SpecializedPipeline for SmudPipeline {
+impl SpecializedRenderPipeline for SmudPipeline {
     type Key = SmudPipelineKey;
 
     fn specialize(&self, key: Self::Key) -> RenderPipelineDescriptor {
@@ -421,8 +421,8 @@ fn extract_shapes(
 fn queue_shapes(
     mut commands: Commands,
     mut views: Query<(&mut RenderPhase<Transparent2d>, &VisibleEntities)>,
-    mut pipelines: ResMut<SpecializedPipelines<SmudPipeline>>,
-    mut pipeline_cache: ResMut<RenderPipelineCache>,
+    mut pipelines: ResMut<SpecializedRenderPipelines<SmudPipeline>>,
+    mut pipeline_cache: ResMut<PipelineCache>,
     mut extracted_shapes: ResMut<ExtractedShapes>, // todo needs mut?
     mut shape_meta: ResMut<ShapeMeta>,
     transparent_draw_functions: Res<DrawFunctions<Transparent2d>>,
@@ -491,7 +491,7 @@ fn queue_shapes(
             ),
         };
         let mut current_batch_entity = Entity::from_raw(u32::MAX);
-        let mut current_batch_pipeline = CachedPipelineId::INVALID;
+        let mut current_batch_pipeline = CachedRenderPipelineId::INVALID;
 
         // Add a phase item for each shape, and detect when successive items can be batched.
         // Spawn an entity with a `ShapeBatch` component for each possible batch.
@@ -522,7 +522,7 @@ fn queue_shapes(
                 }
             }
 
-            if current_batch_pipeline == CachedPipelineId::INVALID {
+            if current_batch_pipeline == CachedRenderPipelineId::INVALID {
                 debug!("Shape not ready yet, skipping");
                 continue; // skip shapes that are not ready yet
             }

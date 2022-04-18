@@ -16,8 +16,8 @@ use bevy::{
             SetItemPipeline, TrackedRenderPass,
         },
         render_resource::{
-            BindGroupDescriptor, BindGroupEntry, CachedPipelineId, PrimitiveTopology,
-            RenderPipelineCache, SpecializedPipelines,
+            BindGroupDescriptor, BindGroupEntry, CachedRenderPipelineId, PipelineCache,
+            PrimitiveTopology, SpecializedRenderPipelines,
         },
         renderer::{RenderDevice, RenderQueue},
         view::ViewUniforms,
@@ -109,8 +109,8 @@ fn extract_ui_shapes(
 
 fn prepare_ui_shapes(
     mut commands: Commands,
-    mut pipelines: ResMut<SpecializedPipelines<SmudPipeline>>,
-    mut pipeline_cache: ResMut<RenderPipelineCache>,
+    mut pipelines: ResMut<SpecializedRenderPipelines<SmudPipeline>>,
+    mut pipeline_cache: ResMut<PipelineCache>,
     mut extracted_shapes: ResMut<ExtractedUiShapes>,
     mut shape_meta: ResMut<ShapeMeta>, // TODO: make UI meta?
     render_device: Res<RenderDevice>,
@@ -144,7 +144,7 @@ fn prepare_ui_shapes(
         HandleId::Id(Uuid::nil(), u64::MAX),
     );
     let mut last_z = 0.;
-    let mut current_batch_pipeline = CachedPipelineId::INVALID;
+    let mut current_batch_pipeline = CachedRenderPipelineId::INVALID;
 
     // todo: how should msaa be handled for ui?
     // would perhaps be solved if I move this to queue?
@@ -181,11 +181,11 @@ fn prepare_ui_shapes(
                     };
                     pipelines.specialize(&mut pipeline_cache, &smud_pipeline, specialize_key)
                 }
-                None => CachedPipelineId::INVALID,
+                None => CachedRenderPipelineId::INVALID,
             }
         }
 
-        if current_batch_pipeline == CachedPipelineId::INVALID {
+        if current_batch_pipeline == CachedRenderPipelineId::INVALID {
             debug!("Shape not ready yet, skipping");
             continue; // skip shapes that are not ready yet
         }
@@ -278,5 +278,5 @@ pub struct UiShapeBatch {
     range: Range<u32>,
     shader_key: (HandleId, HandleId),
     z: FloatOrd,
-    pipeline: CachedPipelineId,
+    pipeline: CachedRenderPipelineId,
 }
