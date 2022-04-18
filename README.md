@@ -1,5 +1,10 @@
 # bevy_smud
 
+[![crates.io](https://img.shields.io/crates/v/bevy_smud.svg)](https://crates.io/crates/bevy_smud)
+![MIT/Apache 2.0](https://img.shields.io/badge/license-MIT%2FApache-blue.svg)
+[![crates.io](https://img.shields.io/crates/d/bevy_smud.svg)](https://crates.io/crates/bevy_smud)
+[![docs.rs](https://img.shields.io/docsrs/bevy_smud)](https://docs.rs/bevy_smud)
+
 Sdf 2d shape rendering for [Bevy](https://bevyengine.org).
 
 ![screenshot of a bird drawn with bevy_smud](https://johanhelsing.studio/assets/bevy_smud_banner.png)
