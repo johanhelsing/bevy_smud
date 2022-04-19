@@ -13,7 +13,7 @@ impl SdfAssets for Assets<Shader> {
         let shader = Shader::from_wgsl(format!(
             r#"
 #import bevy_smud::shapes
-fn sdf(p: vec2<f32>) -> f32 {{
+fn sdf(p: vec2<f32>, params: vec4<f32>) -> f32 {{
     {body}
 }}
 "#
