@@ -221,7 +221,7 @@ impl SpecializedRenderPipeline for SmudPipeline {
         debug!("specializing for {shader:?}");
 
         // Customize how to store the meshes' vertex attributes in the vertex buffer
-        // Our meshes only have position and color
+        // Our meshes only have position, color and params
         let vertex_attributes = vec![
             // (GOTCHA! attributes are sorted alphabetically, and offsets need to reflect this)
             // Color
@@ -234,29 +234,36 @@ impl SpecializedRenderPipeline for SmudPipeline {
             VertexAttribute {
                 format: VertexFormat::Float32,
                 offset: (4) * 4,
-                shader_location: 4,
+                shader_location: 5,
+            },
+            // perf: Maybe it's possible to pack this more efficiently?
+            // Params
+            VertexAttribute {
+                format: VertexFormat::Float32x4,
+                offset: (4 + 1) * 4,
+                shader_location: 2,
             },
             // Position
             VertexAttribute {
                 format: VertexFormat::Float32x3,
-                offset: (4 + 1) * 4,
+                offset: (4 + 1 + 4) * 4,
                 shader_location: 0,
             },
             // Rotation
             VertexAttribute {
                 format: VertexFormat::Float32x2,
-                offset: (4 + 1 + 3) * 4,
-                shader_location: 2,
+                offset: (4 + 1 + 4 + 3) * 4,
+                shader_location: 3,
             },
             // Scale
             VertexAttribute {
                 format: VertexFormat::Float32,
-                offset: (4 + 1 + 3 + 2) * 4,
-                shader_location: 3,
+                offset: (4 + 1 + 4 + 3 + 2) * 4,
+                shader_location: 4,
             },
         ];
         // This is the sum of the size of the attributes above
-        let vertex_array_stride = (4 + 1 + 3 + 2 + 1) * 4;
+        let vertex_array_stride = (4 + 1 + 4 + 3 + 2 + 1) * 4;
 
         RenderPipelineDescriptor {
             vertex: VertexState {
@@ -382,6 +389,7 @@ var<uniform> time: Time;
 #[derive(Component, Clone, Debug)]
 struct ExtractedShape {
     color: Color,
+    params: Option<Vec4>,
     frame: f32,
     sdf_shader: Handle<Shader>,  // todo could be HandleId?
     fill_shader: Handle<Shader>, // todo could be HandleId?
@@ -406,6 +414,7 @@ fn extract_shapes(
 
         extracted_shapes.0.alloc().init(ExtractedShape {
             color: shape.color,
+            params: shape.params,
             transform: *transform,
             sdf_shader: shape.sdf.clone_weak(),
             fill_shader: shape.fill.clone_weak(),
@@ -531,6 +540,7 @@ fn queue_shapes(
             //     | ((color[3] * 255.0) as u32) << 24;
 
             let color = extracted_shape.color.as_linear_rgba_f32();
+            let params = extracted_shape.params.unwrap_or_default().to_array();
 
             let position = extracted_shape.transform.translation();
             let z = position.z;
@@ -548,6 +558,7 @@ fn queue_shapes(
             let vertex = ShapeVertex {
                 position,
                 color,
+                params,
                 rotation,
                 scale,
                 frame: extracted_shape.frame,
@@ -610,6 +621,7 @@ fn queue_time(
 struct ShapeVertex {
     pub color: [f32; 4],
     pub frame: f32,
+    pub params: [f32; 4], // for now all shapes have 4 f32 parameters
     pub position: [f32; 3],
     pub rotation: [f32; 2],
     pub scale: f32,
