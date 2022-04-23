@@ -3,6 +3,10 @@ use bevy::{ecs::query::QueryItem, prelude::*, render::render_component::ExtractC
 use crate::DEFAULT_FILL_HANDLE;
 
 #[derive(Component, Debug, Clone)]
+#[cfg_attr(
+    feature = "bevy-inspector-egui",
+    derive(bevy_inspector_egui::Inspectable)
+)]
 /// Main component used for describing an sdf shape
 pub struct SmudShape {
     /// The color used by the fill shader
@@ -41,6 +45,10 @@ impl ExtractComponent for SmudShape {
 
 /// Bounds for describing how far the fragment shader of a shape will reach, should be bigger than the shape unless you want to clip it
 #[derive(Debug, Clone, Copy)]
+#[cfg_attr(
+    feature = "bevy-inspector-egui",
+    derive(bevy_inspector_egui::Inspectable)
+)]
 pub enum Frame {
     /// A quad with a given half-size (!)
     Quad(f32), // todo: it probably makes sense for this to be the full width instead...
