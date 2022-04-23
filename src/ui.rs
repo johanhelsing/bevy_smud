@@ -196,7 +196,7 @@ fn prepare_ui_shapes(
         }
 
         let color = extracted_shape.color.as_linear_rgba_f32();
-        let params = extracted_shape.params.unwrap_or_default().to_array();
+        let params = extracted_shape.params.to_array();
 
         let position = position.into();
 

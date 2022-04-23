@@ -389,7 +389,7 @@ var<uniform> time: Time;
 #[derive(Component, Clone, Debug)]
 struct ExtractedShape {
     color: Color,
-    params: Option<Vec4>,
+    params: Vec4,
     frame: f32,
     sdf_shader: Handle<Shader>,  // todo could be HandleId?
     fill_shader: Handle<Shader>, // todo could be HandleId?
@@ -540,7 +540,7 @@ fn queue_shapes(
             //     | ((color[3] * 255.0) as u32) << 24;
 
             let color = extracted_shape.color.as_linear_rgba_f32();
-            let params = extracted_shape.params.unwrap_or_default().to_array();
+            let params = extracted_shape.params.to_array();
 
             let position = extracted_shape.transform.translation();
             let z = position.z;
