@@ -60,9 +60,15 @@ Also, check out the [examples](examples). In particular, the [basic](examples/ba
 
 The library also has *some* level of ui support. The [ui](examples/ui.rs) example shows how to create a "bevy" button.
 
+## Showcase
+
+Send me a PR if you want your project featured here:
+
+- Dis order: [![dis order screenshot](https://johanhelsing.studio/assets/dis-order.png)](https://jhelsing.itch.io/dis-order)
+
 ## Word of caution
 
-This crate should still be considered highly experimental.
+This crate is still fairly experimental.
 
 If you want something more finished, you should probably check out [bevy_prototype_lyon](https://github.com/Nilirad/bevy_prototype_lyon).
 
