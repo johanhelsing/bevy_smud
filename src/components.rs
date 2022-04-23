@@ -24,7 +24,7 @@ pub struct SmudShape {
     /// Parameters to pass to shapes, for things such as width of a box
     // perhaps it would be a better idea to have this as a separate component?
     // keeping it here for now...
-    pub params: Option<Vec4>,
+    pub params: Vec4,
 }
 
 impl Default for SmudShape {
