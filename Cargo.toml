@@ -16,9 +16,8 @@ bitflags = "1.2"
 copyless = "0.1"
 
 [dev-dependencies]
-bevy = "0.7"
 bevy_pancam = "0.3"
-bevy_lospec = "0.1"
+bevy_lospec = "0.1.1"
 bevy_asset_loader = "0.10"
 rand = "0.8"
 
