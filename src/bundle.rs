@@ -2,7 +2,7 @@ use bevy::prelude::*;
 
 use crate::SmudShape;
 
-#[derive(Bundle, Default, Clone)]
+#[derive(Bundle, Default, Clone, Debug)]
 /// Bundle with all the components needed for drawing an sdf shape in 2d world space
 pub struct ShapeBundle {
     pub shape: SmudShape,
@@ -14,7 +14,7 @@ pub struct ShapeBundle {
     pub computed_visibility: ComputedVisibility,
 }
 
-#[derive(Bundle, Default, Clone)]
+#[derive(Bundle, Default, Clone, Debug)]
 /// Bundle with all the components used for drawing an sdf shape as a bevy UI node
 pub struct UiShapeBundle {
     /// Describes the size of the node
