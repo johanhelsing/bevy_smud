@@ -21,6 +21,7 @@ bevy_pancam = "0.3"
 bevy_lospec = "0.1.1"
 bevy_asset_loader = "0.10"
 rand = "0.8"
+bevy = { version = "0.7.0", default-features = false, features = ["render", "bevy_winit"] }
 
 [profile.dev]
 opt-level = 1
