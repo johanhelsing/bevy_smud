@@ -213,8 +213,8 @@ impl FromWorld for SmudPipeline {
 
         Self {
             view_layout,
-            shaders: Default::default()
-            // quad_handle: Default::default(), // this is initialized later when we can actually use Assets!
+            shaders: default()
+            // quad_handle: default(), // this is initialized later when we can actually use Assets!
             // quad,
         }
     }
@@ -623,7 +623,7 @@ pub struct ShapeBatch {
 
 // impl<S: SdfShapeShader> Default for SdfShapePlugin<S> {
 //     fn default() -> Self {
-//         Self(Default::default())
+//         Self(default())
 //     }
 // }
 

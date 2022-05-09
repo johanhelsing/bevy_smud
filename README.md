@@ -43,9 +43,9 @@ fn spawn_circle(
             color: Color::TOMATO,
             sdf: circle,
             frame: Frame::Quad(55.),
-            ..Default::default()
+            ..default()
         },
-        ..Default::default()
+        ..default()
     });
 }
 ```

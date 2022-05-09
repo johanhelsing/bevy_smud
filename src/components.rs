@@ -27,8 +27,8 @@ impl Default for SmudShape {
     fn default() -> Self {
         Self {
             color: Color::PINK,
-            sdf: Default::default(),
-            frame: Default::default(),
+            sdf: default(),
+            frame: default(),
             fill: DEFAULT_FILL_HANDLE.typed(),
         }
     }
