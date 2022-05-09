@@ -26,139 +26,35 @@ pub const SIMPLE_FILL_HANDLE: HandleUntyped =
     HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 16286090377316294491);
 const SIMPLE_FILL_IMPORT: &str = "bevy_smud::simple_fill";
 
-// unused:
-// 16950619110804285379
-// 4146091551367169642
-// 8080191226000727371
-// 17031499878237077924
-// 17982773815777006860
-// 1530570659737977289
-
-#[cfg(feature = "smud_shader_hot_reloading")]
-struct HotShader {
-    strong_handle: Handle<Shader>,
-    untyped_handle: Option<HandleUntyped>,
-    loaded: bool,
-    import_path: String,
-}
-
-// Needed to keep the shaders alive
-#[cfg(feature = "smud_shader_hot_reloading")]
-struct HotShaders<T> {
-    shaders: Vec<HotShader>,
-    marker: std::marker::PhantomData<T>,
-}
-
-#[cfg(feature = "smud_shader_hot_reloading")]
-impl<T> Default for HotShaders<T> {
-    fn default() -> Self {
-        Self {
-            shaders: default(),
-            marker: default(),
-        }
-    }
-}
-
-#[cfg(feature = "smud_shader_hot_reloading")]
-fn setup_shader_imports<T: 'static + Send + Sync>(
-    mut hot_shaders: ResMut<HotShaders<T>>,
-    mut shaders: ResMut<Assets<Shader>>,
-    asset_server: Res<AssetServer>,
-) {
-    for hot_shader in hot_shaders.shaders.iter_mut() {
-        if !hot_shader.loaded
-            && asset_server.get_load_state(hot_shader.strong_handle.clone())
-                == bevy::asset::LoadState::Loaded
-        {
-            shaders
-                .get_mut(hot_shader.strong_handle.clone())
-                .unwrap()
-                .set_import_path(&hot_shader.import_path);
-
-            hot_shader.loaded = true;
-        }
-    }
-}
-
 pub struct ShaderLoadingPlugin;
 
 impl Plugin for ShaderLoadingPlugin {
     fn build(&self, app: &mut App) {
-        #[cfg(feature = "smud_shader_hot_reloading")]
-        {
-            let mut hot_shaders = {
-                let asset_server = app.world.get_resource::<AssetServer>().unwrap();
-                HotShaders::<Self> {
-                    shaders: [
-                        ("prelude.wgsl", PRELUDE_SHADER_IMPORT, PRELUDE_SHADER_HANDLE),
-                        ("shapes.wgsl", SHAPES_SHADER_IMPORT, SHAPES_SHADER_HANDLE),
-                        ("vertex.wgsl", VERTEX_SHADER_IMPORT, VERTEX_SHADER_HANDLE),
-                        (
-                            "fragment.wgsl",
-                            FRAGMENT_SHADER_IMPORT,
-                            FRAGMENT_SHADER_HANDLE,
-                        ),
-                        // Hot-loading is borked-ish for these for some reason, so always load normally
-                        // (
-                        //     "fills/cubic_falloff.wgsl",
-                        //     DEFAULT_FILL_IMPORT,
-                        //     DEFAULT_FILL_HANDLE,
-                        // ),
-                        // ("fills/simple.wgsl", SIMPLE_FILL_IMPORT, SIMPLE_FILL_HANDLE),
-                    ]
-                    .into_iter()
-                    .map(|(path, import_path, untyped_handle)| HotShader {
-                        strong_handle: asset_server.load(path),
-                        untyped_handle: Some(untyped_handle),
-                        import_path: import_path.into(),
-                        loaded: false,
-                    })
-                    .collect(),
-                    ..default()
-                }
-            };
-            let mut shader_assets = app.world.get_resource_mut::<Assets<Shader>>().unwrap();
+        let mut shaders = app.world.get_resource_mut::<Assets<Shader>>().unwrap();
 
-            for hot_shader in hot_shaders.shaders.iter_mut() {
-                let untyped_handle = hot_shader.untyped_handle.take().unwrap();
-                shader_assets.add_alias(hot_shader.strong_handle.clone(), untyped_handle);
-            }
+        let prelude = Shader::from_wgsl(include_str!("../assets/prelude.wgsl"))
+            .with_import_path(PRELUDE_SHADER_IMPORT);
+        shaders.set_untracked(PRELUDE_SHADER_HANDLE, prelude);
 
-            app.insert_resource(hot_shaders);
-            app.add_system(setup_shader_imports::<Self>);
-        }
+        let shapes = Shader::from_wgsl(include_str!("../assets/shapes.wgsl"))
+            .with_import_path(SHAPES_SHADER_IMPORT);
+        shaders.set_untracked(SHAPES_SHADER_HANDLE, shapes);
 
-        #[cfg(not(feature = "smud_shader_hot_reloading"))]
-        {
-            let mut shaders = app.world.get_resource_mut::<Assets<Shader>>().unwrap();
+        let vertex = Shader::from_wgsl(include_str!("../assets/vertex.wgsl"))
+            .with_import_path(VERTEX_SHADER_IMPORT);
+        shaders.set_untracked(VERTEX_SHADER_HANDLE, vertex);
 
-            let prelude = Shader::from_wgsl(include_str!("../assets/prelude.wgsl"))
-                .with_import_path(PRELUDE_SHADER_IMPORT);
-            shaders.set_untracked(PRELUDE_SHADER_HANDLE, prelude);
+        let fragment = Shader::from_wgsl(include_str!("../assets/fragment.wgsl"))
+            .with_import_path(FRAGMENT_SHADER_IMPORT);
+        shaders.set_untracked(FRAGMENT_SHADER_HANDLE, fragment);
 
-            let shapes = Shader::from_wgsl(include_str!("../assets/shapes.wgsl"))
-                .with_import_path(SHAPES_SHADER_IMPORT);
-            shaders.set_untracked(SHAPES_SHADER_HANDLE, shapes);
+        let mut shaders = app.world.get_resource_mut::<Assets<Shader>>().unwrap();
+        let fill = Shader::from_wgsl(include_str!("../assets/fills/cubic_falloff.wgsl"))
+            .with_import_path(DEFAULT_FILL_IMPORT);
+        shaders.set_untracked(DEFAULT_FILL_HANDLE, fill);
 
-            let vertex = Shader::from_wgsl(include_str!("../assets/vertex.wgsl"))
-                .with_import_path(VERTEX_SHADER_IMPORT);
-            shaders.set_untracked(VERTEX_SHADER_HANDLE, vertex);
-
-            let fragment = Shader::from_wgsl(include_str!("../assets/fragment.wgsl"))
-                .with_import_path(FRAGMENT_SHADER_IMPORT);
-            shaders.set_untracked(FRAGMENT_SHADER_HANDLE, fragment);
-        }
-
-        // Hot-loading is borked-ish for these for some reason, so always load normally
-        {
-            let mut shaders = app.world.get_resource_mut::<Assets<Shader>>().unwrap();
-            let fill = Shader::from_wgsl(include_str!("../assets/fills/cubic_falloff.wgsl"))
-                .with_import_path(DEFAULT_FILL_IMPORT);
-            shaders.set_untracked(DEFAULT_FILL_HANDLE, fill);
-
-            let simple_fill = Shader::from_wgsl(include_str!("../assets/fills/simple.wgsl"))
-                .with_import_path(SIMPLE_FILL_IMPORT);
-            shaders.set_untracked(SIMPLE_FILL_HANDLE, simple_fill);
-        }
+        let simple_fill = Shader::from_wgsl(include_str!("../assets/fills/simple.wgsl"))
+            .with_import_path(SIMPLE_FILL_IMPORT);
+        shaders.set_untracked(SIMPLE_FILL_HANDLE, simple_fill);
     }
 }
