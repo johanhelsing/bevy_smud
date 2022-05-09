@@ -43,9 +43,9 @@ return sd_circle(p - vec2<f32>(20., 0.), 40.);
             // The frame needs to be bigger than the shape we're drawing
             // Since the circle has radius 70, we make the half-size of the quad 80.
             frame: Frame::Quad(80.),
-            ..Default::default()
+            ..default()
         },
-        ..Default::default()
+        ..default()
     });
 
     commands.spawn_bundle(ShapeBundle {
@@ -54,16 +54,16 @@ return sd_circle(p - vec2<f32>(20., 0.), 40.);
             color: Color::rgb(0.7, 0.6, 0.4),
             sdf: peanut,
             frame: Frame::Quad(80.),
-            ..Default::default()
+            ..default()
         },
-        ..Default::default()
+        ..default()
     });
 
     commands.spawn_bundle(ShapeBundle {
         transform: Transform {
             translation: Vec3::X * -200.,
             scale: Vec3::splat(0.4),
-            ..Default::default()
+            ..default()
         },
         shape: SmudShape {
             color: Color::WHITE,
@@ -72,9 +72,8 @@ return sd_circle(p - vec2<f32>(20., 0.), 40.);
             // The simple fill is just a simple anti-aliased opaque fill
             fill: SIMPLE_FILL_HANDLE.typed(),
             frame: Frame::Quad(295.),
-            ..Default::default()
         },
-        ..Default::default()
+        ..default()
     });
 
     commands.spawn_bundle(OrthographicCameraBundle::new_2d());

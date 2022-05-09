@@ -48,14 +48,14 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                 size: Size::new(Val::Px(600.0), Val::Px(450.0)),
                 justify_content: JustifyContent::SpaceBetween,
                 margin: Rect::all(Val::Auto),
-                ..Default::default()
+                ..default()
             },
             shape: SmudShape {
                 color: Color::rgb(0.9, 0.5, 0.4),
                 sdf: bevy_shape_shader,
-                ..Default::default()
+                ..default()
             },
-            ..Default::default()
+            ..default()
         })
         .insert(Button)
         .insert(Interaction::default());

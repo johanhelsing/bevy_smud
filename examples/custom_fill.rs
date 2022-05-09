@@ -8,11 +8,10 @@ fn main() {
     #[cfg(feature = "smud_shader_hot_reloading")]
     app.insert_resource(bevy::asset::AssetServerSettings {
         watch_for_changes: true,
-        ..Default::default()
+        ..default()
     });
 
     app.insert_resource(Msaa { samples: 4 })
-        // .insert_resource(ClearColor(Color::rgb(0.7, 0.8, 0.7)))
         .insert_resource(ClearColor(Color::BLACK))
         .add_plugins(DefaultPlugins)
         .add_plugin(SmudPlugin)
@@ -35,9 +34,8 @@ fn setup(
             sdf: asset_server.load("bevy.wgsl"),
             fill: sin_fill,
             frame: Frame::Quad(295.),
-            ..Default::default()
         },
-        ..Default::default()
+        ..default()
     });
 
     commands.spawn_bundle(ShapeBundle {
@@ -47,9 +45,8 @@ fn setup(
             sdf: asset_server.load("bevy.wgsl"),
             fill: SIMPLE_FILL_HANDLE.typed(),
             frame: Frame::Quad(295.),
-            ..Default::default()
         },
-        ..Default::default()
+        ..default()
     });
 
     commands.spawn_bundle(ShapeBundle {
@@ -66,9 +63,8 @@ return vec4<f32>(color.rgb, a * color.a);
             ),
 
             frame: Frame::Quad(295.),
-            ..Default::default()
         },
-        ..Default::default()
+        ..default()
     });
 
     commands

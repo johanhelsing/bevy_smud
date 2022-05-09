@@ -53,8 +53,8 @@ struct HotShaders<T> {
 impl<T> Default for HotShaders<T> {
     fn default() -> Self {
         Self {
-            shaders: Default::default(),
-            marker: Default::default(),
+            shaders: default(),
+            marker: default(),
         }
     }
 }
@@ -114,7 +114,7 @@ impl Plugin for ShaderLoadingPlugin {
                         loaded: false,
                     })
                     .collect(),
-                    ..Default::default()
+                    ..default()
                 }
             };
             let mut shader_assets = app.world.get_resource_mut::<Assets<Shader>>().unwrap();

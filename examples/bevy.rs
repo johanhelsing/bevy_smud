@@ -8,7 +8,7 @@ fn main() {
     #[cfg(feature = "smud_shader_hot_reloading")]
     app.insert_resource(bevy::asset::AssetServerSettings {
         watch_for_changes: true,
-        ..Default::default()
+        ..default()
     });
 
     app.insert_resource(Msaa { samples: 4 })
@@ -28,9 +28,9 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
             color: Color::rgb(0.36, 0.41, 0.45),
             sdf: bevy_shape_shader,
             frame: Frame::Quad(400.),
-            ..Default::default()
+            ..default()
         },
-        ..Default::default()
+        ..default()
     });
 
     commands

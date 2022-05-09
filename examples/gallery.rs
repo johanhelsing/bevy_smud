@@ -15,7 +15,7 @@ fn main() {
     #[cfg(feature = "smud_shader_hot_reloading")]
     app.insert_resource(bevy::asset::AssetServerSettings {
         watch_for_changes: true,
-        ..Default::default()
+        ..default()
     });
 
     app.add_state(GameState::Loading)
@@ -119,7 +119,7 @@ fn setup(
                         frame: Frame::Quad(50.),
                         fill: fills.choose(&mut rng).unwrap().clone(),
                     },
-                    ..Default::default()
+                    ..default()
                 })
                 .insert(Index(index));
         }
