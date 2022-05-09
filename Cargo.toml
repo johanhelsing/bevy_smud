@@ -24,6 +24,7 @@ rand = "0.8"
 bevy = { version = "0.7.0", default-features = false, features = [
     "render",
     "bevy_winit",
+    "x11", # github actions runenrs don't have libxkbcommon installed, so can't use wayland
     "filesystem_watcher"
 ] }
 
