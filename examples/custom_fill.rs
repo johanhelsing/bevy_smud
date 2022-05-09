@@ -3,15 +3,8 @@ use bevy_pancam::*;
 use bevy_smud::{prelude::*, SIMPLE_FILL_HANDLE};
 
 fn main() {
-    let mut app = App::new();
-
-    #[cfg(feature = "smud_shader_hot_reloading")]
-    app.insert_resource(bevy::asset::AssetServerSettings {
-        watch_for_changes: true,
-        ..default()
-    });
-
-    app.insert_resource(Msaa { samples: 4 })
+    App::new()
+        .insert_resource(Msaa { samples: 4 })
         .insert_resource(ClearColor(Color::BLACK))
         .add_plugins(DefaultPlugins)
         .add_plugin(SmudPlugin)

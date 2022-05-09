@@ -12,12 +12,6 @@ fn main() {
         .with_collection::<AssetHandles>()
         .build(&mut app);
 
-    #[cfg(feature = "smud_shader_hot_reloading")]
-    app.insert_resource(bevy::asset::AssetServerSettings {
-        watch_for_changes: true,
-        ..default()
-    });
-
     app.add_state(GameState::Loading)
         .insert_resource(Msaa { samples: 4 })
         .add_plugins(DefaultPlugins)
