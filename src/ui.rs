@@ -29,11 +29,17 @@ use bevy::{
 use copyless::VecHelper;
 
 use crate::{
-    ExtractedShape, SetShapeViewBindGroup, ShapeMeta, ShapeVertex, SmudPipeline, SmudPipelineKey,
-    SmudShape,
+    ExtractedShape, SetShapeViewBindGroup, SetTimeBindGroup, ShapeMeta, ShapeVertex, SmudPipeline,
+    SmudPipelineKey, SmudShape,
 };
 
-type DrawSmudUiShape = (SetItemPipeline, SetShapeViewBindGroup<0>, DrawUiShapeNode);
+type DrawSmudUiShape = (
+    SetItemPipeline,
+    SetShapeViewBindGroup<0>,
+    SetTimeBindGroup<1>,
+    DrawUiShapeNode,
+);
+
 pub struct DrawUiShapeNode;
 impl EntityRenderCommand for DrawUiShapeNode {
     type Param = (SRes<ShapeMeta>, SQuery<Read<UiShapeBatch>>);
