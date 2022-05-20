@@ -23,7 +23,8 @@ use bevy::{
             RenderCommandResult, RenderPhase, SetItemPipeline, TrackedRenderPass,
         },
         render_resource::{
-            std140::AsStd140, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout,
+            std140::{AsStd140, Std140},
+            BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout,
             BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingType, BlendState, Buffer,
             BufferBindingType, BufferDescriptor, BufferSize, BufferUsages, BufferVec,
             CachedRenderPipelineId, ColorTargetState, ColorWrites, Face, FragmentState, FrontFace,
@@ -84,7 +85,7 @@ impl Plugin for SmudPlugin {
         let render_device = app.world.get_resource::<RenderDevice>().unwrap();
         let buffer = render_device.create_buffer(&BufferDescriptor {
             label: Some("time uniform buffer"),
-            size: std::mem::size_of::<f32>() as u64,
+            size: TimeUniform::std140_size_static() as u64,
             usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
@@ -638,21 +639,17 @@ fn queue_shapes(
 }
 
 fn extract_time(mut commands: Commands, time: Res<Time>) {
-    commands.insert_resource(ExtractedTime {
+    commands.insert_resource(TimeUniform {
         seconds_since_startup: time.seconds_since_startup() as f32,
     });
 }
 
 fn prepare_time(
-    time: Res<ExtractedTime>,
+    time: Res<TimeUniform>,
     time_meta: ResMut<TimeMeta>,
     render_queue: Res<RenderQueue>,
 ) {
-    render_queue.write_buffer(
-        &time_meta.buffer,
-        0,
-        bevy::core::cast_slice(&[time.seconds_since_startup]),
-    );
+    render_queue.write_buffer(&time_meta.buffer, 0, time.as_std140().as_bytes());
 }
 
 fn queue_time(
@@ -708,8 +705,8 @@ struct TimeMeta {
     bind_group: Option<BindGroup>,
 }
 
-#[derive(Default)]
-struct ExtractedTime {
+#[derive(Default, AsStd140)]
+struct TimeUniform {
     seconds_since_startup: f32,
 }
 
