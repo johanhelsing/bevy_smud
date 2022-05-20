@@ -23,7 +23,8 @@ use bevy::{
             RenderCommandResult, RenderPhase, SetItemPipeline, TrackedRenderPass,
         },
         render_resource::{
-            std140::AsStd140, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout,
+            std140::{AsStd140, Std140},
+            BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout,
             BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingType, BlendState, Buffer,
             BufferBindingType, BufferDescriptor, BufferSize, BufferUsages, BufferVec,
             CachedRenderPipelineId, ColorTargetState, ColorWrites, Face, FragmentState, FrontFace,
@@ -84,7 +85,7 @@ impl Plugin for SmudPlugin {
         let render_device = app.world.get_resource::<RenderDevice>().unwrap();
         let buffer = render_device.create_buffer(&BufferDescriptor {
             label: Some("time uniform buffer"),
-            size: std::mem::size_of::<f32>() as u64,
+            size: TimeUniform::std140_size_static() as u64,
             usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
@@ -474,10 +475,7 @@ fn extract_shapes(
             transform: *transform,
             sdf_shader: shape.sdf.clone_weak(),
             fill_shader: shape.fill.clone_weak(),
-            frame
-            // rect: None,
-            // // Pass the custom size
-            // custom_size: shape.custom_size,
+            frame,
         });
     }
 }
@@ -638,21 +636,17 @@ fn queue_shapes(
 }
 
 fn extract_time(mut commands: Commands, time: Res<Time>) {
-    commands.insert_resource(ExtractedTime {
+    commands.insert_resource(TimeUniform {
         seconds_since_startup: time.seconds_since_startup() as f32,
     });
 }
 
 fn prepare_time(
-    time: Res<ExtractedTime>,
+    time: Res<TimeUniform>,
     time_meta: ResMut<TimeMeta>,
     render_queue: Res<RenderQueue>,
 ) {
-    render_queue.write_buffer(
-        &time_meta.buffer,
-        0,
-        bevy::core::cast_slice(&[time.seconds_since_startup]),
-    );
+    render_queue.write_buffer(&time_meta.buffer, 0, time.as_std140().as_bytes());
 }
 
 fn queue_time(
@@ -708,41 +702,7 @@ struct TimeMeta {
     bind_group: Option<BindGroup>,
 }
 
-#[derive(Default)]
-struct ExtractedTime {
+#[derive(Default, AsStd140)]
+struct TimeUniform {
     seconds_since_startup: f32,
 }
-
-// TODO: is RenderAsset asking too much?
-// pub trait SdfShapeShader: 'static + Send + Sync {
-//     /// Shader must include a handle to a shader with a wgsl function with signature fn distance(pos: vec2<f32>) -> f32
-//     fn shader(asset_server: &AssetServer) -> Handle<Shader>;
-// }
-
-// /// Adds the necessary ECS resources and render logic to enable rendering entities using the given [`SdfShapeShader`]
-// /// asset type
-// pub struct SdfShapePlugin<S: SdfShapeShader>(PhantomData<S>);
-
-// impl<S: SdfShapeShader> Default for SdfShapePlugin<S> {
-//     fn default() -> Self {
-//         Self(default())
-//     }
-// }
-
-// impl<S: SdfShapeShader> Plugin for SdfShapePlugin<S> {
-//     fn build(&self, app: &mut App) {
-//         // TODO:
-//         // app.add_asset::<S>()
-//         //     .add_plugin(ExtractComponentPlugin::<Handle<S>>::default())
-//         //     .add_plugin(RenderAssetPlugin::<S>::default());
-//         // if let Ok(render_app) = app.get_sub_app_mut(RenderApp) {
-//         //     render_app
-//         //         .add_render_command::<Transparent3d, DrawMaterial<S>>()
-//         //         .add_render_command::<Opaque3d, DrawMaterial<S>>()
-//         //         .add_render_command::<AlphaMask3d, DrawMaterial<S>>()
-//         //         .init_resource::<MaterialPipeline<S>>()
-//         //         .init_resource::<SpecializedPipelines<MaterialPipeline<S>>>()
-//         //         .add_system_to_stage(RenderStage::Queue, queue_material_meshes::<S>);
-//         // }
-//     }
-// }
