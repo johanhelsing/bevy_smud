@@ -1,4 +1,4 @@
-use bevy::{ecs::query::QueryItem, prelude::*, render::render_component::ExtractComponent};
+use bevy::prelude::*;
 
 use crate::DEFAULT_FILL_HANDLE;
 
@@ -31,15 +31,6 @@ impl Default for SmudShape {
             frame: default(),
             fill: DEFAULT_FILL_HANDLE.typed(),
         }
-    }
-}
-
-impl ExtractComponent for SmudShape {
-    type Query = &'static SmudShape;
-    type Filter = ();
-
-    fn extract_component(item: QueryItem<Self::Query>) -> Self {
-        item.clone()
     }
 }
 

@@ -51,6 +51,6 @@ fn setup(mut commands: Commands, mut shaders: ResMut<Assets<Shader>>) {
     });
 
     commands
-        .spawn_bundle(OrthographicCameraBundle::new_2d())
+        .spawn_bundle(Camera2dBundle::default())
         .insert(PanCam::default());
 }

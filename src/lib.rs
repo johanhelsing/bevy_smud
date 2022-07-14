@@ -8,8 +8,7 @@ use std::cmp::Ordering;
 
 use bevy::{
     asset::HandleId,
-    core::FloatOrd,
-    core_pipeline::Transparent2d,
+    core_pipeline::core_2d::Transparent2d,
     ecs::system::{
         lifetimeless::{Read, SQuery, SRes},
         SystemParamItem,
@@ -23,23 +22,22 @@ use bevy::{
             RenderCommandResult, RenderPhase, SetItemPipeline, TrackedRenderPass,
         },
         render_resource::{
-            std140::{AsStd140, Std140},
             BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout,
-            BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingType, BlendState, Buffer,
-            BufferBindingType, BufferDescriptor, BufferSize, BufferUsages, BufferVec,
-            CachedRenderPipelineId, ColorTargetState, ColorWrites, Face, FragmentState, FrontFace,
-            MultisampleState, PipelineCache, PolygonMode, PrimitiveState, PrimitiveTopology,
-            RenderPipelineDescriptor, ShaderImport, ShaderStages, SpecializedRenderPipeline,
-            SpecializedRenderPipelines, TextureFormat, VertexAttribute, VertexBufferLayout,
-            VertexFormat, VertexState, VertexStepMode,
+            BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingType, BlendState,
+            BufferBindingType, BufferSize, BufferUsages, BufferVec, CachedRenderPipelineId,
+            ColorTargetState, ColorWrites, Face, FragmentState, FrontFace, MultisampleState,
+            PipelineCache, PolygonMode, PrimitiveState, PrimitiveTopology,
+            RenderPipelineDescriptor, ShaderImport, ShaderStages, ShaderType,
+            SpecializedRenderPipeline, SpecializedRenderPipelines, TextureFormat, UniformBuffer,
+            VertexAttribute, VertexBufferLayout, VertexFormat, VertexState, VertexStepMode,
         },
         renderer::{RenderDevice, RenderQueue},
         texture::BevyDefault,
         view::{ViewUniform, ViewUniformOffset, ViewUniforms, VisibleEntities},
-        RenderApp, RenderStage, RenderWorld,
+        Extract, MainWorld, RenderApp, RenderStage,
     },
     sprite::Mesh2dPipelineKey,
-    utils::HashMap,
+    utils::{FloatOrd, HashMap},
 };
 use bytemuck::{Pod, Zeroable};
 use copyless::VecHelper;
@@ -82,23 +80,12 @@ impl Plugin for SmudPlugin {
         app.add_plugin(ShaderLoadingPlugin);
         app.add_plugin(UiShapePlugin);
 
-        let render_device = app.world.get_resource::<RenderDevice>().unwrap();
-        let buffer = render_device.create_buffer(&BufferDescriptor {
-            label: Some("time uniform buffer"),
-            size: TimeUniform::std140_size_static() as u64,
-            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-
         if let Ok(render_app) = app.get_sub_app_mut(RenderApp) {
             render_app
                 .add_render_command::<Transparent2d, DrawSmudShape>()
                 .init_resource::<ExtractedShapes>()
                 .init_resource::<ShapeMeta>()
-                .insert_resource(TimeMeta {
-                    buffer,
-                    bind_group: None,
-                })
+                .init_resource::<TimeMeta>()
                 .init_resource::<SmudPipeline>()
                 .init_resource::<SpecializedRenderPipelines<SmudPipeline>>()
                 .add_system_to_stage(RenderStage::Extract, extract_shapes)
@@ -220,7 +207,7 @@ impl FromWorld for SmudPipeline {
                 ty: BindingType::Buffer {
                     ty: BufferBindingType::Uniform,
                     has_dynamic_offset: true,
-                    min_binding_size: BufferSize::new(ViewUniform::std140_size_static() as u64),
+                    min_binding_size: Some(ViewUniform::min_size()),
                 },
                 count: None,
             }],
@@ -372,55 +359,54 @@ impl SpecializedRenderPipeline for SmudPipeline {
 #[derive(Default)]
 struct ShapeShaders(HashMap<(HandleId, HandleId), Handle<Shader>>);
 
-fn extract_sdf_shaders(
-    mut render_world: ResMut<RenderWorld>,
-    shapes: Query<&SmudShape>, //, Changed<SmudShape>>, // does changed help? need to make sure it is not racy then!
-    mut shaders: ResMut<Assets<Shader>>,
-) {
-    let mut pipeline = render_world.get_resource_mut::<SmudPipeline>().unwrap();
+// TODO: do some of this work in the main world instead, so we don't need to take a mutable
+// reference to MainWorld.
+fn extract_sdf_shaders(mut main_world: ResMut<MainWorld>, mut pipeline: ResMut<SmudPipeline>) {
+    main_world.resource_scope(|world, mut shaders: Mut<Assets<Shader>>| {
+        let mut shapes = world.query::<&SmudShape>();
 
-    for shape in shapes.iter() {
-        let shader_key = (shape.sdf.id, shape.fill.id);
-        if pipeline.shaders.0.contains_key(&shader_key) {
-            continue;
-        }
-
-        // todo use asset events instead?
-        let sdf_import_path = match shaders.get_mut(&shape.sdf.clone()) {
-            Some(shader) => match shader.import_path() {
-                Some(ShaderImport::Custom(p)) => p.to_owned(),
-                _ => {
-                    let id = Uuid::new_v4();
-                    let path = format!("bevy_smud::generated::{id}");
-                    shader.set_import_path(&path);
-                    path
-                }
-            },
-            None => {
-                debug!("Waiting for sdf to load");
+        for shape in shapes.iter(world) {
+            let shader_key = (shape.sdf.id, shape.fill.id);
+            if pipeline.shaders.0.contains_key(&shader_key) {
                 continue;
             }
-        };
 
-        let fill_import_path = match shaders.get_mut(&shape.fill.clone()) {
-            Some(shader) => match shader.import_path() {
-                Some(ShaderImport::Custom(p)) => p.to_owned(),
-                _ => {
-                    let id = Uuid::new_v4();
-                    let path = format!("bevy_smud::generated::{id}");
-                    shader.set_import_path(&path);
-                    path
+            // todo use asset events instead?
+            let sdf_import_path = match shaders.get_mut(&shape.sdf.clone()) {
+                Some(shader) => match shader.import_path() {
+                    Some(ShaderImport::Custom(p)) => p.to_owned(),
+                    _ => {
+                        let id = Uuid::new_v4();
+                        let path = format!("bevy_smud::generated::{id}");
+                        shader.set_import_path(&path);
+                        path
+                    }
+                },
+                None => {
+                    debug!("Waiting for sdf to load");
+                    continue;
                 }
-            },
-            None => {
-                debug!("Waiting for fill to load");
-                continue;
-            }
-        };
+            };
 
-        debug!("Generating shader");
-        let generated_shader = Shader::from_wgsl(format!(
-            r#"
+            let fill_import_path = match shaders.get_mut(&shape.fill.clone()) {
+                Some(shader) => match shader.import_path() {
+                    Some(ShaderImport::Custom(p)) => p.to_owned(),
+                    _ => {
+                        let id = Uuid::new_v4();
+                        let path = format!("bevy_smud::generated::{id}");
+                        shader.set_import_path(&path);
+                        path
+                    }
+                },
+                None => {
+                    debug!("Waiting for fill to load");
+                    continue;
+                }
+            };
+
+            debug!("Generating shader");
+            let generated_shader = Shader::from_wgsl(format!(
+                r#"
 struct Time {{
     seconds_since_startup: f32;
 }};
@@ -432,16 +418,17 @@ var<uniform> time: Time;
 #import {fill_import_path}
 #import bevy_smud::fragment
 "#
-        ));
+            ));
 
-        // todo does this work, or is it too late?
-        let generated_shader_handle = shaders.add(generated_shader);
+            // todo does this work, or is it too late?
+            let generated_shader_handle = shaders.add(generated_shader);
 
-        pipeline
-            .shaders
-            .0
-            .insert(shader_key, generated_shader_handle);
-    }
+            pipeline
+                .shaders
+                .0
+                .insert(shader_key, generated_shader_handle);
+        }
+    });
 }
 
 #[derive(Component, Clone, Debug)]
@@ -457,10 +444,9 @@ struct ExtractedShape {
 struct ExtractedShapes(Vec<ExtractedShape>);
 
 fn extract_shapes(
-    mut render_world: ResMut<RenderWorld>,
-    query: Query<(&SmudShape, &ComputedVisibility, &GlobalTransform)>,
+    mut extracted_shapes: ResMut<ExtractedShapes>,
+    query: Extract<Query<(&SmudShape, &ComputedVisibility, &GlobalTransform)>>,
 ) {
-    let mut extracted_shapes = render_world.get_resource_mut::<ExtractedShapes>().unwrap();
     extracted_shapes.0.clear();
 
     for (shape, computed_visibility, transform) in query.iter() {
@@ -635,7 +621,7 @@ fn queue_shapes(
         .write_buffer(&render_device, &render_queue);
 }
 
-fn extract_time(mut commands: Commands, time: Res<Time>) {
+fn extract_time(mut commands: Commands, time: Extract<Res<Time>>) {
     commands.insert_resource(TimeUniform {
         seconds_since_startup: time.seconds_since_startup() as f32,
     });
@@ -643,10 +629,12 @@ fn extract_time(mut commands: Commands, time: Res<Time>) {
 
 fn prepare_time(
     time: Res<TimeUniform>,
-    time_meta: ResMut<TimeMeta>,
+    mut time_meta: ResMut<TimeMeta>,
+    render_device: Res<RenderDevice>,
     render_queue: Res<RenderQueue>,
 ) {
-    render_queue.write_buffer(&time_meta.buffer, 0, time.as_std140().as_bytes());
+    time_meta.buffer.set(time.clone());
+    time_meta.buffer.write_buffer(&render_device, &render_queue);
 }
 
 fn queue_time(
@@ -659,7 +647,7 @@ fn queue_time(
         layout: &pipeline.time_layout,
         entries: &[BindGroupEntry {
             binding: 0,
-            resource: time_meta.buffer.as_entire_binding(),
+            resource: time_meta.buffer.binding().unwrap(),
         }],
     });
     time_meta.bind_group = Some(bind_group);
@@ -697,12 +685,15 @@ pub struct ShapeBatch {
     shader: (HandleId, HandleId),
 }
 
+#[derive(Default)]
 struct TimeMeta {
-    buffer: Buffer,
+    buffer: UniformBuffer<TimeUniform>,
     bind_group: Option<BindGroup>,
 }
 
-#[derive(Default, AsStd140)]
+#[derive(Default, Clone, ShaderType)]
 struct TimeUniform {
+    // on WebGL uniforms need to be at least 16 bytes wide
+    #[align(16)]
     seconds_since_startup: f32,
 }

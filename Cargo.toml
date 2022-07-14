@@ -10,18 +10,18 @@ categories = ["game-development", "rendering", "graphics"]
 repository = "https://github.com/johanhelsing/bevy_smud"
 
 [dependencies]
-bevy = { version = "0.7.0", default-features = false, features = ["render"] }
+bevy = { git = "https://github.com/bevyengine/bevy", branch = "main", default-features = false, features = ["render"] }
 bytemuck = "1.7"
 bitflags = "1.2"
 copyless = "0.1"
 bevy-inspector-egui = { version = "0.10", optional = true }
 
 [dev-dependencies]
-bevy_pancam = "0.3"
+bevy_pancam = { git = "https://github.com/johanhelsing/bevy_pancam", branch = "bevy-main" }
 bevy_lospec = "0.1.1"
 bevy_asset_loader = "0.10"
 rand = "0.8"
-bevy = { version = "0.7.0", default-features = false, features = [
+bevy = { git = "https://github.com/bevyengine/bevy", branch = "main", default-features = false, features = [
     "render",
     "bevy_winit",
     "x11", # github actions runenrs don't have libxkbcommon installed, so can't use wayland

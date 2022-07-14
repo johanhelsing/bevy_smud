@@ -2,7 +2,6 @@ use std::{cmp::Ordering, ops::Range};
 
 use bevy::{
     asset::HandleId,
-    core::FloatOrd,
     ecs::system::{
         lifetimeless::{Read, SQuery, SRes},
         SystemParamItem,
@@ -21,10 +20,11 @@ use bevy::{
         },
         renderer::{RenderDevice, RenderQueue},
         view::ViewUniforms,
-        RenderApp, RenderStage, RenderWorld,
+        Extract, RenderApp, RenderStage,
     },
     sprite::Mesh2dPipelineKey,
     ui::TransparentUi,
+    utils::FloatOrd,
 };
 use copyless::VecHelper;
 
@@ -87,12 +87,9 @@ impl Plugin for UiShapePlugin {
 struct ExtractedUiShapes(Vec<ExtractedShape>);
 
 fn extract_ui_shapes(
-    mut render_world: ResMut<RenderWorld>,
-    query: Query<(&Node, &GlobalTransform, &SmudShape, &Visibility, &UiColor)>,
+    mut extracted_shapes: ResMut<ExtractedUiShapes>,
+    query: Extract<Query<(&Node, &GlobalTransform, &SmudShape, &Visibility, &UiColor)>>,
 ) {
-    let mut extracted_shapes = render_world
-        .get_resource_mut::<ExtractedUiShapes>()
-        .unwrap();
     extracted_shapes.0.clear();
 
     for (node, transform, shape, visibility, color) in query.iter() {

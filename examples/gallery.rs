@@ -119,10 +119,8 @@ fn setup(
         }
     }
 
-    let camera_bundle = OrthographicCameraBundle::new_2d();
-    // camera_bundle.orthographic_projection.scale = 1. / 10.;
     commands
-        .spawn_bundle(camera_bundle)
+        .spawn_bundle(Camera2dBundle::default())
         .insert(PanCam::default());
 }
 

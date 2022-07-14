@@ -76,5 +76,5 @@ return sd_circle(p - vec2<f32>(20., 0.), 40.);
         ..default()
     });
 
-    commands.spawn_bundle(OrthographicCameraBundle::new_2d());
+    commands.spawn_bundle(Camera2dBundle::default());
 }

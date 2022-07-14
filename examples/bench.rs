@@ -91,7 +91,7 @@ fn setup(
         }
     }
     commands
-        .spawn_bundle(OrthographicCameraBundle::new_2d())
+        .spawn_bundle(Camera2dBundle::default())
         .insert(PanCam::default());
 }
 
