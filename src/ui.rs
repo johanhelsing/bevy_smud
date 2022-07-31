@@ -86,6 +86,7 @@ impl Plugin for UiShapePlugin {
 #[derive(Default, Debug)]
 struct ExtractedUiShapes(Vec<ExtractedShape>);
 
+#[allow(clippy::type_complexity)]
 fn extract_ui_shapes(
     mut extracted_shapes: ResMut<ExtractedUiShapes>,
     query: Extract<Query<(&Node, &GlobalTransform, &SmudShape, &Visibility, &UiColor)>>,
@@ -127,9 +128,9 @@ fn prepare_ui_shapes(
     extracted_shapes.sort_unstable_by(|a, b| {
         match a
             .transform
-            .translation
+            .translation()
             .z
-            .partial_cmp(&b.transform.translation.z)
+            .partial_cmp(&b.transform.translation().z)
         {
             Some(Ordering::Equal) | None => {
                 (&a.sdf_shader, &a.fill_shader).cmp(&(&b.sdf_shader, &b.fill_shader))
@@ -159,7 +160,7 @@ fn prepare_ui_shapes(
             extracted_shape.sdf_shader.id,
             extracted_shape.fill_shader.id,
         );
-        let position = extracted_shape.transform.translation;
+        let position = extracted_shape.transform.translation();
         let z = position.z;
 
         // We also split by z, so other ui systems can get their stuff in the middle
@@ -198,14 +199,20 @@ fn prepare_ui_shapes(
         let position = position.into();
         // let position = Vec3::ZERO.into();
 
-        let rotation = extracted_shape.transform.rotation * Vec3::X;
-        let rotation = rotation.xy().into();
+        let rotation_and_scale = extracted_shape
+            .transform
+            .affine()
+            .transform_vector3(Vec3::X)
+            .xy();
+
+        let scale = rotation_and_scale.length();
+        let rotation = (rotation_and_scale / scale).into();
 
         let vertex = ShapeVertex {
             position,
             color,
             rotation,
-            scale: extracted_shape.transform.scale.x,
+            scale,
             frame: extracted_shape.frame,
         };
         debug!("{vertex:?}");

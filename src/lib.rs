@@ -325,11 +325,11 @@ impl SpecializedRenderPipeline for SmudPipeline {
                 // shader: SMUD_SHADER_HANDLE.typed::<Shader>(),
                 entry_point: "fragment".into(),
                 shader_defs: Vec::new(),
-                targets: vec![ColorTargetState {
+                targets: vec![Some(ColorTargetState {
                     format: TextureFormat::bevy_default(),
                     blend: Some(BlendState::ALPHA_BLENDING),
                     write_mask: ColorWrites::ALL,
-                }],
+                })],
             }),
             layout: Some(vec![
                 // Bind group 0 is the view uniform
@@ -408,10 +408,10 @@ fn extract_sdf_shaders(mut main_world: ResMut<MainWorld>, mut pipeline: ResMut<S
             let generated_shader = Shader::from_wgsl(format!(
                 r#"
 struct Time {{
-    seconds_since_startup: f32;
+    seconds_since_startup: f32,
 }};
 
-[[group(1), binding(0)]]
+@group(1) @binding(0)
 var<uniform> time: Time;
 
 #import {sdf_import_path}
@@ -450,7 +450,7 @@ fn extract_shapes(
     extracted_shapes.0.clear();
 
     for (shape, computed_visibility, transform) in query.iter() {
-        if !computed_visibility.is_visible {
+        if !computed_visibility.is_visible() {
             continue;
         }
 
@@ -517,9 +517,9 @@ fn queue_shapes(
         extracted_shapes.sort_unstable_by(|a, b| {
             match a
                 .transform
-                .translation
+                .translation()
                 .z
-                .partial_cmp(&b.transform.translation.z)
+                .partial_cmp(&b.transform.translation().z)
             {
                 Some(Ordering::Equal) | None => {
                     (&a.sdf_shader, &a.fill_shader).cmp(&(&b.sdf_shader, &b.fill_shader))
@@ -586,18 +586,24 @@ fn queue_shapes(
 
             let color = extracted_shape.color.as_linear_rgba_f32();
 
-            let position = extracted_shape.transform.translation;
+            let position = extracted_shape.transform.translation();
             let z = position.z;
             let position = position.into();
 
-            let rotation = extracted_shape.transform.rotation * Vec3::X;
-            let rotation = rotation.xy().into();
+            let rotation_and_scale = extracted_shape
+                .transform
+                .affine()
+                .transform_vector3(Vec3::X)
+                .xy();
+
+            let scale = rotation_and_scale.length();
+            let rotation = (rotation_and_scale / scale).into();
 
             let vertex = ShapeVertex {
                 position,
                 color,
                 rotation,
-                scale: extracted_shape.transform.scale.x,
+                scale,
                 frame: extracted_shape.frame,
             };
             shape_meta.vertices.push(vertex);

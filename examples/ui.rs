@@ -47,7 +47,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
             style: Style {
                 size: Size::new(Val::Px(600.0), Val::Px(450.0)),
                 justify_content: JustifyContent::SpaceBetween,
-                margin: Rect::all(Val::Auto),
+                margin: UiRect::all(Val::Auto),
                 ..default()
             },
             shape: SmudShape {
@@ -60,5 +60,5 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         .insert(Button)
         .insert(Interaction::default());
 
-    commands.spawn_bundle(UiCameraBundle::default());
+    commands.spawn_bundle(Camera2dBundle::default());
 }

@@ -2,20 +2,19 @@ use bevy::{
     diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin},
     prelude::*,
 };
-use bevy_asset_loader::{AssetCollection, AssetLoader};
+use bevy_asset_loader::prelude::*;
 use bevy_pancam::*;
 use bevy_smud::*;
 use rand::prelude::*;
 
 fn main() {
-    let mut app = App::new();
-
-    AssetLoader::new(GameState::Loading)
-        .continue_to_state(GameState::Running)
-        .with_collection::<AssetHandles>()
-        .build(&mut app);
-
-    app.add_state(GameState::Loading)
+    App::new()
+        .add_loading_state(
+            LoadingState::new(GameState::Loading)
+                .continue_to_state(GameState::Running)
+                .with_collection::<AssetHandles>(),
+        )
+        .add_state(GameState::Loading)
         .insert_resource(Msaa { samples: 4 })
         .add_plugins(DefaultPlugins)
         .add_plugin(LogDiagnosticsPlugin::default())
@@ -49,7 +48,7 @@ fn setup(
     palettes: Res<Assets<bevy_lospec::Palette>>,
     asset_server: Res<AssetServer>,
 ) {
-    let palette = palettes.get(assets.palette.clone()).unwrap();
+    let palette = palettes.get(&assets.palette).unwrap();
     let mut rng = rand::thread_rng();
     let spacing = 800.0;
     let w = 316;
