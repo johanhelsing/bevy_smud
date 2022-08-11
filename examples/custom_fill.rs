@@ -61,6 +61,6 @@ return vec4<f32>(color.rgb, a * color.a);
     });
 
     commands
-        .spawn_bundle(OrthographicCameraBundle::new_2d())
+        .spawn_bundle(Camera2dBundle::default())
         .insert(PanCam::default());
 }

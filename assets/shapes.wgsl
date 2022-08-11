@@ -567,13 +567,13 @@ fn sd_exponential_falloff_3(d: f32, size: f32) -> f32 {
 
 fn sd_fill_alpha_fwidth(distance: f32) -> f32 {
     let aaf = 0.71 * fwidth(distance);
-    return smoothStep(aaf, -aaf, distance);
+    return smoothstep(aaf, -aaf, distance);
 }
 
 // I think this one looks better than the fwidth version, but perhaps it's more expensive?
 fn sd_fill_alpha_dpd(distance: f32) -> f32 {
     let aaf = length(vec2<f32>(dpdx(distance), dpdy(distance))) * 0.71;
-    return smoothStep(aaf, -aaf, distance);
+    return smoothstep(aaf, -aaf, distance);
 }
 
 // Dirt cheap, but ugly
