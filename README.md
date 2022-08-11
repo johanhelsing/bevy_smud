@@ -80,7 +80,8 @@ I intend to support the `main` branch of Bevy in the `bevy-main` branch.
 
 |bevy|bevy_smud|
 |---|---|
-|0.7|0.2, main|
+|0.8|0.3, main|
+|0.7|0.2|
 |0.6|0.1|
 
 ## Thanks!
