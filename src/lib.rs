@@ -161,35 +161,6 @@ impl<P: BatchedPhaseItem> RenderCommand<P> for DrawShapeBatch {
     }
 }
 
-// struct DrawQuad;
-// impl EntityRenderCommand for DrawQuad {
-//     type Param = SRes<SmudPipeline>;
-//     #[inline]
-//     fn render<'w>(
-//         _view: Entity,
-//         _item: Entity,
-//         pipeline: SystemParamItem<'w, '_, Self::Param>,
-//         pass: &mut TrackedRenderPass<'w>,
-//     ) -> RenderCommandResult {
-//         let gpu_mesh = &pipeline.into_inner().quad;
-//         pass.set_vertex_buffer(0, gpu_mesh.vertex_buffer.slice(..));
-//         match &gpu_mesh.buffer_info {
-//             GpuBufferInfo::Indexed {
-//                 buffer,
-//                 index_format,
-//                 count,
-//             } => {
-//                 pass.set_index_buffer(buffer.slice(..), 0, *index_format);
-//                 pass.draw_indexed(0..*count, 0, 0..1);
-//             }
-//             GpuBufferInfo::NonIndexed { vertex_count } => {
-//                 pass.draw(0..*vertex_count, 0..1);
-//             }
-//         }
-//         RenderCommandResult::Success
-//     }
-// }
-
 struct SmudPipeline {
     view_layout: BindGroupLayout,
     time_layout: BindGroupLayout,
@@ -227,28 +198,6 @@ impl FromWorld for SmudPipeline {
                 count: None,
             }],
         });
-        // let quad = {
-        //     let mut mesh = Mesh::new(PrimitiveTopology::TriangleStrip);
-        //     let w = 0.5;
-        //     let v_pos = vec![[-w, -w], [w, -w], [-w, w], [w, w]];
-        //     mesh.set_attribute(Mesh::ATTRIBUTE_POSITION, v_pos);
-        //     let v_color = vec![[0.5, 0.3, 0.1, 1.0]; 4];
-        //     mesh.set_attribute(Mesh::ATTRIBUTE_COLOR, v_color);
-
-        //     let render_device = world.get_resource_mut::<RenderDevice>().unwrap();
-        //     let vertex_buffer_data = mesh.get_vertex_buffer_data();
-        //     let vertex_buffer = render_device.create_buffer_with_data(&BufferInitDescriptor {
-        //         usage: BufferUsages::VERTEX,
-        //         label: Some("Mesh Vertex Buffer"),
-        //         contents: &vertex_buffer_data,
-        //     });
-        //     GpuMesh {
-        //         vertex_buffer,
-        //         buffer_info: GpuBufferInfo::NonIndexed { vertex_count: 4 },
-        //         has_tangents: false,
-        //         primitive_topology: mesh.primitive_topology(),
-        //     }
-        // };
 
         Self {
             view_layout,
@@ -322,7 +271,6 @@ impl SpecializedRenderPipeline for SmudPipeline {
             },
             fragment: Some(FragmentState {
                 shader: shader.clone_weak(),
-                // shader: SMUD_SHADER_HANDLE.typed::<Shader>(),
                 entry_point: "fragment".into(),
                 shader_defs: Vec::new(),
                 targets: vec![Some(ColorTargetState {
@@ -575,8 +523,6 @@ fn queue_shapes(
                 continue; // skip shapes that are not ready yet
             }
 
-            // let mesh_z = mesh2d_uniform.transform.w_axis.z;
-
             // let color = extracted_shape.color.as_linear_rgba_f32();
             // // encode color as a single u32 to save space
             // let color = (color[0] * 255.0) as u32
@@ -667,7 +613,6 @@ struct ShapeVertex {
     pub position: [f32; 3],
     pub rotation: [f32; 2],
     pub scale: f32,
-    // pub uv: [f32; 2],
 }
 
 pub struct ShapeMeta {

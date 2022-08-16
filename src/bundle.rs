@@ -21,8 +21,7 @@ pub struct UiShapeBundle {
     pub node: Node,
     /// Describes the style including flexbox settings
     pub style: Style,
-    // /// Describes the color of the node
-    // pub color: UiColor,
+    /// Describes the actual shape and its fill
     pub shape: SmudShape,
     /// The transform of the node
     pub transform: Transform,

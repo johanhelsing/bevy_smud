@@ -197,7 +197,6 @@ fn prepare_ui_shapes(
         let color = extracted_shape.color.as_linear_rgba_f32();
 
         let position = position.into();
-        // let position = Vec3::ZERO.into();
 
         let rotation_and_scale = extracted_shape
             .transform

@@ -33,9 +33,6 @@ fn vertex(
     let c = vertex.rotation.x;
     let s = vertex.rotation.y;
     let rotated = vec2<f32>(x * c - y * s, x * s + y * c);
-    // let rotated = vec2<f32>(x, y);
-    // let w = 400.;
-    // let w = 80.;
     let pos = vertex.position + vec3<f32>(rotated * vertex.scale * vertex.frame, vertex.position.z);
     // Project the world position of the mesh into screen position
     out.clip_position = view.view_proj * vec4<f32>(pos, 1.);
