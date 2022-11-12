@@ -11,7 +11,7 @@ version = "0.3.0"
 
 [dependencies]
 bevy = {version = "0.8", default-features = false, features = ["render", "bevy_asset"]}
-bevy-inspector-egui = {version = "0.12", optional = true}
+bevy-inspector-egui = {version = "0.13", optional = true}
 bitflags = "1.2"
 bytemuck = "1.7"
 copyless = "0.1"
@@ -23,9 +23,9 @@ bevy = {version = "0.8", default-features = false, features = [
   "x11", # github actions runenrs don't have libxkbcommon installed, so can't use wayland
   "filesystem_watcher",
 ]}
-bevy_asset_loader = "0.12"
+bevy_asset_loader = "0.13"
 bevy_lospec = "0.2"
-bevy_pancam = "0.5"
+bevy_pancam = "0.6"
 rand = "0.8"
 
 [profile.dev]
