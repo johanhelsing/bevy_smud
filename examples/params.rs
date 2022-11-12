@@ -1,7 +1,7 @@
 use std::f32::consts::PI;
 
 use bevy::prelude::*;
-use bevy_asset_loader::{AssetCollection, AssetLoader};
+use bevy_asset_loader::prelude::*;
 use bevy_smud::prelude::*;
 use rand::{prelude::IteratorRandom, random};
 
@@ -10,14 +10,13 @@ use rand::{prelude::IteratorRandom, random};
 // but it could be used for almost anything.
 
 fn main() {
-    let mut app = App::new();
-
-    AssetLoader::new(GameState::Loading)
-        .continue_to_state(GameState::Running)
-        .with_collection::<AssetHandles>()
-        .build(&mut app);
-
-    app.add_state(GameState::Loading)
+    App::new()
+        .add_loading_state(
+            LoadingState::new(GameState::Loading)
+                .continue_to_state(GameState::Running)
+                .with_collection::<AssetHandles>(),
+        )
+        .add_state(GameState::Loading)
         .insert_resource(Msaa { samples: 4 })
         .add_plugins(DefaultPlugins)
         .add_plugin(SmudPlugin)
@@ -47,7 +46,7 @@ fn setup(
     let box_sdf = shaders.add_sdf_expr("sd_box(p, params.xy)");
     let padding = 5.; // need some padding for the outline/falloff
     let spacing = 70.;
-    let palette = palettes.get(assets.palette.clone()).unwrap();
+    let palette = palettes.get(&assets.palette).unwrap();
 
     let clear_color = palette.lightest();
     commands.insert_resource(ClearColor(clear_color));
@@ -84,5 +83,5 @@ fn setup(
         });
     }
 
-    commands.spawn_bundle(OrthographicCameraBundle::new_2d());
+    commands.spawn_bundle(Camera2dBundle::default());
 }
