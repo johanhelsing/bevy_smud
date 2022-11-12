@@ -17,22 +17,23 @@ use bevy::{
     prelude::*,
     reflect::Uuid,
     render::{
+        render_asset::RenderAssets,
         render_phase::{
             AddRenderCommand, BatchedPhaseItem, DrawFunctions, EntityRenderCommand, RenderCommand,
             RenderCommandResult, RenderPhase, SetItemPipeline, TrackedRenderPass,
         },
         render_resource::{
-            BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout,
+            AsBindGroup, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout,
             BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingType, BlendState,
-            BufferBindingType, BufferSize, BufferUsages, BufferVec, CachedRenderPipelineId,
-            ColorTargetState, ColorWrites, Face, FragmentState, FrontFace, MultisampleState,
-            PipelineCache, PolygonMode, PrimitiveState, PrimitiveTopology,
+            BufferBindingType, BufferUsages, BufferVec, CachedRenderPipelineId, ColorTargetState,
+            ColorWrites, Face, FragmentState, FrontFace, MultisampleState, PipelineCache,
+            PolygonMode, PreparedBindGroup, PrimitiveState, PrimitiveTopology,
             RenderPipelineDescriptor, ShaderImport, ShaderStages, ShaderType,
-            SpecializedRenderPipeline, SpecializedRenderPipelines, TextureFormat, UniformBuffer,
-            VertexAttribute, VertexBufferLayout, VertexFormat, VertexState, VertexStepMode,
+            SpecializedRenderPipeline, SpecializedRenderPipelines, TextureFormat, VertexAttribute,
+            VertexBufferLayout, VertexFormat, VertexState, VertexStepMode,
         },
         renderer::{RenderDevice, RenderQueue},
-        texture::BevyDefault,
+        texture::{BevyDefault, FallbackImage},
         view::{ViewUniform, ViewUniformOffset, ViewUniforms, VisibleEntities},
         Extract, MainWorld, RenderApp, RenderStage,
     },
@@ -92,8 +93,7 @@ impl Plugin for SmudPlugin {
                 .add_system_to_stage(RenderStage::Extract, extract_sdf_shaders)
                 .add_system_to_stage(RenderStage::Queue, queue_shapes)
                 .add_system_to_stage(RenderStage::Extract, extract_time)
-                .add_system_to_stage(RenderStage::Prepare, prepare_time)
-                .add_system_to_stage(RenderStage::Queue, queue_time);
+                .add_system_to_stage(RenderStage::Prepare, prepare_time);
         }
 
         #[cfg(feature = "bevy-inspector-egui")]
@@ -137,8 +137,8 @@ impl<const I: usize> EntityRenderCommand for SetTimeBindGroup<I> {
         time_meta: SystemParamItem<'w, '_, Self::Param>,
         pass: &mut TrackedRenderPass<'w>,
     ) -> RenderCommandResult {
-        let time_bind_group = time_meta.into_inner().bind_group.as_ref().unwrap();
-        pass.set_bind_group(I, time_bind_group, &[]);
+        let prepared_time = time_meta.into_inner().prepared.as_ref().unwrap();
+        pass.set_bind_group(I, &prepared_time.bind_group, &[]);
         RenderCommandResult::Success
     }
 }
@@ -185,23 +185,9 @@ impl FromWorld for SmudPipeline {
             label: Some("shape_view_layout"),
         });
 
-        let time_layout = render_device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-            label: Some("time_layout"),
-            entries: &[BindGroupLayoutEntry {
-                binding: 0,
-                visibility: ShaderStages::VERTEX | ShaderStages::FRAGMENT,
-                ty: BindingType::Buffer {
-                    ty: BufferBindingType::Uniform,
-                    has_dynamic_offset: false,
-                    min_binding_size: BufferSize::new(std::mem::size_of::<f32>() as u64),
-                },
-                count: None,
-            }],
-        });
-
         Self {
             view_layout,
-            time_layout,
+            time_layout: TimeUniform::bind_group_layout(render_device),
             shaders: default(),
         }
     }
@@ -357,6 +343,7 @@ fn extract_sdf_shaders(mut main_world: ResMut<MainWorld>, mut pipeline: ResMut<S
                 r#"
 struct Time {{
     seconds_since_startup: f32,
+    _padding: vec3<f32>,
 }};
 
 @group(1) @binding(0)
@@ -576,6 +563,7 @@ fn queue_shapes(
 fn extract_time(mut commands: Commands, time: Extract<Res<Time>>) {
     commands.insert_resource(TimeUniform {
         seconds_since_startup: time.seconds_since_startup() as f32,
+        _padding: default(),
     });
 }
 
@@ -583,26 +571,24 @@ fn prepare_time(
     time: Res<TimeUniform>,
     mut time_meta: ResMut<TimeMeta>,
     render_device: Res<RenderDevice>,
-    render_queue: Res<RenderQueue>,
-) {
-    time_meta.buffer.set(time.clone());
-    time_meta.buffer.write_buffer(&render_device, &render_queue);
-}
-
-fn queue_time(
-    render_device: Res<RenderDevice>,
-    mut time_meta: ResMut<TimeMeta>,
     pipeline: Res<SmudPipeline>,
+    images: Res<RenderAssets<Image>>,
+    fallback_image: Res<FallbackImage>,
 ) {
-    let bind_group = render_device.create_bind_group(&BindGroupDescriptor {
-        label: None,
-        layout: &pipeline.time_layout,
-        entries: &[BindGroupEntry {
-            binding: 0,
-            resource: time_meta.buffer.binding().unwrap(),
-        }],
-    });
-    time_meta.bind_group = Some(bind_group);
+    time_meta.time_uniform = time.clone();
+
+    let prepared = time_meta.time_uniform.as_bind_group(
+        &pipeline.time_layout,
+        &render_device,
+        &images,
+        &fallback_image,
+    );
+
+    if let Ok(prepared) = prepared {
+        time_meta.prepared = Some(prepared);
+    } else {
+        error!("Failed to prepare time uniform");
+    }
 }
 
 #[repr(C)]
@@ -638,13 +624,14 @@ pub struct ShapeBatch {
 
 #[derive(Default)]
 struct TimeMeta {
-    buffer: UniformBuffer<TimeUniform>,
-    bind_group: Option<BindGroup>,
+    time_uniform: TimeUniform,
+    prepared: Option<PreparedBindGroup<TimeUniform>>,
 }
 
-#[derive(Default, Clone, ShaderType)]
+#[derive(Default, Debug, Clone, AsBindGroup)]
 struct TimeUniform {
-    // on WebGL uniforms need to be at least 16 bytes wide
-    #[align(16)]
+    #[uniform(0)]
     seconds_since_startup: f32,
+    #[uniform(0)]
+    _padding: Vec3,
 }

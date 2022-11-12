@@ -11,6 +11,7 @@ fn main() {
                 .continue_to_state(GameState::Running)
                 .with_collection::<AssetHandles>(),
         )
+        .add_state(GameState::Loading)
         .insert_resource(Msaa { samples: 4 })
         .add_plugins(DefaultPlugins)
         .add_plugin(SmudPlugin)
