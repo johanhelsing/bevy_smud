@@ -579,9 +579,9 @@ fn prepare_time(
 
     let prepared = time_meta.time_uniform.as_bind_group(
         &pipeline.time_layout,
-        &(*render_device),
-        &(*images),
-        &(*fallback_image),
+        &render_device,
+        &images,
+        &fallback_image,
     );
 
     if let Ok(prepared) = prepared {
