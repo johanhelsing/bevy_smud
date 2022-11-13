@@ -38,7 +38,7 @@ fn spawn_circle(
 ) {
     let circle = shaders.add_sdf_expr("sd_circle(p, 50.)");
 
-    commands.spawn_bundle(ShapeBundle {
+    commands.spawn(ShapeBundle {
         shape: SmudShape {
             color: Color::TOMATO,
             sdf: circle,
