@@ -3,8 +3,8 @@ use bevy_smud::prelude::*;
 
 fn main() {
     App::new()
-        .insert_resource(Msaa { samples: 4 })
         .add_plugins(DefaultPlugins.set(AssetPlugin {
+            // enable hot-reloading so we can see changes to wgsl files without relaunching the app
             watch_for_changes: true,
             ..default()
         }))

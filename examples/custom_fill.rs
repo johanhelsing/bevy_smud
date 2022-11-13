@@ -4,7 +4,6 @@ use bevy_smud::{prelude::*, SIMPLE_FILL_HANDLE};
 
 fn main() {
     App::new()
-        .insert_resource(Msaa { samples: 4 })
         .insert_resource(ClearColor(Color::BLACK))
         .add_plugins(DefaultPlugins)
         .add_plugin(SmudPlugin)
