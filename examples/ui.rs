@@ -18,9 +18,10 @@ const NORMAL_COLOR: Color = Color::rgb(0.9, 0.9, 0.9);
 const HOVERED_COLOR: Color = Color::WHITE;
 const PRESSED_COLOR: Color = Color::rgba(1., 1., 1., 0.8);
 
+#[allow(clippy::type_complexity)]
 fn button_system(
     mut interaction_query: Query<
-        (&Interaction, &mut UiColor),
+        (&Interaction, &mut BackgroundColor),
         (Changed<Interaction>, With<Button>),
     >,
 ) {
@@ -42,8 +43,8 @@ fn button_system(
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     let bevy_shape_shader = asset_server.load("bevy.wgsl");
 
-    commands
-        .spawn_bundle(UiShapeBundle {
+    commands.spawn((
+        UiShapeBundle {
             style: Style {
                 size: Size::new(Val::Px(600.0), Val::Px(450.0)),
                 justify_content: JustifyContent::SpaceBetween,
@@ -56,9 +57,10 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                 ..default()
             },
             ..default()
-        })
-        .insert(Button)
-        .insert(Interaction::default());
+        },
+        Button,
+        Interaction::default(),
+    ));
 
-    commands.spawn_bundle(Camera2dBundle::default());
+    commands.spawn(Camera2dBundle::default());
 }
