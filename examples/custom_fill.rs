@@ -21,7 +21,7 @@ fn setup(
     // The fill takes a distance and a color and returns another color
     let sin_fill = shaders.add_fill_body("return vec4<f32>(color.rgb, sin(d));");
 
-    commands.spawn_bundle(ShapeBundle {
+    commands.spawn(ShapeBundle {
         shape: SmudShape {
             color: Color::TEAL,
             sdf: asset_server.load("bevy.wgsl"),
@@ -31,7 +31,7 @@ fn setup(
         ..default()
     });
 
-    commands.spawn_bundle(ShapeBundle {
+    commands.spawn(ShapeBundle {
         transform: Transform::from_translation(Vec3::X * 600.),
         shape: SmudShape {
             color: Color::BLUE,
@@ -42,7 +42,7 @@ fn setup(
         ..default()
     });
 
-    commands.spawn_bundle(ShapeBundle {
+    commands.spawn(ShapeBundle {
         transform: Transform::from_translation(Vec3::X * -600.),
         shape: SmudShape {
             color: Color::ORANGE,
@@ -60,7 +60,5 @@ return vec4<f32>(color.rgb, a * color.a);
         ..default()
     });
 
-    commands
-        .spawn_bundle(Camera2dBundle::default())
-        .insert(PanCam::default());
+    commands.spawn((Camera2dBundle::default(), PanCam::default()));
 }
