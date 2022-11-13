@@ -58,8 +58,6 @@ Other than that, make sure you understand how to combine shapes, use symmetries 
 
 Also, check out the [examples](examples). In particular, the [basic](examples/basic.rs) example should be a good place to start.
 
-The library also has *some* level of ui support. The [ui](examples/ui.rs) example shows how to create a "bevy" button.
-
 ## Showcase
 
 Send me a PR if you want your project featured here:
