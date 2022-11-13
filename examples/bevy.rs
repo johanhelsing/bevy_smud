@@ -16,7 +16,7 @@ fn main() {
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     let bevy_shape_shader = asset_server.load("bevy.wgsl");
 
-    commands.spawn_bundle(ShapeBundle {
+    commands.spawn(ShapeBundle {
         shape: SmudShape {
             color: Color::rgb(0.36, 0.41, 0.45),
             sdf: bevy_shape_shader,
@@ -26,7 +26,5 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         ..default()
     });
 
-    commands
-        .spawn_bundle(Camera2dBundle::default())
-        .insert(PanCam::default());
+    commands.spawn((Camera2dBundle::default(), PanCam::default()));
 }
