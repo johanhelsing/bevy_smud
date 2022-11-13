@@ -491,7 +491,7 @@ fn queue_shapes(
             };
 
             if new_batch != current_batch {
-                current_batch_entity = commands.spawn_bundle((current_batch,)).id();
+                current_batch_entity = commands.spawn(current_batch).id();
 
                 current_batch = new_batch;
 

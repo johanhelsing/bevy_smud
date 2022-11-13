@@ -174,12 +174,12 @@ fn prepare_ui_shapes(
         // We also split by z, so other ui systems can get their stuff in the middle
         if current_batch_shaders != shader_key || z != last_z {
             if start != end {
-                commands.spawn_bundle((UiShapeBatch {
+                commands.spawn(UiShapeBatch {
                     range: start..end,
                     shader_key: current_batch_shaders,
                     pipeline: current_batch_pipeline,
                     z: FloatOrd(last_z),
-                },));
+                });
                 start = end;
             }
             current_batch_shaders = shader_key;
@@ -230,12 +230,12 @@ fn prepare_ui_shapes(
 
     // if start != end, there is one last batch to process
     if start != end {
-        commands.spawn_bundle((UiShapeBatch {
+        commands.spawn(UiShapeBatch {
             range: start..end,
             shader_key: current_batch_shaders,
             z: FloatOrd(last_z),
             pipeline: current_batch_pipeline,
-        },));
+        });
     }
 
     shape_meta
