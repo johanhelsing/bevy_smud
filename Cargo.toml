@@ -12,7 +12,6 @@ version = "0.3.1"
 [dependencies]
 bevy = {version = "0.9", default-features = false, features = ["render", "bevy_asset"]}
 bevy-inspector-egui = {version = "0.13", optional = true}
-bitflags = "1.2"
 bytemuck = "1.7"
 copyless = "0.1"
 
