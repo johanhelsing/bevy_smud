@@ -14,7 +14,6 @@ fn main() {
 }
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
-    asset_server.watch_for_changes().unwrap();
     let bevy_shape_shader = asset_server.load("star_bevy.wgsl");
 
     commands.spawn_bundle(ShapeBundle {

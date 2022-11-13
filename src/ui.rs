@@ -83,13 +83,21 @@ impl Plugin for UiShapePlugin {
     }
 }
 
-#[derive(Default, Debug)]
+#[derive(Resource, Default, Debug)]
 struct ExtractedUiShapes(Vec<ExtractedShape>);
 
 #[allow(clippy::type_complexity)]
 fn extract_ui_shapes(
     mut extracted_shapes: ResMut<ExtractedUiShapes>,
-    query: Extract<Query<(&Node, &GlobalTransform, &SmudShape, &Visibility, &UiColor)>>,
+    query: Extract<
+        Query<(
+            &Node,
+            &GlobalTransform,
+            &SmudShape,
+            &Visibility,
+            &BackgroundColor,
+        )>,
+    >,
 ) {
     extracted_shapes.0.clear();
 
@@ -98,7 +106,7 @@ fn extract_ui_shapes(
             continue;
         }
 
-        let size = node.size.x; // TODO: Also pass on the height value
+        let size = node.size().x; // TODO: Also pass on the height value
         let frame = size / 2.;
 
         extracted_shapes.0.alloc().init(ExtractedShape {
@@ -157,8 +165,8 @@ fn prepare_ui_shapes(
 
     for extracted_shape in extracted_shapes.iter() {
         let shader_key = (
-            extracted_shape.sdf_shader.id,
-            extracted_shape.fill_shader.id,
+            extracted_shape.sdf_shader.id(),
+            extracted_shape.fill_shader.id(),
         );
         let position = extracted_shape.transform.translation();
         let z = position.z;

@@ -161,6 +161,7 @@ impl<P: BatchedPhaseItem> RenderCommand<P> for DrawShapeBatch {
     }
 }
 
+#[derive(Resource)]
 struct SmudPipeline {
     view_layout: BindGroupLayout,
     time_layout: BindGroupLayout,
@@ -300,7 +301,7 @@ fn extract_sdf_shaders(mut main_world: ResMut<MainWorld>, mut pipeline: ResMut<S
         let mut shapes = world.query::<&SmudShape>();
 
         for shape in shapes.iter(world) {
-            let shader_key = (shape.sdf.id, shape.fill.id);
+            let shader_key = (shape.sdf.id(), shape.fill.id());
             if pipeline.shaders.0.contains_key(&shader_key) {
                 continue;
             }
@@ -375,7 +376,7 @@ struct ExtractedShape {
     transform: GlobalTransform,
 }
 
-#[derive(Default, Debug)]
+#[derive(Resource, Default, Debug)]
 struct ExtractedShapes(Vec<ExtractedShape>);
 
 fn extract_shapes(
@@ -484,8 +485,8 @@ fn queue_shapes(
         for extracted_shape in extracted_shapes.iter() {
             let new_batch = ShapeBatch {
                 shader: (
-                    extracted_shape.sdf_shader.id,
-                    extracted_shape.fill_shader.id,
+                    extracted_shape.sdf_shader.id(),
+                    extracted_shape.fill_shader.id(),
                 ),
             };
 
@@ -562,7 +563,7 @@ fn queue_shapes(
 
 fn extract_time(mut commands: Commands, time: Extract<Res<Time>>) {
     commands.insert_resource(TimeUniform {
-        seconds_since_startup: time.seconds_since_startup() as f32,
+        seconds_since_startup: time.elapsed_seconds() as f32,
         _padding: default(),
     });
 }
@@ -601,6 +602,7 @@ struct ShapeVertex {
     pub scale: f32,
 }
 
+#[derive(Resource)]
 pub struct ShapeMeta {
     vertices: BufferVec<ShapeVertex>,
     ui_vertices: BufferVec<ShapeVertex>,
@@ -622,13 +624,13 @@ pub struct ShapeBatch {
     shader: (HandleId, HandleId),
 }
 
-#[derive(Default)]
+#[derive(Resource, Default)]
 struct TimeMeta {
     time_uniform: TimeUniform,
     prepared: Option<PreparedBindGroup<TimeUniform>>,
 }
 
-#[derive(Default, Debug, Clone, AsBindGroup)]
+#[derive(Resource, Default, Debug, Clone, AsBindGroup)]
 struct TimeUniform {
     #[uniform(0)]
     seconds_since_startup: f32,

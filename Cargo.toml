@@ -10,22 +10,23 @@ repository = "https://github.com/johanhelsing/bevy_smud"
 version = "0.3.1"
 
 [dependencies]
-bevy = {version = "0.8", default-features = false, features = ["render", "bevy_asset"]}
+bevy = {version = "0.9", default-features = false, features = ["render", "bevy_asset"]}
 bevy-inspector-egui = {version = "0.13", optional = true}
 bitflags = "1.2"
 bytemuck = "1.7"
 copyless = "0.1"
 
 [dev-dependencies]
-bevy = {version = "0.8", default-features = false, features = [
+bevy = {version = "0.9", default-features = false, features = [
   "render",
   "bevy_winit",
   "x11", # github actions runenrs don't have libxkbcommon installed, so can't use wayland
   "filesystem_watcher",
 ]}
-bevy_asset_loader = "0.13"
-bevy_lospec = "0.2"
-bevy_pancam = "0.6"
+# bevy_asset_loader = "0.14"
+bevy_lospec = "0.3"
+# bevy_pancam = "0.7"
+bevy_pancam = { git = "https://github.com/johanhelsing/bevy_pancam", branch = "bevy-0.9" }
 rand = "0.8"
 
 [profile.dev]
