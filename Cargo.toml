@@ -24,8 +24,7 @@ bevy = {version = "0.9", default-features = false, features = [
 ]}
 # bevy_asset_loader = "0.14"
 bevy_lospec = "0.3"
-# bevy_pancam = "0.7"
-bevy_pancam = { git = "https://github.com/johanhelsing/bevy_pancam", branch = "bevy-0.9" }
+bevy_pancam = "0.7"
 rand = "0.8"
 
 [profile.dev]
