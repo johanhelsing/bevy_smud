@@ -71,8 +71,8 @@ fn setup(
                 .copied()
                 .unwrap_or(Color::PINK);
 
-            commands
-                .spawn_bundle(ShapeBundle {
+            commands.spawn((
+                ShapeBundle {
                     transform: Transform::from_translation(Vec3::new(
                         i as f32 * spacing - w as f32 * spacing / 2.,
                         j as f32 * spacing - h as f32 * spacing / 2.,
@@ -85,13 +85,12 @@ fn setup(
                         ..default()
                     },
                     ..default()
-                })
-                .insert(Index(i + j * w));
+                },
+                Index(i + j * w),
+            ));
         }
     }
-    commands
-        .spawn_bundle(Camera2dBundle::default())
-        .insert(PanCam::default());
+    commands.spawn((Camera2dBundle::default(), PanCam::default()));
 }
 
 // fn update(mut query: Query<(&mut Transform, &Index), With<SmudShape>>, time: Res<Time>) {

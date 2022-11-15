@@ -30,5 +30,5 @@ pub struct UiShapeBundle {
     /// Describes the visibility properties of the node
     pub visibility: Visibility,
     /// Describes the color of the node, will be multiplied with the shape color
-    pub color: UiColor,
+    pub color: BackgroundColor,
 }
