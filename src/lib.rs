@@ -45,7 +45,7 @@ use copyless::VecHelper;
 use shader_loading::*;
 // use ui::UiShapePlugin;
 
-pub use bundle::{ShapeBundle, UiShapeBundle};
+pub use bundle::ShapeBundle;
 pub use components::*;
 pub use shader_loading::{DEFAULT_FILL_HANDLE, SIMPLE_FILL_HANDLE};
 
