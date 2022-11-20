@@ -45,7 +45,7 @@ use copyless::VecHelper;
 use shader_loading::*;
 // use ui::UiShapePlugin;
 
-pub use bundle::{ShapeBundle, UiShapeBundle};
+pub use bundle::ShapeBundle;
 pub use components::*;
 pub use shader_loading::{DEFAULT_FILL_HANDLE, SIMPLE_FILL_HANDLE};
 
@@ -54,9 +54,6 @@ mod components;
 mod sdf_assets;
 mod shader_loading;
 // mod ui;
-
-#[cfg(feature = "bevy-inspector-egui")]
-mod inspectable_plugin;
 
 /// Re-export of the essentials needed for rendering shapes
 ///
@@ -99,8 +96,7 @@ impl Plugin for SmudPlugin {
                 .add_system_to_stage(RenderStage::Queue, queue_shapes);
         }
 
-        #[cfg(feature = "bevy-inspector-egui")]
-        app.add_plugin(inspectable_plugin::InspectablePlugin);
+        app.register_type::<SmudShape>();
     }
 }
 

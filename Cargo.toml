@@ -7,11 +7,10 @@ keywords = ["gamedev", "bevy", "sdf"]
 license = "MIT OR Apache-2.0"
 name = "bevy_smud"
 repository = "https://github.com/johanhelsing/bevy_smud"
-version = "0.3.1"
+version = "0.4.0"
 
 [dependencies]
 bevy = {version = "0.9", default-features = false, features = ["render", "bevy_asset"]}
-bevy-inspector-egui = {version = "0.13", optional = true}
 bytemuck = "1.7"
 copyless = "0.1"
 
@@ -22,7 +21,7 @@ bevy = {version = "0.9", default-features = false, features = [
   "x11", # github actions runenrs don't have libxkbcommon installed, so can't use wayland
   "filesystem_watcher",
 ]}
-# bevy_asset_loader = "0.14"
+bevy_asset_loader = "0.14"
 bevy_lospec = "0.3"
 bevy_pancam = "0.7"
 rand = "0.8"
