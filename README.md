@@ -13,7 +13,7 @@ Bevy smud is a way to conveniently construct and render sdf shapes with Bevy.
 
 Given a shape function/expression, and a fill type, it generates shaders at run-time.
 
-If you keep the number of different sdf and fill combinations relatively low it's pretty performant. My machine easily handles 100k shapes at 60 fps, with 40 different shape/fill combinations in randomized order (see [gallery](examples/gallery.rs) example).
+If you keep the number of different sdf and fill combinations relatively low it's pretty performant. My machine easily handles 100k shapes at 60 fps, with 40 different shape/fill combinations in randomized order (see [gallery](https://github.com/johanhelsing/bevy_smud/blob/main/examples/gallery.rs) example).
 
 ## Usage
 
@@ -65,11 +65,11 @@ fn setup(
 
 Make sure you reuse the shaders, i.e. don't call `add_sdf_expr` every frame.
 
-You can also define shapes in .wgsl files. Note that in order to use the built-in shapes, you have to import [`bevy_smud::shapes`](assets/shapes.wgsl), and you must create a function named `sdf` that takes a `vec2<f32>` and returns `f32`.
+You can also define shapes in .wgsl files. Note that in order to use the built-in shapes, you have to import [`bevy_smud::shapes`](https://github.com/johanhelsing/bevy_smud/blob/main/assets/shapes.wgsl), and you must create a function named `sdf` that takes a `vec2<f32>` and returns `f32`.
 
-Other than that, make sure you understand how to combine shapes, use symmetries and change domains. For instance, the [bevy](assets/bevy.wgsl) in the screenshot above is built up of several circles, ellipses, and a vesica for the beak.
+Other than that, make sure you understand how to combine shapes, use symmetries and change domains. For instance, the [bevy](https://github.com/johanhelsing/bevy_smud/blob/main/assets/bevy.wgsl) in the screenshot above is built up of several circles, ellipses, and a vesica for the beak.
 
-Also, check out the [examples](examples). In particular, the [basic](examples/basic.rs) example should be a good place to start.
+Also, check out the [examples](https://github.com/johanhelsing/bevy_smud/blob/main/examples). In particular, the [basic](https://github.com/johanhelsing/bevy_smud/blob/main/examples/basic.rs) example should be a good place to start.
 
 ## Showcase
 
