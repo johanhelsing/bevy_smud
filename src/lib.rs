@@ -55,9 +55,6 @@ mod sdf_assets;
 mod shader_loading;
 // mod ui;
 
-#[cfg(feature = "bevy-inspector-egui")]
-mod inspectable_plugin;
-
 /// Re-export of the essentials needed for rendering shapes
 ///
 /// Intended to be included at the top of your file to minimize the amount of import noise.
@@ -99,8 +96,7 @@ impl Plugin for SmudPlugin {
                 .add_system_to_stage(RenderStage::Queue, queue_shapes);
         }
 
-        #[cfg(feature = "bevy-inspector-egui")]
-        app.add_plugin(inspectable_plugin::InspectablePlugin);
+        app.register_type::<SmudShape>();
     }
 }
 
