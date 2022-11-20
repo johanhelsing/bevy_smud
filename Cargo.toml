@@ -22,7 +22,7 @@ bevy = {version = "0.9", default-features = false, features = [
   "x11", # github actions runenrs don't have libxkbcommon installed, so can't use wayland
   "filesystem_watcher",
 ]}
-# bevy_asset_loader = "0.14"
+bevy_asset_loader = "0.14"
 bevy_lospec = "0.3"
 bevy_pancam = "0.7"
 rand = "0.8"

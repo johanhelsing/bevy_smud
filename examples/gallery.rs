@@ -30,7 +30,7 @@ enum GameState {
     Running,
 }
 
-#[derive(AssetCollection)]
+#[derive(Resource, AssetCollection)]
 struct AssetHandles {
     #[asset(path = "vinik24.json")]
     palette: Handle<bevy_lospec::Palette>,
