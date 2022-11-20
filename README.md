@@ -31,11 +31,24 @@ Most of the built-in shapes are direct ports of the ones on [this page](https://
 
 To put together a shape, you can do:
 
-```rust
-fn spawn_circle(
+```rust no_run
+use bevy::prelude::*;
+use bevy_smud::prelude::*;
+
+fn main() {
+    App::new()
+        .add_plugins(DefaultPlugins)
+        .add_plugin(SmudPlugin)
+        .add_startup_system(setup)
+        .run();
+}
+
+fn setup(
     mut commands: Commands,
     mut shaders: ResMut<Assets<Shader>>,
 ) {
+    commands.spawn(Camera2dBundle::default());
+
     let circle = shaders.add_sdf_expr("sd_circle(p, 50.)");
 
     commands.spawn(ShapeBundle {
