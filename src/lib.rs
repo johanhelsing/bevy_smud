@@ -1,7 +1,5 @@
-//! See the [readme](https://github.com/johanhelsing/bevy_smud) and
-//! [examples](https://github.com/johanhelsing/bevy_smud/tree/main/examples) for
-//! usage.
-
+#![warn(missing_docs)]
+#![doc = include_str!("../README.md")]
 #![allow(clippy::too_many_arguments)]
 
 use std::cmp::Ordering;
@@ -45,7 +43,7 @@ use copyless::VecHelper;
 use shader_loading::*;
 // use ui::UiShapePlugin;
 
-pub use bundle::{ShapeBundle, UiShapeBundle};
+pub use bundle::ShapeBundle;
 pub use components::*;
 pub use shader_loading::{DEFAULT_FILL_HANDLE, SIMPLE_FILL_HANDLE};
 
@@ -122,7 +120,7 @@ impl<const I: usize> EntityRenderCommand for SetShapeViewBindGroup<I> {
     }
 }
 
-pub struct DrawShapeBatch;
+struct DrawShapeBatch;
 impl<P: BatchedPhaseItem> RenderCommand<P> for DrawShapeBatch {
     type Param = (SRes<ShapeMeta>, SQuery<Read<ShapeBatch>>);
 
@@ -564,7 +562,7 @@ struct ShapeVertex {
 }
 
 #[derive(Resource)]
-pub struct ShapeMeta {
+pub(crate) struct ShapeMeta {
     vertices: BufferVec<ShapeVertex>,
     view_bind_group: Option<BindGroup>,
 }
@@ -579,6 +577,6 @@ impl Default for ShapeMeta {
 }
 
 #[derive(Component, Eq, PartialEq, Copy, Clone)]
-pub struct ShapeBatch {
+pub(crate) struct ShapeBatch {
     shader: (HandleId, HandleId),
 }

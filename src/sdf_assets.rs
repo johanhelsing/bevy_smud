@@ -1,9 +1,14 @@
 use bevy::prelude::*;
 
+/// Extension trait for Assets<Shader> for conveniently creating new shaders from code
 pub trait SdfAssets {
+    /// Create a sdf shader from the given wgsl body
     fn add_sdf_body<T: Into<String>>(&mut self, sdf: T) -> Handle<Shader>;
+    /// Create a sdf shader from the given wgsl expression
     fn add_sdf_expr<T: Into<String>>(&mut self, sdf: T) -> Handle<Shader>;
+    /// Create a fill shader from the given wgsl body
     fn add_fill_body<T: Into<String>>(&mut self, fill: T) -> Handle<Shader>;
+    /// Create a fill shader from the given wgsl expression
     fn add_fill_expr<T: Into<String>>(&mut self, fill: T) -> Handle<Shader>;
 }
 
