@@ -38,7 +38,7 @@ fn spawn_circle(
 ) {
     let circle = shaders.add_sdf_expr("sd_circle(p, 50.)");
 
-    commands.spawn_bundle(ShapeBundle {
+    commands.spawn(ShapeBundle {
         shape: SmudShape {
             color: Color::TOMATO,
             sdf: circle,
@@ -57,8 +57,6 @@ You can also define shapes in .wgsl files. Note that in order to use the built-i
 Other than that, make sure you understand how to combine shapes, use symmetries and change domains. For instance, the [bevy](assets/bevy.wgsl) in the screenshot above is built up of several circles, ellipses, and a vesica for the beak.
 
 Also, check out the [examples](examples). In particular, the [basic](examples/basic.rs) example should be a good place to start.
-
-The library also has *some* level of ui support. The [ui](examples/ui.rs) example shows how to create a "bevy" button.
 
 ## Showcase
 

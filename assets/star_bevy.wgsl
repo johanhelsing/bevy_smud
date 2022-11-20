@@ -62,6 +62,6 @@ fn star(p: vec2<f32>) -> f32 {
 fn sdf(p: vec2<f32>) -> f32 {
     let b = bevy(p);
     let s = star(p);
-    return mix(b, s, sin(time.seconds_since_startup) * 0.5 + 0.5);
+    return mix(b, s, sin(globals.time) * 0.5 + 0.5);
     // return mix(b, s, 1.0);
 }

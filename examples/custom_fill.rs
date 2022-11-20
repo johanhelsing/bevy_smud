@@ -4,7 +4,6 @@ use bevy_smud::{prelude::*, SIMPLE_FILL_HANDLE};
 
 fn main() {
     App::new()
-        .insert_resource(Msaa { samples: 4 })
         .insert_resource(ClearColor(Color::BLACK))
         .add_plugins(DefaultPlugins)
         .add_plugin(SmudPlugin)
@@ -21,7 +20,7 @@ fn setup(
     // The fill takes a distance and a color and returns another color
     let sin_fill = shaders.add_fill_body("return vec4<f32>(color.rgb, sin(d));");
 
-    commands.spawn_bundle(ShapeBundle {
+    commands.spawn(ShapeBundle {
         shape: SmudShape {
             color: Color::TEAL,
             sdf: asset_server.load("bevy.wgsl"),
@@ -31,7 +30,7 @@ fn setup(
         ..default()
     });
 
-    commands.spawn_bundle(ShapeBundle {
+    commands.spawn(ShapeBundle {
         transform: Transform::from_translation(Vec3::X * 600.),
         shape: SmudShape {
             color: Color::BLUE,
@@ -42,7 +41,7 @@ fn setup(
         ..default()
     });
 
-    commands.spawn_bundle(ShapeBundle {
+    commands.spawn(ShapeBundle {
         transform: Transform::from_translation(Vec3::X * -600.),
         shape: SmudShape {
             color: Color::ORANGE,
@@ -60,7 +59,5 @@ return vec4<f32>(color.rgb, a * color.a);
         ..default()
     });
 
-    commands
-        .spawn_bundle(Camera2dBundle::default())
-        .insert(PanCam::default());
+    commands.spawn((Camera2dBundle::default(), PanCam::default()));
 }

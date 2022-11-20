@@ -4,7 +4,6 @@ use bevy_smud::prelude::*;
 
 fn main() {
     App::new()
-        .insert_resource(Msaa { samples: 4 })
         .insert_resource(ClearColor(Color::rgb(0.7, 0.8, 0.7)))
         .add_plugins(DefaultPlugins)
         .add_plugin(SmudPlugin)
@@ -15,7 +14,7 @@ fn main() {
 
 fn setup(mut commands: Commands, mut shaders: ResMut<Assets<Shader>>) {
     // pupil
-    commands.spawn_bundle(ShapeBundle {
+    commands.spawn(ShapeBundle {
         transform: Transform::from_translation(Vec3::Z * 3.),
         shape: SmudShape {
             color: Color::rgb(0.0, 0.0, 0.0),
@@ -27,7 +26,7 @@ fn setup(mut commands: Commands, mut shaders: ResMut<Assets<Shader>>) {
     });
 
     // iris
-    commands.spawn_bundle(ShapeBundle {
+    commands.spawn(ShapeBundle {
         transform: Transform::from_translation(Vec3::Z * 2.),
         shape: SmudShape {
             color: Color::rgb(0.46, 0.42, 0.80),
@@ -39,7 +38,7 @@ fn setup(mut commands: Commands, mut shaders: ResMut<Assets<Shader>>) {
     });
 
     // sclera
-    commands.spawn_bundle(ShapeBundle {
+    commands.spawn(ShapeBundle {
         transform: Transform::from_translation(Vec3::Z * 1.),
         shape: SmudShape {
             color: Color::rgb(0.83, 0.82, 0.80),
@@ -50,7 +49,5 @@ fn setup(mut commands: Commands, mut shaders: ResMut<Assets<Shader>>) {
         ..default()
     });
 
-    commands
-        .spawn_bundle(Camera2dBundle::default())
-        .insert(PanCam::default());
+    commands.spawn((Camera2dBundle::default(), PanCam::default()));
 }

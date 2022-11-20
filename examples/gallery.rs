@@ -30,7 +30,7 @@ enum GameState {
     Running,
 }
 
-#[derive(AssetCollection)]
+#[derive(Resource, AssetCollection)]
 struct AssetHandles {
     #[asset(path = "vinik24.json")]
     palette: Handle<bevy_lospec::Palette>,
@@ -98,8 +98,8 @@ fn setup(
 
             let index = i + j * w;
 
-            commands
-                .spawn_bundle(ShapeBundle {
+            commands.spawn((
+                ShapeBundle {
                     transform: Transform::from_translation(Vec3::new(
                         i as f32 * spacing - w as f32 * spacing / 2.,
                         j as f32 * spacing - h as f32 * spacing / 2.,
@@ -113,14 +113,13 @@ fn setup(
                         fill: fills.choose(&mut rng).unwrap().clone(),
                     },
                     ..default()
-                })
-                .insert(Index(index));
+                },
+                Index(index),
+            ));
         }
     }
 
-    commands
-        .spawn_bundle(Camera2dBundle::default())
-        .insert(PanCam::default());
+    commands.spawn((Camera2dBundle::default(), PanCam::default()));
 }
 
 // fn update(mut query: Query<(&mut Transform, &Index), With<SmudShape>>, time: Res<Time>) {

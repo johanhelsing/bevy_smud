@@ -4,7 +4,6 @@ use bevy_smud::prelude::*;
 
 fn main() {
     App::new()
-        .insert_resource(Msaa { samples: 4 })
         .add_plugins(DefaultPlugins)
         .add_plugin(SmudPlugin)
         .add_startup_system(setup)
@@ -36,7 +35,7 @@ return sd_circle(p - vec2<f32>(20., 0.), 40.);
     // If the sdf gets very complicated, you can keep it in a .wgsl file:
     let bevy = asset_server.load("bevy.wgsl");
 
-    commands.spawn_bundle(ShapeBundle {
+    commands.spawn(ShapeBundle {
         shape: SmudShape {
             color: Color::TOMATO,
             sdf: circle,
@@ -48,7 +47,7 @@ return sd_circle(p - vec2<f32>(20., 0.), 40.);
         ..default()
     });
 
-    commands.spawn_bundle(ShapeBundle {
+    commands.spawn(ShapeBundle {
         transform: Transform::from_translation(Vec3::X * 200.),
         shape: SmudShape {
             color: Color::rgb(0.7, 0.6, 0.4),
@@ -59,7 +58,7 @@ return sd_circle(p - vec2<f32>(20., 0.), 40.);
         ..default()
     });
 
-    commands.spawn_bundle(ShapeBundle {
+    commands.spawn(ShapeBundle {
         transform: Transform {
             translation: Vec3::X * -200.,
             scale: Vec3::splat(0.4),
@@ -76,5 +75,5 @@ return sd_circle(p - vec2<f32>(20., 0.), 40.);
         ..default()
     });
 
-    commands.spawn_bundle(Camera2dBundle::default());
+    commands.spawn(Camera2dBundle::default());
 }
