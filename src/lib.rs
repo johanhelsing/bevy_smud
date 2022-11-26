@@ -32,7 +32,10 @@ use bevy::{
         },
         renderer::{RenderDevice, RenderQueue},
         texture::BevyDefault,
-        view::{ViewUniform, ViewUniformOffset, ViewUniforms, VisibleEntities},
+        view::{
+            ExtractedView, ViewTarget, ViewUniform, ViewUniformOffset, ViewUniforms,
+            VisibleEntities,
+        },
         Extract, MainWorld, RenderApp, RenderStage,
     },
     sprite::Mesh2dPipelineKey,
@@ -185,6 +188,7 @@ impl FromWorld for SmudPipeline {
 struct SmudPipelineKey {
     mesh: Mesh2dPipelineKey,
     shader: (HandleId, HandleId),
+    hdr: bool,
 }
 
 impl SpecializedRenderPipeline for SmudPipeline {
@@ -248,7 +252,11 @@ impl SpecializedRenderPipeline for SmudPipeline {
                 entry_point: "fragment".into(),
                 shader_defs: Vec::new(),
                 targets: vec![Some(ColorTargetState {
-                    format: TextureFormat::bevy_default(),
+                    format: if key.hdr {
+                        ViewTarget::TEXTURE_FORMAT_HDR
+                    } else {
+                        TextureFormat::bevy_default()
+                    },
                     blend: Some(BlendState::ALPHA_BLENDING),
                     write_mask: ColorWrites::ALL,
                 })],
@@ -385,7 +393,11 @@ fn extract_shapes(
 
 fn queue_shapes(
     mut commands: Commands,
-    mut views: Query<(&mut RenderPhase<Transparent2d>, &VisibleEntities)>,
+    mut views: Query<(
+        &mut RenderPhase<Transparent2d>,
+        &ExtractedView,
+        &VisibleEntities,
+    )>,
     mut pipelines: ResMut<SpecializedRenderPipelines<SmudPipeline>>,
     mut pipeline_cache: ResMut<PipelineCache>,
     mut extracted_shapes: ResMut<ExtractedShapes>, // todo needs mut?
@@ -434,7 +446,7 @@ fn queue_shapes(
     let shape_meta = &mut shape_meta;
 
     // Iterate over each view (a camera is a view)
-    for (mut transparent_phase, _visible_entities) in views.iter_mut() {
+    for (mut transparent_phase, view, _visible_entities) in views.iter_mut() {
         // todo: check visible entities?
 
         let extracted_shapes = &mut extracted_shapes.0;
@@ -490,6 +502,7 @@ fn queue_shapes(
                     let specialize_key = SmudPipelineKey {
                         mesh: mesh_key,
                         shader: current_batch.shader,
+                        hdr: view.hdr,
                     };
                     current_batch_pipeline =
                         pipelines.specialize(&mut pipeline_cache, &smud_pipeline, specialize_key);
