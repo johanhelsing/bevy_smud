@@ -15,7 +15,6 @@ fn main() {
                 .with_collection::<AssetHandles>(),
         )
         .add_state(GameState::Loading)
-        .insert_resource(Msaa { samples: 4 })
         .add_plugins(DefaultPlugins)
         .add_plugin(LogDiagnosticsPlugin::default())
         .add_plugin(FrameTimeDiagnosticsPlugin)

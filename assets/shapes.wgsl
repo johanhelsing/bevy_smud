@@ -69,15 +69,15 @@ fn sd_trapezoid(p: vec2<f32>, r1: f32, r2: f32, he: f32) -> f32 {
 
 fn sd_parallelogram(p: vec2<f32>, wi: f32, he: f32, sk: f32) -> f32 {
     let e = vec2<f32>(sk, he);
-    let p = select(p, -p, p.y < 0.);
+    var p = select(p, -p, p.y < 0.);
     var w = p - e;
     w.x = w.x - clamp(w.x, -wi, wi);
-    let d = vec2<f32>(dot(w, w), -w.y);
+    var d = vec2<f32>(dot(w, w), -w.y);
     let s = p.x*e.y - p.y*e.x;
-    let p = select(p, -p, s < 0.);
+    p = select(p, -p, s < 0.);
     var v = p - vec2<f32>(wi, 0.);
     v = v - e * clamp(dot(v, e) / dot(e, e), -1., 1.);
-    let d = min(d, vec2<f32>(dot(v, v), wi * he - abs(s)));
+    d = min(d, vec2<f32>(dot(v, v), wi * he - abs(s)));
     return sqrt(d.x)*sign(-d.y);
 }
 
@@ -552,16 +552,16 @@ fn sd_renormalize_uv(uv: vec2<f32>) -> vec2<f32> {
 }
 
 fn sd_exponential_falloff(d: f32, size: f32, power: f32) -> f32 {
-    let a = (size - d) / size;
-    let a = clamp(a, 0.0, 1.0);
-    let a = pow(a, power);
+    var a = (size - d) / size;
+    a = clamp(a, 0.0, 1.0);
+    a = pow(a, power);
     return a;
 }
 
 fn sd_exponential_falloff_3(d: f32, size: f32) -> f32 {
-    let a = (size - d) / size;
-    let a = clamp(a, 0.0, 1.0);
-    let a = a * a * a;
+    var a = (size - d) / size;
+    a = clamp(a, 0.0, 1.0);
+    a = a * a * a;
     return a;
 }
 

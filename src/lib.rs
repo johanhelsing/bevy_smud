@@ -7,9 +7,12 @@ use std::cmp::Ordering;
 use bevy::{
     asset::HandleId,
     core_pipeline::core_2d::Transparent2d,
-    ecs::system::{
-        lifetimeless::{Read, SQuery, SRes},
-        SystemParamItem,
+    ecs::{
+        query::ROQueryItem,
+        system::{
+            lifetimeless::{Read, SRes},
+            SystemParamItem,
+        },
     },
     math::Vec3Swizzles,
     prelude::*,
@@ -17,7 +20,7 @@ use bevy::{
     render::{
         globals::{GlobalsBuffer, GlobalsUniform},
         render_phase::{
-            AddRenderCommand, BatchedPhaseItem, DrawFunctions, EntityRenderCommand, RenderCommand,
+            AddRenderCommand, BatchedPhaseItem, DrawFunctions, PhaseItem, RenderCommand,
             RenderCommandResult, RenderPhase, SetItemPipeline, TrackedRenderPass,
         },
         render_resource::{
@@ -36,7 +39,7 @@ use bevy::{
             ExtractedView, ViewTarget, ViewUniform, ViewUniformOffset, ViewUniforms,
             VisibleEntities,
         },
-        Extract, MainWorld, RenderApp, RenderStage,
+        Extract, MainWorld, RenderApp, RenderSet,
     },
     sprite::Mesh2dPipelineKey,
     utils::{FloatOrd, HashMap},
@@ -92,9 +95,9 @@ impl Plugin for SmudPlugin {
                 .init_resource::<ShapeMeta>()
                 .init_resource::<SmudPipeline>()
                 .init_resource::<SpecializedRenderPipelines<SmudPipeline>>()
-                .add_system_to_stage(RenderStage::Extract, extract_shapes)
-                .add_system_to_stage(RenderStage::Extract, extract_sdf_shaders)
-                .add_system_to_stage(RenderStage::Queue, queue_shapes);
+                .add_system_to_schedule(ExtractSchedule, extract_shapes)
+                .add_system_to_schedule(ExtractSchedule, extract_sdf_shaders)
+                .add_system(queue_shapes.in_set(RenderSet::Queue));
         }
 
         app.register_type::<SmudShape>();
@@ -104,16 +107,18 @@ impl Plugin for SmudPlugin {
 type DrawSmudShape = (SetItemPipeline, SetShapeViewBindGroup<0>, DrawShapeBatch);
 
 struct SetShapeViewBindGroup<const I: usize>;
-impl<const I: usize> EntityRenderCommand for SetShapeViewBindGroup<I> {
-    type Param = (SRes<ShapeMeta>, SQuery<Read<ViewUniformOffset>>);
+impl<P: PhaseItem, const I: usize> RenderCommand<P> for SetShapeViewBindGroup<I> {
+    type Param = SRes<ShapeMeta>;
+    type ViewWorldQuery = Read<ViewUniformOffset>;
+    type ItemWorldQuery = ();
 
     fn render<'w>(
-        view: Entity,
-        _item: Entity,
-        (shape_meta, view_query): SystemParamItem<'w, '_, Self::Param>,
+        _item: &P,
+        view_uniform: ROQueryItem<'w, Self::ViewWorldQuery>,
+        _view: (),
+        shape_meta: SystemParamItem<'w, '_, Self::Param>,
         pass: &mut TrackedRenderPass<'w>,
     ) -> RenderCommandResult {
-        let view_uniform = view_query.get(view).unwrap();
         pass.set_bind_group(
             I,
             shape_meta.into_inner().view_bind_group.as_ref().unwrap(),
@@ -125,12 +130,15 @@ impl<const I: usize> EntityRenderCommand for SetShapeViewBindGroup<I> {
 
 struct DrawShapeBatch;
 impl<P: BatchedPhaseItem> RenderCommand<P> for DrawShapeBatch {
-    type Param = (SRes<ShapeMeta>, SQuery<Read<ShapeBatch>>);
+    type Param = SRes<ShapeMeta>;
+    type ViewWorldQuery = ();
+    type ItemWorldQuery = Read<ShapeBatch>;
 
     fn render<'w>(
-        _view: Entity,
         item: &P,
-        (shape_meta, _query_batch): SystemParamItem<'w, '_, Self::Param>,
+        _view: (),
+        _shape_batch: &'_ ShapeBatch,
+        shape_meta: SystemParamItem<'w, '_, Self::Param>,
         pass: &mut TrackedRenderPass<'w>,
     ) -> RenderCommandResult {
         // let shape_batch = query_batch.get(item.entity()).unwrap();
@@ -261,10 +269,10 @@ impl SpecializedRenderPipeline for SmudPipeline {
                     write_mask: ColorWrites::ALL,
                 })],
             }),
-            layout: Some(vec![
+            layout: vec![
                 // Bind group 0 is the view uniform
                 self.view_layout.clone(),
-            ]),
+            ],
             primitive: PrimitiveState {
                 front_face: FrontFace::Ccw,
                 cull_mode: Some(Face::Back),
@@ -281,6 +289,7 @@ impl SpecializedRenderPipeline for SmudPipeline {
                 alpha_to_coverage_enabled: false, // what is this?
             },
             label: Some("bevy_smud_pipeline".into()),
+            push_constant_ranges: Vec::new(),
         }
     }
 }
@@ -336,7 +345,7 @@ fn extract_sdf_shaders(mut main_world: ResMut<MainWorld>, mut pipeline: ResMut<S
             debug!("Generating shader");
             let generated_shader = Shader::from_wgsl(format!(
                 r#"
-#import bevy_pbr::mesh_view_types
+#import bevy_sprite::mesh2d_view_types
 @group(0) @binding(1)
 var<uniform> globals: Globals;
 #import {sdf_import_path}
@@ -466,7 +475,7 @@ fn queue_shapes(
             }
         });
 
-        let mesh_key = Mesh2dPipelineKey::from_msaa_samples(msaa.samples)
+        let mesh_key = Mesh2dPipelineKey::from_msaa_samples(msaa.samples())
             | Mesh2dPipelineKey::from_primitive_topology(PrimitiveTopology::TriangleStrip);
 
         // Impossible starting values that will be replaced on the first iteration
