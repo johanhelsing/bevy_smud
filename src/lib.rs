@@ -345,7 +345,7 @@ fn extract_sdf_shaders(mut main_world: ResMut<MainWorld>, mut pipeline: ResMut<S
             debug!("Generating shader");
             let generated_shader = Shader::from_wgsl(format!(
                 r#"
-#import bevy_sprite::mesh2d_view_types
+#import bevy_render::globals
 @group(0) @binding(1)
 var<uniform> globals: Globals;
 #import {sdf_import_path}
