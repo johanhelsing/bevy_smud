@@ -94,8 +94,7 @@ impl Plugin for SmudPlugin {
                 .init_resource::<ShapeMeta>()
                 .init_resource::<SmudPipeline>()
                 .init_resource::<SpecializedRenderPipelines<SmudPipeline>>()
-                .add_system_to_schedule(ExtractSchedule, extract_shapes)
-                .add_system_to_schedule(ExtractSchedule, extract_sdf_shaders)
+                .add_systems_to_schedule(ExtractSchedule, (extract_shapes, extract_sdf_shaders))
                 .add_system(queue_shapes.in_set(RenderSet::Queue));
         }
 
