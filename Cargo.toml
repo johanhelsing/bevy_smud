@@ -14,10 +14,10 @@ bevy = {git = "https://github.com/bevyengine/bevy", default-features = false, fe
   "bevy_asset",
   "bevy_core_pipeline",
   "bevy_render",
-  "bevy_sprite",
 ]}
 bytemuck = "1.7"
 copyless = "0.1"
+bitflags = "1.3"
 
 [dev-dependencies]
 bevy = {git = "https://github.com/bevyengine/bevy", default-features = false, features = [

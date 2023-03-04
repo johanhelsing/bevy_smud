@@ -41,7 +41,6 @@ use bevy::{
         },
         Extract, MainWorld, RenderApp, RenderSet,
     },
-    sprite::Mesh2dPipelineKey,
     utils::{FloatOrd, HashMap},
 };
 use bytemuck::{Pod, Zeroable};
@@ -194,7 +193,7 @@ impl FromWorld for SmudPipeline {
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 struct SmudPipelineKey {
-    mesh: Mesh2dPipelineKey,
+    mesh: PipelineKey,
     shader: (HandleId, HandleId),
     hdr: bool,
 }
@@ -400,6 +399,53 @@ fn extract_shapes(
     }
 }
 
+// fork of Mesh2DPipelineKey (in order to remove bevy_sprite dependency)
+// todo: merge with SmudPipelineKey?
+bitflags::bitflags! {
+#[repr(transparent)]
+    struct PipelineKey: u32 {
+        const MSAA_RESERVED_BITS                = Self::MSAA_MASK_BITS << Self::MSAA_SHIFT_BITS;
+        const PRIMITIVE_TOPOLOGY_RESERVED_BITS  = Self::PRIMITIVE_TOPOLOGY_MASK_BITS << Self::PRIMITIVE_TOPOLOGY_SHIFT_BITS;
+    }
+}
+
+impl PipelineKey {
+    const MSAA_MASK_BITS: u32 = 0b111;
+    const MSAA_SHIFT_BITS: u32 = 32 - Self::MSAA_MASK_BITS.count_ones();
+    const PRIMITIVE_TOPOLOGY_MASK_BITS: u32 = 0b111;
+    const PRIMITIVE_TOPOLOGY_SHIFT_BITS: u32 = Self::MSAA_SHIFT_BITS - 3;
+
+    pub fn from_msaa_samples(msaa_samples: u32) -> Self {
+        let msaa_bits =
+            (msaa_samples.trailing_zeros() & Self::MSAA_MASK_BITS) << Self::MSAA_SHIFT_BITS;
+        Self::from_bits(msaa_bits).unwrap()
+    }
+
+    pub fn msaa_samples(&self) -> u32 {
+        1 << ((self.bits >> Self::MSAA_SHIFT_BITS) & Self::MSAA_MASK_BITS)
+    }
+
+    pub fn from_primitive_topology(primitive_topology: PrimitiveTopology) -> Self {
+        let primitive_topology_bits = ((primitive_topology as u32)
+            & Self::PRIMITIVE_TOPOLOGY_MASK_BITS)
+            << Self::PRIMITIVE_TOPOLOGY_SHIFT_BITS;
+        Self::from_bits(primitive_topology_bits).unwrap()
+    }
+
+    pub fn primitive_topology(&self) -> PrimitiveTopology {
+        let primitive_topology_bits =
+            (self.bits >> Self::PRIMITIVE_TOPOLOGY_SHIFT_BITS) & Self::PRIMITIVE_TOPOLOGY_MASK_BITS;
+        match primitive_topology_bits {
+            x if x == PrimitiveTopology::PointList as u32 => PrimitiveTopology::PointList,
+            x if x == PrimitiveTopology::LineList as u32 => PrimitiveTopology::LineList,
+            x if x == PrimitiveTopology::LineStrip as u32 => PrimitiveTopology::LineStrip,
+            x if x == PrimitiveTopology::TriangleList as u32 => PrimitiveTopology::TriangleList,
+            x if x == PrimitiveTopology::TriangleStrip as u32 => PrimitiveTopology::TriangleStrip,
+            _ => PrimitiveTopology::default(),
+        }
+    }
+}
+
 fn queue_shapes(
     mut commands: Commands,
     mut views: Query<(
@@ -475,8 +521,8 @@ fn queue_shapes(
             }
         });
 
-        let mesh_key = Mesh2dPipelineKey::from_msaa_samples(msaa.samples())
-            | Mesh2dPipelineKey::from_primitive_topology(PrimitiveTopology::TriangleStrip);
+        let mesh_key = PipelineKey::from_msaa_samples(msaa.samples())
+            | PipelineKey::from_primitive_topology(PrimitiveTopology::TriangleStrip);
 
         // Impossible starting values that will be replaced on the first iteration
         let mut current_batch = ShapeBatch {
