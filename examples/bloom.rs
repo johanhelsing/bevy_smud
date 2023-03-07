@@ -9,6 +9,7 @@ use bevy_smud::prelude::*;
 
 fn main() {
     App::new()
+        .insert_resource(ClearColor(Color::BLACK))
         .add_plugins(DefaultPlugins)
         .add_plugin(SmudPlugin)
         .add_startup_system(setup)
@@ -44,7 +45,7 @@ fn setup(mut commands: Commands, mut shaders: ResMut<Assets<Shader>>) {
             ..default()
         },
         BloomSettings {
-            threshold: 0.2,
+            intensity: 0.7,
             ..default()
         },
     ));
