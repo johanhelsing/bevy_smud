@@ -31,7 +31,6 @@ fn setup(mut commands: Commands, mut shaders: ResMut<Assets<Shader>>) {
             // Since the circle has radius 70, we make the half-size of the quad 80.
             frame: Frame::Quad(80.),
             fill: SIMPLE_FILL_HANDLE.typed(),
-            ..default()
         },
         ..default()
     });
