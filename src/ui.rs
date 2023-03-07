@@ -15,11 +15,9 @@ use bevy::{
             SetItemPipeline, TrackedRenderPass,
         },
         render_resource::{
-            BindGroupDescriptor, BindGroupEntry, CachedRenderPipelineId, PipelineCache,
-            PrimitiveTopology, SpecializedRenderPipelines,
+            CachedRenderPipelineId, PipelineCache, PrimitiveTopology, SpecializedRenderPipelines,
         },
         renderer::{RenderDevice, RenderQueue},
-        view::ViewUniforms,
         Extract, RenderApp, RenderStage,
     },
     sprite::Mesh2dPipelineKey,
@@ -29,16 +27,11 @@ use bevy::{
 use copyless::VecHelper;
 
 use crate::{
-    ExtractedShape, SetShapeViewBindGroup, SetTimeBindGroup, ShapeMeta, ShapeVertex, SmudPipeline,
-    SmudPipelineKey, SmudShape,
+    ExtractedShape, SetShapeViewBindGroup, ShapeMeta, ShapeVertex, SmudPipeline, SmudPipelineKey,
+    SmudShape,
 };
 
-type DrawSmudUiShape = (
-    SetItemPipeline,
-    SetShapeViewBindGroup<0>,
-    SetTimeBindGroup<1>,
-    DrawUiShapeNode,
-);
+type DrawSmudUiShape = (SetItemPipeline, SetShapeViewBindGroup<0>, DrawUiShapeNode);
 
 pub struct DrawUiShapeNode;
 impl EntityRenderCommand for DrawUiShapeNode {
@@ -83,13 +76,21 @@ impl Plugin for UiShapePlugin {
     }
 }
 
-#[derive(Default, Debug)]
+#[derive(Resource, Default, Debug)]
 struct ExtractedUiShapes(Vec<ExtractedShape>);
 
 #[allow(clippy::type_complexity)]
 fn extract_ui_shapes(
     mut extracted_shapes: ResMut<ExtractedUiShapes>,
-    query: Extract<Query<(&Node, &GlobalTransform, &SmudShape, &Visibility, &UiColor)>>,
+    query: Extract<
+        Query<(
+            &Node,
+            &GlobalTransform,
+            &SmudShape,
+            &Visibility,
+            &BackgroundColor,
+        )>,
+    >,
 ) {
     extracted_shapes.0.clear();
 
@@ -98,7 +99,7 @@ fn extract_ui_shapes(
             continue;
         }
 
-        let size = node.size.x; // TODO: Also pass on the height value
+        let size = node.size().x; // TODO: Also pass on the height value
         let frame = size / 2.;
 
         extracted_shapes.0.alloc().init(ExtractedShape {
@@ -158,8 +159,8 @@ fn prepare_ui_shapes(
 
     for extracted_shape in extracted_shapes.iter() {
         let shader_key = (
-            extracted_shape.sdf_shader.id,
-            extracted_shape.fill_shader.id,
+            extracted_shape.sdf_shader.id(),
+            extracted_shape.fill_shader.id(),
         );
         let position = extracted_shape.transform.translation();
         let z = position.z;
@@ -167,12 +168,12 @@ fn prepare_ui_shapes(
         // We also split by z, so other ui systems can get their stuff in the middle
         if current_batch_shaders != shader_key || z != last_z {
             if start != end {
-                commands.spawn_bundle((UiShapeBatch {
+                commands.spawn(UiShapeBatch {
                     range: start..end,
                     shader_key: current_batch_shaders,
                     pipeline: current_batch_pipeline,
                     z: FloatOrd(last_z),
-                },));
+                });
                 start = end;
             }
             current_batch_shaders = shader_key;
@@ -225,12 +226,12 @@ fn prepare_ui_shapes(
 
     // if start != end, there is one last batch to process
     if start != end {
-        commands.spawn_bundle((UiShapeBatch {
+        commands.spawn(UiShapeBatch {
             range: start..end,
             shader_key: current_batch_shaders,
             z: FloatOrd(last_z),
             pipeline: current_batch_pipeline,
-        },));
+        });
     }
 
     shape_meta
@@ -240,30 +241,11 @@ fn prepare_ui_shapes(
 
 fn queue_ui_shapes(
     transparent_draw_functions: Res<DrawFunctions<TransparentUi>>,
-    view_uniforms: Res<ViewUniforms>,
-    mut shape_meta: ResMut<ShapeMeta>, // TODO: make UI meta?
-    render_device: Res<RenderDevice>,
-    smud_pipeline: Res<SmudPipeline>,
     ui_shape_batches: Query<(Entity, &UiShapeBatch)>,
     mut views: Query<&mut RenderPhase<TransparentUi>>,
 ) {
     // TODO: look at both the shape renderer and the
     // ui renderer and figure out which part to copy here!!!
-
-    let view_binding = match view_uniforms.uniforms.binding() {
-        Some(binding) => binding,
-        None => return,
-    };
-
-    // TODO: maybe redundant? (also done in regular pass)
-    shape_meta.view_bind_group = Some(render_device.create_bind_group(&BindGroupDescriptor {
-        entries: &[BindGroupEntry {
-            binding: 0,
-            resource: view_binding,
-        }],
-        label: Some("smud_shape_view_bind_group"),
-        layout: &smud_pipeline.view_layout,
-    }));
 
     let draw_smud_ui_shape = transparent_draw_functions
         .read()
