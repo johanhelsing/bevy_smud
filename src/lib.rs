@@ -453,7 +453,7 @@ fn queue_shapes(
         &VisibleEntities,
     )>,
     mut pipelines: ResMut<SpecializedRenderPipelines<SmudPipeline>>,
-    mut pipeline_cache: ResMut<PipelineCache>,
+    pipeline_cache: ResMut<PipelineCache>,
     mut extracted_shapes: ResMut<ExtractedShapes>, // todo needs mut?
     mut shape_meta: ResMut<ShapeMeta>,
     transparent_draw_functions: Res<DrawFunctions<Transparent2d>>,
