@@ -7,7 +7,7 @@ keywords = ["gamedev", "bevy", "sdf"]
 license = "MIT OR Apache-2.0"
 name = "bevy_smud"
 repository = "https://github.com/johanhelsing/bevy_smud"
-version = "0.4.0"
+version = "0.5.0"
 
 [dependencies]
 bevy = {version = "0.10", default-features = false, features = [
@@ -25,9 +25,9 @@ bevy = {version = "0.10", default-features = false, features = [
   "x11", # github actions runners don't have libxkbcommon installed, so can't use wayland
   "filesystem_watcher",
 ]}
-bevy_asset_loader = { git = "https://github.com/NiklasEi/bevy_asset_loader", branch = "bevy_main" }
+bevy_asset_loader = "0.15"
 bevy_lospec = "0.4"
-bevy_pancam = {git = "https://github.com/johanhelsing/bevy_pancam", branch = "bevy-0.10"}
+bevy_pancam = "0.8"
 rand = "0.8"
 
 [profile.dev]
@@ -35,6 +35,3 @@ opt-level = 1
 
 [profile.dev.package."*"]
 opt-level = 3
-
-[patch."https://github.com/bevyengine/bevy"]
-bevy = "0.10"
