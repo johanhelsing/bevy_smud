@@ -3,6 +3,9 @@ use bevy_smud::prelude::*;
 
 fn main() {
     App::new()
+        // bevy_smud comes with anti-aliasing built into the standards fills
+        // which is more efficient than MSAA, and also works on Linux, wayland
+        .insert_resource(Msaa::Off)
         .add_plugins(DefaultPlugins.set(AssetPlugin {
             // enable hot-reloading so we can see changes to wgsl files without relaunching the app
             watch_for_changes: true,
