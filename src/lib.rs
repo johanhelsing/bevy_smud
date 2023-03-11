@@ -7,9 +7,12 @@ use std::cmp::Ordering;
 use bevy::{
     asset::HandleId,
     core_pipeline::core_2d::Transparent2d,
-    ecs::system::{
-        lifetimeless::{Read, SQuery, SRes},
-        SystemParamItem,
+    ecs::{
+        query::ROQueryItem,
+        system::{
+            lifetimeless::{Read, SRes},
+            SystemParamItem,
+        },
     },
     math::Vec3Swizzles,
     prelude::*,
@@ -17,7 +20,7 @@ use bevy::{
     render::{
         globals::{GlobalsBuffer, GlobalsUniform},
         render_phase::{
-            AddRenderCommand, BatchedPhaseItem, DrawFunctions, EntityRenderCommand, RenderCommand,
+            AddRenderCommand, BatchedPhaseItem, DrawFunctions, PhaseItem, RenderCommand,
             RenderCommandResult, RenderPhase, SetItemPipeline, TrackedRenderPass,
         },
         render_resource::{
@@ -36,9 +39,8 @@ use bevy::{
             ExtractedView, ViewTarget, ViewUniform, ViewUniformOffset, ViewUniforms,
             VisibleEntities,
         },
-        Extract, MainWorld, RenderApp, RenderStage,
+        Extract, MainWorld, RenderApp, RenderSet,
     },
-    sprite::Mesh2dPipelineKey,
     utils::{FloatOrd, HashMap},
 };
 use bytemuck::{Pod, Zeroable};
@@ -92,9 +94,8 @@ impl Plugin for SmudPlugin {
                 .init_resource::<ShapeMeta>()
                 .init_resource::<SmudPipeline>()
                 .init_resource::<SpecializedRenderPipelines<SmudPipeline>>()
-                .add_system_to_stage(RenderStage::Extract, extract_shapes)
-                .add_system_to_stage(RenderStage::Extract, extract_sdf_shaders)
-                .add_system_to_stage(RenderStage::Queue, queue_shapes);
+                .add_systems((extract_shapes, extract_sdf_shaders).in_schedule(ExtractSchedule))
+                .add_system(queue_shapes.in_set(RenderSet::Queue));
         }
 
         app.register_type::<SmudShape>();
@@ -104,16 +105,18 @@ impl Plugin for SmudPlugin {
 type DrawSmudShape = (SetItemPipeline, SetShapeViewBindGroup<0>, DrawShapeBatch);
 
 struct SetShapeViewBindGroup<const I: usize>;
-impl<const I: usize> EntityRenderCommand for SetShapeViewBindGroup<I> {
-    type Param = (SRes<ShapeMeta>, SQuery<Read<ViewUniformOffset>>);
+impl<P: PhaseItem, const I: usize> RenderCommand<P> for SetShapeViewBindGroup<I> {
+    type Param = SRes<ShapeMeta>;
+    type ViewWorldQuery = Read<ViewUniformOffset>;
+    type ItemWorldQuery = ();
 
     fn render<'w>(
-        view: Entity,
-        _item: Entity,
-        (shape_meta, view_query): SystemParamItem<'w, '_, Self::Param>,
+        _item: &P,
+        view_uniform: ROQueryItem<'w, Self::ViewWorldQuery>,
+        _view: (),
+        shape_meta: SystemParamItem<'w, '_, Self::Param>,
         pass: &mut TrackedRenderPass<'w>,
     ) -> RenderCommandResult {
-        let view_uniform = view_query.get(view).unwrap();
         pass.set_bind_group(
             I,
             shape_meta.into_inner().view_bind_group.as_ref().unwrap(),
@@ -125,12 +128,15 @@ impl<const I: usize> EntityRenderCommand for SetShapeViewBindGroup<I> {
 
 struct DrawShapeBatch;
 impl<P: BatchedPhaseItem> RenderCommand<P> for DrawShapeBatch {
-    type Param = (SRes<ShapeMeta>, SQuery<Read<ShapeBatch>>);
+    type Param = SRes<ShapeMeta>;
+    type ViewWorldQuery = ();
+    type ItemWorldQuery = Read<ShapeBatch>;
 
     fn render<'w>(
-        _view: Entity,
         item: &P,
-        (shape_meta, _query_batch): SystemParamItem<'w, '_, Self::Param>,
+        _view: (),
+        _shape_batch: &'_ ShapeBatch,
+        shape_meta: SystemParamItem<'w, '_, Self::Param>,
         pass: &mut TrackedRenderPass<'w>,
     ) -> RenderCommandResult {
         // let shape_batch = query_batch.get(item.entity()).unwrap();
@@ -186,7 +192,7 @@ impl FromWorld for SmudPipeline {
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 struct SmudPipelineKey {
-    mesh: Mesh2dPipelineKey,
+    mesh: PipelineKey,
     shader: (HandleId, HandleId),
     hdr: bool,
 }
@@ -261,10 +267,10 @@ impl SpecializedRenderPipeline for SmudPipeline {
                     write_mask: ColorWrites::ALL,
                 })],
             }),
-            layout: Some(vec![
+            layout: vec![
                 // Bind group 0 is the view uniform
                 self.view_layout.clone(),
-            ]),
+            ],
             primitive: PrimitiveState {
                 front_face: FrontFace::Ccw,
                 cull_mode: Some(Face::Back),
@@ -281,6 +287,7 @@ impl SpecializedRenderPipeline for SmudPipeline {
                 alpha_to_coverage_enabled: false, // what is this?
             },
             label: Some("bevy_smud_pipeline".into()),
+            push_constant_ranges: Vec::new(),
         }
     }
 }
@@ -336,7 +343,7 @@ fn extract_sdf_shaders(mut main_world: ResMut<MainWorld>, mut pipeline: ResMut<S
             debug!("Generating shader");
             let generated_shader = Shader::from_wgsl(format!(
                 r#"
-#import bevy_pbr::mesh_view_types
+#import bevy_render::globals
 @group(0) @binding(1)
 var<uniform> globals: Globals;
 #import {sdf_import_path}
@@ -391,6 +398,53 @@ fn extract_shapes(
     }
 }
 
+// fork of Mesh2DPipelineKey (in order to remove bevy_sprite dependency)
+// todo: merge with SmudPipelineKey?
+bitflags::bitflags! {
+#[repr(transparent)]
+    struct PipelineKey: u32 {
+        const MSAA_RESERVED_BITS                = Self::MSAA_MASK_BITS << Self::MSAA_SHIFT_BITS;
+        const PRIMITIVE_TOPOLOGY_RESERVED_BITS  = Self::PRIMITIVE_TOPOLOGY_MASK_BITS << Self::PRIMITIVE_TOPOLOGY_SHIFT_BITS;
+    }
+}
+
+impl PipelineKey {
+    const MSAA_MASK_BITS: u32 = 0b111;
+    const MSAA_SHIFT_BITS: u32 = 32 - Self::MSAA_MASK_BITS.count_ones();
+    const PRIMITIVE_TOPOLOGY_MASK_BITS: u32 = 0b111;
+    const PRIMITIVE_TOPOLOGY_SHIFT_BITS: u32 = Self::MSAA_SHIFT_BITS - 3;
+
+    pub fn from_msaa_samples(msaa_samples: u32) -> Self {
+        let msaa_bits =
+            (msaa_samples.trailing_zeros() & Self::MSAA_MASK_BITS) << Self::MSAA_SHIFT_BITS;
+        Self::from_bits(msaa_bits).unwrap()
+    }
+
+    pub fn msaa_samples(&self) -> u32 {
+        1 << ((self.bits >> Self::MSAA_SHIFT_BITS) & Self::MSAA_MASK_BITS)
+    }
+
+    pub fn from_primitive_topology(primitive_topology: PrimitiveTopology) -> Self {
+        let primitive_topology_bits = ((primitive_topology as u32)
+            & Self::PRIMITIVE_TOPOLOGY_MASK_BITS)
+            << Self::PRIMITIVE_TOPOLOGY_SHIFT_BITS;
+        Self::from_bits(primitive_topology_bits).unwrap()
+    }
+
+    pub fn primitive_topology(&self) -> PrimitiveTopology {
+        let primitive_topology_bits =
+            (self.bits >> Self::PRIMITIVE_TOPOLOGY_SHIFT_BITS) & Self::PRIMITIVE_TOPOLOGY_MASK_BITS;
+        match primitive_topology_bits {
+            x if x == PrimitiveTopology::PointList as u32 => PrimitiveTopology::PointList,
+            x if x == PrimitiveTopology::LineList as u32 => PrimitiveTopology::LineList,
+            x if x == PrimitiveTopology::LineStrip as u32 => PrimitiveTopology::LineStrip,
+            x if x == PrimitiveTopology::TriangleList as u32 => PrimitiveTopology::TriangleList,
+            x if x == PrimitiveTopology::TriangleStrip as u32 => PrimitiveTopology::TriangleStrip,
+            _ => PrimitiveTopology::default(),
+        }
+    }
+}
+
 fn queue_shapes(
     mut commands: Commands,
     mut views: Query<(
@@ -399,7 +453,7 @@ fn queue_shapes(
         &VisibleEntities,
     )>,
     mut pipelines: ResMut<SpecializedRenderPipelines<SmudPipeline>>,
-    mut pipeline_cache: ResMut<PipelineCache>,
+    pipeline_cache: ResMut<PipelineCache>,
     mut extracted_shapes: ResMut<ExtractedShapes>, // todo needs mut?
     mut shape_meta: ResMut<ShapeMeta>,
     transparent_draw_functions: Res<DrawFunctions<Transparent2d>>,
@@ -466,8 +520,8 @@ fn queue_shapes(
             }
         });
 
-        let mesh_key = Mesh2dPipelineKey::from_msaa_samples(msaa.samples)
-            | Mesh2dPipelineKey::from_primitive_topology(PrimitiveTopology::TriangleStrip);
+        let mesh_key = PipelineKey::from_msaa_samples(msaa.samples())
+            | PipelineKey::from_primitive_topology(PrimitiveTopology::TriangleStrip);
 
         // Impossible starting values that will be replaced on the first iteration
         let mut current_batch = ShapeBatch {
@@ -505,7 +559,7 @@ fn queue_shapes(
                         hdr: view.hdr,
                     };
                     current_batch_pipeline =
-                        pipelines.specialize(&mut pipeline_cache, &smud_pipeline, specialize_key);
+                        pipelines.specialize(&pipeline_cache, &smud_pipeline, specialize_key);
                 }
             }
 
