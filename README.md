@@ -90,11 +90,12 @@ The `main` branch targets the latest bevy release.
 I intend to support the `main` branch of Bevy in the `bevy-main` branch.
 
 |bevy|bevy_smud|
-|---|---|
-|0.9|0.4, main|
-|0.8|0.3|
-|0.7|0.2|
-|0.6|0.1|
+|----|---------|
+|0.10|0.5, main|
+|0.9 |0.4      |
+|0.8 |0.3      |
+|0.7 |0.2      |
+|0.6 |0.1      |
 
 ## Thanks!
 
