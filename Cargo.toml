@@ -35,6 +35,3 @@ opt-level = 1
 
 [profile.dev.package."*"]
 opt-level = 3
-
-[patch."https://github.com/bevyengine/bevy"]
-bevy = "0.10"
