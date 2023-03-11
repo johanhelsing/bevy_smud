@@ -559,7 +559,7 @@ fn queue_shapes(
                         hdr: view.hdr,
                     };
                     current_batch_pipeline =
-                        pipelines.specialize(&mut pipeline_cache, &smud_pipeline, specialize_key);
+                        pipelines.specialize(&pipeline_cache, &smud_pipeline, specialize_key);
                 }
             }
 
