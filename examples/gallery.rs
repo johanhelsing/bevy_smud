@@ -72,6 +72,7 @@ fn setup(
         asset_server.load("gallery/rounded_x.wgsl"),
         asset_server.load("gallery/ellipse.wgsl"),
         asset_server.load("gallery/star_5.wgsl"),
+        asset_server.load("gallery/star_4.wgsl"),
         asset_server.load("gallery/horseshoe.wgsl"),
         asset_server.load("gallery/blobby_cross.wgsl"),
         asset_server.load("gallery/hexagon.wgsl"),
