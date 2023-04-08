@@ -40,6 +40,13 @@ fn sd_segment(p: vec2<f32>, a: vec2<f32>, b: vec2<f32>) -> f32 {
     return length(pa - ba * h);
 }
 
+fn sd_line(p: vec2<f32>, a: vec2<f32>, b: vec2<f32>) -> f32 {
+    let pa = p - a;
+    let ba = b - a;
+    let h = dot(pa, ba)/dot(ba, ba);
+    return length(pa - ba * h);
+}
+
 fn ndot(a: vec2<f32>, b: vec2<f32>) -> f32 {
     return a.x * b.x - a.y * b.y;
 }
