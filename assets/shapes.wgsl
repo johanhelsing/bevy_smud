@@ -189,6 +189,13 @@ fn sd_star_5(p: vec2<f32>, r: f32, rf: f32) -> f32 {
     return length(p - ba * h) * sign(p.y * ba.x - p.x * ba.y);
 }
 
+// wgsl made the cowardly choice of keeping an incorrectly named modf,
+// function and doesn't currently have a glsl mod equivalent :(
+// see: https://github.com/gpuweb/gpuweb/issues/3987
+fn modulo(x: f32, y: f32) -> f32 {
+    return x - y * floor(x / y);
+}
+
 fn sd_star(p: vec2<f32>, r: f32, n: i32, m: f32) -> f32 {
     // next 4 lines can be precomputed for a given shape
     let an = 3.141593 / f32(n);
@@ -196,7 +203,7 @@ fn sd_star(p: vec2<f32>, r: f32, n: i32, m: f32) -> f32 {
     let acs = vec2<f32>(cos(an), sin(an));
     let ecs = vec2<f32>(cos(en), sin(en)); // ecs=vec2(0, 1) for regular polygon
 
-    let bn = atan2(p.x, p.y) % (2. * an) - an;
+    let bn = modulo(atan2(p.x, p.y), (2. * an)) - an;
     var p = length(p) * vec2<f32>(cos(bn), abs(sin(bn)));
     p = p - r * acs;
     p = p + ecs * clamp(-dot(p, ecs), 0., r * acs.y / ecs.y);
