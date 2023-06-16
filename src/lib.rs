@@ -39,7 +39,7 @@ use bevy::{
             ExtractedView, ViewTarget, ViewUniform, ViewUniformOffset, ViewUniforms,
             VisibleEntities,
         },
-        Extract, MainWorld, RenderApp, RenderSet,
+        Extract, MainWorld, Render, RenderApp, RenderSet,
     },
     utils::{FloatOrd, HashMap},
 };
@@ -95,7 +95,7 @@ impl Plugin for SmudPlugin {
                 .init_resource::<SmudPipeline>()
                 .init_resource::<SpecializedRenderPipelines<SmudPipeline>>()
                 .add_systems(ExtractSchedule, (extract_shapes, extract_sdf_shaders))
-                .add_systems(Update, queue_shapes.in_set(RenderSet::Queue));
+                .add_systems(Render, queue_shapes.in_set(RenderSet::Queue));
         }
 
         app.register_type::<SmudShape>();
