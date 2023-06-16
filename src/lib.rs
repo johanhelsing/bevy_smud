@@ -92,13 +92,18 @@ impl Plugin for SmudPlugin {
                 .add_render_command::<Transparent2d, DrawSmudShape>()
                 .init_resource::<ExtractedShapes>()
                 .init_resource::<ShapeMeta>()
-                .init_resource::<SmudPipeline>()
                 .init_resource::<SpecializedRenderPipelines<SmudPipeline>>()
                 .add_systems(ExtractSchedule, (extract_shapes, extract_sdf_shaders))
                 .add_systems(Render, queue_shapes.in_set(RenderSet::Queue));
         }
 
         app.register_type::<SmudShape>();
+    }
+
+    fn finish(&self, app: &mut App) {
+        app.get_sub_app_mut(RenderApp)
+            .unwrap()
+            .init_resource::<SmudPipeline>();
     }
 }
 
