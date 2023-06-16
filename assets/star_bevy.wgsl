@@ -1,5 +1,3 @@
-#import bevy_smud::shapes
-
 fn bevy_head(p: vec2<f32>) -> f32 {
     let skull = sd_ellipse(p, 0.22, 0.20);
     let p_beak = sd_rotate_rad(p - vec2<f32>(0.12, 0.02), 1.2);

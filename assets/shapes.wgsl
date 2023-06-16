@@ -1,3 +1,4 @@
+#define_import_path bevy_smud::shapes
 // Most of these are ported versions of the ones on Inigo Quilez website, https://iquilezles.org
 
 fn sd_circle(p: vec2<f32>, r: f32) -> f32 {
@@ -44,7 +45,7 @@ fn ndot(a: vec2<f32>, b: vec2<f32>) -> f32 {
     return a.x * b.x - a.y * b.y;
 }
 
-fn dot2(a: vec2<f32>) -> f32 {
+fn dot2_(a: vec2<f32>) -> f32 {
     return dot(a, a);
 }
 
@@ -62,9 +63,9 @@ fn sd_trapezoid(p: vec2<f32>, r1: f32, r2: f32, he: f32) -> f32 {
     p.x = abs(p.x);
     let r = select(r2, r1, p.y < 0.);
     let ca = vec2<f32>(p.x - min(p.x, r), abs(p.y) - he);
-    let cb = p - k1 + k2 * clamp(dot(k1 - p, k2) / dot2(k2), 0., 1.);
+    let cb = p - k1 + k2 * clamp(dot(k1 - p, k2) / dot2_(k2), 0., 1.);
     let s = select(1., -1., cb.x < 0. && ca.y < 0.);
-    return s * sqrt(min(dot2(ca), dot2(cb)));
+    return s * sqrt(min(dot2_(ca), dot2_(cb)));
 }
 
 fn sd_parallelogram(p: vec2<f32>, wi: f32, he: f32, sk: f32) -> f32 {
@@ -175,7 +176,7 @@ fn sd_hexagram(p: vec2<f32>, r: f32) -> f32 {
     return length(p) * sign(p.y);
 }
 
-fn sd_star_5(p: vec2<f32>, r: f32, rf: f32) -> f32 {
+fn sd_star_5_(p: vec2<f32>, r: f32, rf: f32) -> f32 {
     let k1 = vec2<f32>(0.809016994375, -0.587785252292);
     let k2 = vec2<f32>(-k1.x, k1.y);
     var p = p;
@@ -275,10 +276,10 @@ fn sd_rounded_cross(p: vec2<f32>, h: f32) -> f32 {
     var p = abs(p);
     return select(
         sqrt(min(
-            dot2(p - vec2<f32>(0., h)),
-            dot2(p - vec2<f32>(1., 0.))
+            dot2_(p - vec2<f32>(0., h)),
+            dot2_(p - vec2<f32>(1., 0.))
         )),
-        k - sqrt(dot2(p - vec2<f32>(1., k))),
+        k - sqrt(dot2_(p - vec2<f32>(1., k))),
         p.x < 1. && p.y < p.x * (k - h) + h
     );
 }
@@ -304,12 +305,12 @@ fn sd_heart(p: vec2<f32>) -> f32 {
     p.x = abs(p.x);
 
     if (p.y + p.x > 1.) {
-        return sqrt(dot2(p - vec2<f32>(0.25, 0.75))) - sqrt(2.) / 4.;
+        return sqrt(dot2_(p - vec2<f32>(0.25, 0.75))) - sqrt(2.) / 4.;
     }
 
     return sqrt(min(
-        dot2(p - vec2<f32>(0., 1.)),
-        dot2(p - 0.5 * max(p.x + p.y, 0.))
+        dot2_(p - vec2<f32>(0., 1.)),
+        dot2_(p - 0.5 * max(p.x + p.y, 0.))
     )) * sign(p.x - p.y);
 }
 
@@ -445,7 +446,7 @@ fn sd_bezier(pos: vec2<f32>, A: vec2<f32>, B: vec2<f32>, C: vec2<f32>) -> f32 {
         let x = (vec2<f32>(h, -h) - q) / 2.;
         let uv = sign(x) * pow(abs(x), vec2<f32>(1. / 3.));
         let t = clamp(uv.x + uv.y - kx, 0., 1.);
-        res = dot2(d + (c + b * t) * t);
+        res = dot2_(d + (c + b * t) * t);
     }
     else
     {
@@ -456,8 +457,8 @@ fn sd_bezier(pos: vec2<f32>, A: vec2<f32>, B: vec2<f32>, C: vec2<f32>) -> f32 {
         let u = vec3<f32>(m + m, -n - m, n - m) * z - vec3<f32>(kx);
         let t = clamp(u, vec3<f32>(0.), vec3<f32>(1.));
         res = min(
-            dot2(d + (c + b * t.x) * t.x),
-            dot2(d + (c + b * t.y) * t.y)
+            dot2_(d + (c + b * t.x) * t.x),
+            dot2_(d + (c + b * t.y) * t.y)
         );
         // the third root cannot be the closest
         // res = min(res, dot2(d+(c+b*t.z)*t.z));
@@ -494,9 +495,9 @@ fn sd_tunnel(p: vec2<f32>, wh: vec2<f32>) -> f32 {
     let p = vec2<f32>(abs(p.x), -p.y);
     var q = p - wh;
 
-    let d1 = dot2(vec2<f32>(max(q.x, 0.), q.y));
+    let d1 = dot2_(vec2<f32>(max(q.x, 0.), q.y));
     q.x = select(length(p) - wh.x, q.x, p.y > 0.);
-    let d2 = dot2(vec2<f32>(q.x, max(q.y, 0.)));
+    let d2 = dot2_(vec2<f32>(q.x, max(q.y, 0.)));
     let d = sqrt(min(d1, d2));
 
     return select(d, -d, max(q.x, q.y) < 0.);
@@ -505,8 +506,8 @@ fn sd_tunnel(p: vec2<f32>, wh: vec2<f32>) -> f32 {
 fn sd_stairs(p: vec2<f32>, wh: vec2<f32>, n: f32) -> f32 {
     let ba = wh * n;
     var d = min(
-        dot2(p - vec2<f32>(clamp(p.x, 0., ba.x), 0.)),
-        dot2(p - vec2<f32>(ba.x, clamp(p.y, 0., ba.y)))
+        dot2_(p - vec2<f32>(clamp(p.x, 0., ba.x), 0.)),
+        dot2_(p - vec2<f32>(ba.x, clamp(p.y, 0., ba.y)))
     );
     var s = sign(max(-p.y, p.x - ba.x));
 
@@ -522,8 +523,8 @@ fn sd_stairs(p: vec2<f32>, wh: vec2<f32>, n: f32) -> f32 {
         s = 1.;
     }
     p = select(-p, p, id < 0.5 || p.x > 0.);
-    d = min(d, dot2(p - vec2<f32>(0., clamp(p.y, -hh, hh))));
-    d = min(d, dot2(p - vec2<f32>(clamp(p.x, 0., wh.x), hh)));
+    d = min(d, dot2_(p - vec2<f32>(0., clamp(p.y, -hh, hh))));
+    d = min(d, dot2_(p - vec2<f32>(clamp(p.x, 0., wh.x), hh)));
 
     return sqrt(d) * s;
 }
@@ -565,7 +566,7 @@ fn sd_exponential_falloff(d: f32, size: f32, power: f32) -> f32 {
     return a;
 }
 
-fn sd_exponential_falloff_3(d: f32, size: f32) -> f32 {
+fn sd_exponential_falloff_3_(d: f32, size: f32) -> f32 {
     var a = (size - d) / size;
     a = clamp(a, 0.0, 1.0);
     a = a * a * a;
@@ -588,12 +589,12 @@ fn sd_fill_alpha_nearest(distance: f32) -> f32 {
     return step(-distance, 0.);
 }
 
-fn sd_fill_with_falloff_3(d: f32, falloff_size: f32, falloff_color: vec4<f32>, fill_color: vec4<f32>) -> vec4<f32> {
+fn sd_fill_with_falloff_3_(d: f32, falloff_size: f32, falloff_color: vec4<f32>, fill_color: vec4<f32>) -> vec4<f32> {
     // todo compose with others?
     let aaf = 0.7 / fwidth(d); // TODO: this could just be a uniform instead
     let t_color = clamp(d * aaf, 0.0, 1.0);
     var color = mix(fill_color, falloff_color, t_color);
-    let falloff = sd_exponential_falloff_3(d, falloff_size);
+    let falloff = sd_exponential_falloff_3_(d, falloff_size);
     color.a = color.a * falloff;
     return color;
 }
@@ -630,7 +631,7 @@ fn sd_rotate_rad(p: vec2<f32>, a: f32) -> vec2<f32> {
     return sd_rotate(p, sin_cos(a));
 }
 
-fn sd_rotate_45(p: vec2<f32>) -> vec2<f32> {
+fn sd_rotate_45_(p: vec2<f32>) -> vec2<f32> {
     let c = 0.70710678118; // cos(pi / 4) == sin(pi / 4);
     let xc = p.x * c;
     let yc = p.y * c;

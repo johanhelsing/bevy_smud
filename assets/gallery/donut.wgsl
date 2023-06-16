@@ -1,5 +1,5 @@
-#import bevy_smud::shapes
+#import bevy_smud::shapes as shapes
 
 fn sdf(p: vec2<f32>) -> f32 {
-    return abs(sd_circle(p, 18.)) - 3.;
+    return abs(shapes::sd_circle(p, 18.)) - 3.;
 }

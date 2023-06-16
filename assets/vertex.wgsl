@@ -1,3 +1,5 @@
+#define_import_path bevy_smud::vertex
+
 #import bevy_smud::prelude
 
 struct View {
