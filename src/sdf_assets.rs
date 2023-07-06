@@ -24,7 +24,7 @@ fn sdf(p: vec2<f32>) -> f32 {{
 }}
 "#
             ),
-            file!(),
+            "aa",
         );
         self.add(shader)
     }
@@ -39,7 +39,7 @@ fn fill(d: f32, color: vec4<f32>) -> vec4<f32> {{
 }}
 "#
             ),
-            file!(),
+            "bb",
         );
         self.add(shader)
     }
