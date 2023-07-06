@@ -32,30 +32,29 @@ impl Plugin for ShaderLoadingPlugin {
     fn build(&self, app: &mut App) {
         let mut shaders = app.world.get_resource_mut::<Assets<Shader>>().unwrap();
 
-        let prelude = Shader::from_wgsl(
-            include_str!("../assets/prelude.wgsl"),
-            PRELUDE_SHADER_IMPORT,
-        )
-        .with_import_path(PRELUDE_SHADER_IMPORT);
+        let prelude = Shader::from_wgsl(include_str!("../assets/prelude.wgsl"), file!())
+            .with_import_path(PRELUDE_SHADER_IMPORT);
         shaders.set_untracked(PRELUDE_SHADER_HANDLE, prelude);
 
-        let shapes = Shader::from_wgsl(include_str!("../assets/shapes.wgsl"), SHAPES_SHADER_IMPORT);
+        let shapes = Shader::from_wgsl(include_str!("../assets/shapes.wgsl"), file!())
+            .with_import_path(SHAPES_SHADER_IMPORT);
         shaders.set_untracked(SHAPES_SHADER_HANDLE, shapes);
 
-        let vertex = Shader::from_wgsl(include_str!("../assets/vertex.wgsl"), VERTEX_SHADER_IMPORT);
+        let vertex = Shader::from_wgsl(include_str!("../assets/vertex.wgsl"), file!())
+            .with_import_path(VERTEX_SHADER_IMPORT);
         shaders.set_untracked(VERTEX_SHADER_HANDLE, vertex);
 
-        let fragment = Shader::from_wgsl(
-            include_str!("../assets/fragment.wgsl"),
-            FRAGMENT_SHADER_IMPORT,
-        );
+        let fragment = Shader::from_wgsl(include_str!("../assets/fragment.wgsl"), file!())
+            .with_import_path(FRAGMENT_SHADER_IMPORT);
         shaders.set_untracked(FRAGMENT_SHADER_HANDLE, fragment);
 
         let mut shaders = app.world.get_resource_mut::<Assets<Shader>>().unwrap();
-        let fill = Shader::from_wgsl(include_str!("../assets/fills/cubic_falloff.wgsl"), DEFAULT_FILL_IMPORT);
+        let fill = Shader::from_wgsl(include_str!("../assets/fills/cubic_falloff.wgsl"), file!())
+            .with_import_path(DEFAULT_FILL_IMPORT);
         shaders.set_untracked(DEFAULT_FILL_HANDLE, fill);
 
-        let simple_fill = Shader::from_wgsl(include_str!("../assets/fills/simple.wgsl"), SIMPLE_FILL_IMPORT);
+        let simple_fill = Shader::from_wgsl(include_str!("../assets/fills/simple.wgsl"), file!())
+            .with_import_path(SIMPLE_FILL_IMPORT);
         shaders.set_untracked(SIMPLE_FILL_HANDLE, simple_fill);
     }
 }
