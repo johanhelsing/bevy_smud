@@ -32,28 +32,28 @@ impl Plugin for ShaderLoadingPlugin {
     fn build(&self, app: &mut App) {
         let mut shaders = app.world.get_resource_mut::<Assets<Shader>>().unwrap();
 
-        let prelude = Shader::from_wgsl(include_str!("../assets/prelude.wgsl"), file!())
+        let prelude = Shader::from_wgsl(include_str!("../assets/prelude.wgsl"), "a")
             .with_import_path(PRELUDE_SHADER_IMPORT);
         shaders.set_untracked(PRELUDE_SHADER_HANDLE, prelude);
 
-        let shapes = Shader::from_wgsl(include_str!("../assets/shapes.wgsl"), file!())
+        let shapes = Shader::from_wgsl(include_str!("../assets/shapes.wgsl"), "b")
             .with_import_path(SHAPES_SHADER_IMPORT);
         shaders.set_untracked(SHAPES_SHADER_HANDLE, shapes);
 
-        let vertex = Shader::from_wgsl(include_str!("../assets/vertex.wgsl"), file!())
+        let vertex = Shader::from_wgsl(include_str!("../assets/vertex.wgsl"), "c")
             .with_import_path(VERTEX_SHADER_IMPORT);
         shaders.set_untracked(VERTEX_SHADER_HANDLE, vertex);
 
-        let fragment = Shader::from_wgsl(include_str!("../assets/fragment.wgsl"), file!())
+        let fragment = Shader::from_wgsl(include_str!("../assets/fragment.wgsl"), "d")
             .with_import_path(FRAGMENT_SHADER_IMPORT);
         shaders.set_untracked(FRAGMENT_SHADER_HANDLE, fragment);
 
         let mut shaders = app.world.get_resource_mut::<Assets<Shader>>().unwrap();
-        let fill = Shader::from_wgsl(include_str!("../assets/fills/cubic_falloff.wgsl"), file!())
+        let fill = Shader::from_wgsl(include_str!("../assets/fills/cubic_falloff.wgsl"), "e")
             .with_import_path(DEFAULT_FILL_IMPORT);
         shaders.set_untracked(DEFAULT_FILL_HANDLE, fill);
 
-        let simple_fill = Shader::from_wgsl(include_str!("../assets/fills/simple.wgsl"), file!())
+        let simple_fill = Shader::from_wgsl(include_str!("../assets/fills/simple.wgsl"), "f")
             .with_import_path(SIMPLE_FILL_IMPORT);
         shaders.set_untracked(SIMPLE_FILL_HANDLE, simple_fill);
     }
