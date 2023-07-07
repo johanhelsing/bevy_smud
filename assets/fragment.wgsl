@@ -1,3 +1,6 @@
+#import bevy_smud::sdf sdf
+#import bevy_smud::fill fill
+
 struct FragmentInput {
     @location(0) color: vec4<f32>,
     @location(1) pos: vec2<f32>,
