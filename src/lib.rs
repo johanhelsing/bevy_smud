@@ -354,7 +354,20 @@ fn extract_sdf_shaders(mut main_world: ResMut<MainWorld>, mut pipeline: ResMut<S
 var<uniform> globals: Globals;
 #import {sdf_import_path}
 #import {fill_import_path}
-#import bevy_smud::fragment
+
+#import bevy_smud::sdf as sdf
+#import bevy_smud::fill as fill
+
+struct FragmentInput {{
+    @location(0) color: vec4<f32>,
+    @location(1) pos: vec2<f32>,
+}};
+
+@fragment
+fn fragment(in: FragmentInput) -> @location(0) vec4<f32> {{
+    let d = sdf(in.pos);
+    return fill(d, in.color);
+}}
 "#
                 ),
                 file!(),
