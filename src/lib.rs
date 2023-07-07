@@ -365,8 +365,8 @@ struct FragmentInput {{
 
 @fragment
 fn fragment(in: FragmentInput) -> @location(0) vec4<f32> {{
-    let d = sdf(in.pos);
-    return fill(d, in.color);
+    let d = sdf::sdf(in.pos);
+    return fill::fill(d, in.color);
 }}
 "#
                 ),
