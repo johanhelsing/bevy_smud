@@ -594,7 +594,7 @@ fn sd_fill_with_falloff_3(d: f32, falloff_size: f32, falloff_color: vec4<f32>, f
     let aaf = 0.7 / fwidth(d); // TODO: this could just be a uniform instead
     let t_color = clamp(d * aaf, 0.0, 1.0);
     var color = mix(fill_color, falloff_color, t_color);
-    let falloff = sd_exponential_falloff_3(d, falloff_size);
+    let falloff = sd_exponential_falloff_3_(d, falloff_size);
     color.a = color.a * falloff;
     return color;
 }
