@@ -176,7 +176,7 @@ fn sd_hexagram(p: vec2<f32>, r: f32) -> f32 {
     return length(p) * sign(p.y);
 }
 
-fn sd_star_5(p: vec2<f32>, r: f32, rf: f32) -> f32 {
+fn sd_star_5_(p: vec2<f32>, r: f32, rf: f32) -> f32 {
     let k1 = vec2<f32>(0.809016994375, -0.587785252292);
     let k2 = vec2<f32>(-k1.x, k1.y);
     var p = p;
@@ -631,7 +631,7 @@ fn sd_rotate_rad(p: vec2<f32>, a: f32) -> vec2<f32> {
     return sd_rotate(p, sin_cos(a));
 }
 
-fn sd_rotate_45(p: vec2<f32>) -> vec2<f32> {
+fn sd_rotate_45_(p: vec2<f32>) -> vec2<f32> {
     let c = 0.70710678118; // cos(pi / 4) == sin(pi / 4);
     let xc = p.x * c;
     let yc = p.y * c;
