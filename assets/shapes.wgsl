@@ -45,9 +45,9 @@ fn ndot(a: vec2<f32>, b: vec2<f32>) -> f32 {
     return a.x * b.x - a.y * b.y;
 }
 
-fn dot2(a: vec2<f32>) -> f32 {
-    return dot(a, a);
-}
+// fn dot2(a: vec2<f32>) -> f32 {
+//     return dot(a, a);
+// }
 
 fn sd_rhombus(p: vec2<f32>, b: vec2<f32>)  -> f32 {
     let p = abs(p);
