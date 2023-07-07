@@ -17,7 +17,7 @@ impl SdfAssets for Assets<Shader> {
         let body = sdf.into();
         let str = format!(
             r#"
-#import bevy_smud::shapes
+#import bevy_smud::shapes as shapes
 fn sdf(p: vec2<f32>) -> f32 {{
     {body}
 }}
