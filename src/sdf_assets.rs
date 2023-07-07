@@ -15,17 +15,16 @@ pub trait SdfAssets {
 impl SdfAssets for Assets<Shader> {
     fn add_sdf_body<T: Into<String>>(&mut self, sdf: T) -> Handle<Shader> {
         let body = sdf.into();
-        let shader = Shader::from_wgsl(
-            format!(
-                r#"
+        let str = format!(
+            r#"
 #import bevy_smud::shapes
 fn sdf(p: vec2<f32>) -> f32 {{
     {body}
 }}
 "#
-            ),
-            "aa",
         );
+        dbg!(str.clone());
+        let shader = Shader::from_wgsl(str, "aa");
         self.add(shader)
     }
 
