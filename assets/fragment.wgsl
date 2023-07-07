@@ -1,6 +1,4 @@
 #define_import_path bevy_smud::fragment
-#import bevy_smud::sdf sdf
-#import bevy_smud::fill fill
 
 struct FragmentInput {
     @location(0) color: vec4<f32>,
