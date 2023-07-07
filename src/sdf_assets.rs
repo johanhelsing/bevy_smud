@@ -25,7 +25,6 @@ fn sdf(p: vec2<f32>) -> f32 {{
 }}
 "#
         );
-        dbg!(str.clone());
         let shader = Shader::from_wgsl(str, "aa");
         self.add(shader)
     }
