@@ -566,7 +566,7 @@ fn sd_exponential_falloff(d: f32, size: f32, power: f32) -> f32 {
     return a;
 }
 
-fn sd_exponential_falloff_3(d: f32, size: f32) -> f32 {
+fn sd_exponential_falloff_3_(d: f32, size: f32) -> f32 {
     var a = (size - d) / size;
     a = clamp(a, 0.0, 1.0);
     a = a * a * a;
