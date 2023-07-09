@@ -25,7 +25,7 @@ fn sdf(p: vec2<f32>) -> f32 {{
 }}
 "#
         );
-        let shader = Shader::from_wgsl(str, "aa");
+        let shader = Shader::from_wgsl(str, file!());
         self.add(shader)
     }
 
@@ -40,7 +40,7 @@ fn fill(d: f32, color: vec4<f32>) -> vec4<f32> {{
 }}
 "#
             ),
-            "bb",
+            file!(),
         );
         self.add(shader)
     }
