@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::{prelude::*, utils::Uuid};
 
 /// Extension trait for Assets<Shader> for conveniently creating new shaders from code
 pub trait SdfAssets {
@@ -15,10 +15,11 @@ pub trait SdfAssets {
 impl SdfAssets for Assets<Shader> {
     fn add_sdf_body<T: Into<String>>(&mut self, sdf: T) -> Handle<Shader> {
         let body = sdf.into();
+        let id = Uuid::new_v4();
         let shader = Shader::from_wgsl(
             format!(
                 r#"
-#define_import_path bevy_smud::sdf
+#define_import_path bevy_smud::sdf{id}
 
 #import bevy_smud::shapes as shapes
 
@@ -34,10 +35,11 @@ fn sdf(p: vec2<f32>) -> f32 {{
 
     fn add_fill_body<T: Into<String>>(&mut self, fill: T) -> Handle<Shader> {
         let body = fill.into();
+        let id = Uuid::new_v4();
         let shader = Shader::from_wgsl(
             format!(
                 r#"
-#define_import_path bevy_smud::fill
+#define_import_path bevy_smud::fill{id}
 
 fn fill(d: f32, color: vec4<f32>) -> vec4<f32> {{
     {body}
