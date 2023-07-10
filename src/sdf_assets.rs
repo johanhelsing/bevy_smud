@@ -15,8 +15,9 @@ pub trait SdfAssets {
 impl SdfAssets for Assets<Shader> {
     fn add_sdf_body<T: Into<String>>(&mut self, sdf: T) -> Handle<Shader> {
         let body = sdf.into();
-        let str = format!(
-            r#"
+        let shader = Shader::from_wgsl(
+            format!(
+                r#"
 #define_import_path bevy_smud::sdf
 
 #import bevy_smud::shapes as shapes
@@ -25,8 +26,9 @@ fn sdf(p: vec2<f32>) -> f32 {{
     {body}
 }}
 "#
+            ),
+            file!(),
         );
-        let shader = Shader::from_wgsl(str, file!());
         self.add(shader)
     }
 

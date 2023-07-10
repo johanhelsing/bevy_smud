@@ -41,7 +41,7 @@ return shapes::sd_circle(p - vec2<f32>(20., 0.), 40.);
     commands.spawn(ShapeBundle {
         shape: SmudShape {
             color: Color::TOMATO,
-            sdf: circle.clone(),
+            sdf: circle,
             // The frame needs to be bigger than the shape we're drawing
             // Since the circle has radius 70, we make the half-size of the quad 80.
             frame: Frame::Quad(80.),
