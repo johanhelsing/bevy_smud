@@ -352,11 +352,8 @@ fn extract_sdf_shaders(mut main_world: ResMut<MainWorld>, mut pipeline: ResMut<S
 #import bevy_render::globals Globals
 @group(0) @binding(1)
 var<uniform> globals: Globals;
-#import {sdf_import_path}
-#import {fill_import_path}
-
-#import bevy_smud::sdf as sdf
-#import bevy_smud::fill as fill
+#import {sdf_import_path} as sdf
+#import {fill_import_path} as fill
 
 struct FragmentInput {{
     @location(0) color: vec4<f32>,

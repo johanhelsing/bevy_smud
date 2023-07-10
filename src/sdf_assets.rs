@@ -18,6 +18,7 @@ impl SdfAssets for Assets<Shader> {
         let str = format!(
             r#"
 #define_import_path bevy_smud::sdf
+
 #import bevy_smud::shapes as shapes
 
 fn sdf(p: vec2<f32>) -> f32 {{
@@ -35,6 +36,7 @@ fn sdf(p: vec2<f32>) -> f32 {{
             format!(
                 r#"
 #define_import_path bevy_smud::fill
+
 fn fill(d: f32, color: vec4<f32>) -> vec4<f32> {{
     {body}
 }}
