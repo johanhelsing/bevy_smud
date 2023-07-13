@@ -41,6 +41,8 @@ fn sdf(p: vec2<f32>) -> f32 {{
                 r#"
 #define_import_path bevy_smud::fill{id}
 
+#import bevy_smud::shapes as shapes
+
 fn fill(d: f32, color: vec4<f32>) -> vec4<f32> {{
     {body}
 }}

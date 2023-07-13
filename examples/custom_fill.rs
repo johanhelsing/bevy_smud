@@ -8,10 +8,8 @@ fn main() {
         // which is more efficient than MSAA, and also works on Linux, wayland
         .insert_resource(Msaa::Off)
         .insert_resource(ClearColor(Color::BLACK))
-        .add_plugins(DefaultPlugins)
-        .add_plugin(SmudPlugin)
-        .add_plugin(PanCamPlugin)
-        .add_startup_system(setup)
+        .add_plugins((DefaultPlugins, SmudPlugin, PanCamPlugin))
+        .add_systems(Startup, setup)
         .run();
 }
 
@@ -52,7 +50,7 @@ fn setup(
             fill: shaders.add_fill_body(
                 r"
 let d_2 = abs(d - 1.) - 1.;
-let a = sd_fill_alpha_fwidth(d_2);
+let a = shapes::sd_fill_alpha_fwidth(d_2);
 return vec4<f32>(color.rgb, a * color.a);
             ",
             ),
