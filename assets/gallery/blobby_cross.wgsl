@@ -1,8 +1,8 @@
-#define_import_path bevy_smud::gallery::blobby_cross
+#define_import_path smud::gallery::blobby_cross
 
-#import bevy_smud::shapes as shapes
+#import smud
 
 fn sdf(p: vec2<f32>) -> f32 {
     let s = 20.;
-    return (shapes::sd_blobby_cross(p / s, 0.7) * s) - 4.;
+    return (smud::sd_blobby_cross(p / s, 0.7) * s) - 4.;
 }

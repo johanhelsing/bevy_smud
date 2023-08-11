@@ -1,7 +1,7 @@
-#define_import_path bevy_smud::gallery::donut
+#define_import_path smud::gallery::donut
 
-#import bevy_smud::shapes as shapes
+#import smud
 
 fn sdf(p: vec2<f32>) -> f32 {
-    return abs(shapes::sd_circle(p, 18.)) - 3.;
+    return abs(smud::sd_circle(p, 18.)) - 3.;
 }

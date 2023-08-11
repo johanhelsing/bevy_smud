@@ -1,7 +1,7 @@
-#define_import_path bevy_smud::gallery::box
+#define_import_path smud::gallery::box
 
-#import bevy_smud::shapes as shapes
+#import smud
 
 fn sdf(p: vec2<f32>) -> f32 {
-    return shapes::sd_box(p, vec2<f32>(30., 20.));
+    return smud::sd_box(p, vec2<f32>(30., 20.));
 }

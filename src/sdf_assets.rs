@@ -19,9 +19,9 @@ impl SdfAssets for Assets<Shader> {
         let shader = Shader::from_wgsl(
             format!(
                 r#"
-#define_import_path bevy_smud::sdf{id}
+#define_import_path smud::sdf{id}
 
-#import bevy_smud::shapes as shapes
+#import smud
 
 fn sdf(p: vec2<f32>) -> f32 {{
     {body}
@@ -39,9 +39,9 @@ fn sdf(p: vec2<f32>) -> f32 {{
         let shader = Shader::from_wgsl(
             format!(
                 r#"
-#define_import_path bevy_smud::fill{id}
+#define_import_path smud::fill{id}
 
-#import bevy_smud::shapes as shapes
+#import smud
 
 fn fill(d: f32, color: vec4<f32>) -> vec4<f32> {{
     {body}

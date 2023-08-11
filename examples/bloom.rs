@@ -23,7 +23,7 @@ fn setup(mut commands: Commands, mut shaders: ResMut<Assets<Shader>>) {
     // p is the position of a fragment within the sdf shape, with 0, 0 at the center.
     // Here we are using the built-in sd_circle function, which accepts the
     // radius as a parameter.
-    let circle = shaders.add_sdf_expr("shapes::sd_circle(p, 70.)");
+    let circle = shaders.add_sdf_expr("smud::sd_circle(p, 70.)");
 
     commands.spawn(ShapeBundle {
         shape: SmudShape {

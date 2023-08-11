@@ -1,7 +1,7 @@
-#define_import_path bevy_smud::gallery::star_5
+#define_import_path smud::gallery::star_5
 
-#import bevy_smud::shapes as shapes
+#import smud
 
 fn sdf(p: vec2<f32>) -> f32 {
-    return shapes::sd_star_5_(p, 10., 2.);
+    return smud::sd_star_5_(p, 10., 2.);
 }

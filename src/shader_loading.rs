@@ -2,33 +2,33 @@ use bevy::{prelude::*, reflect::TypeUuid};
 
 const PRELUDE_SHADER_HANDLE: HandleUntyped =
     HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 11291576006157771079);
-const PRELUDE_SHADER_IMPORT: &str = "bevy_smud::prelude";
+const PRELUDE_SHADER_IMPORT: &str = "smud::prelude";
 
-const SHAPES_SHADER_HANDLE: HandleUntyped =
+const SMUD_SHADER_HANDLE: HandleUntyped =
     HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 10055894596049459186);
-const SHAPES_SHADER_IMPORT: &str = "bevy_smud::shapes";
+const SMUD_SHADER_IMPORT: &str = "smud";
 
 const VIEW_BINDINGS_SHADER_HANDLE: HandleUntyped =
     HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 11792080578571156967);
-const VIEW_BINDINGS_SHADER_IMPORT: &str = "bevy_smud::view_bindings";
+const VIEW_BINDINGS_SHADER_IMPORT: &str = "smud::view_bindings";
 
 pub const VERTEX_SHADER_HANDLE: HandleUntyped =
     HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 16846632126033267571);
-const VERTEX_SHADER_IMPORT: &str = "bevy_smud::vertex";
+const VERTEX_SHADER_IMPORT: &str = "smud::vertex";
 
 pub const FRAGMENT_SHADER_HANDLE: HandleUntyped =
     HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 10370213491934870425);
-const FRAGMENT_SHADER_IMPORT: &str = "bevy_smud::fragment";
+const FRAGMENT_SHADER_IMPORT: &str = "smud::fragment";
 
 /// The default fill used by `SmudShape`
 pub const DEFAULT_FILL_HANDLE: HandleUntyped =
     HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 18184663565780163454);
-const DEFAULT_FILL_IMPORT: &str = "bevy_smud::default_fill";
+const DEFAULT_FILL_IMPORT: &str = "smud::default_fill";
 
 /// Simple single-colored filled fill
 pub const SIMPLE_FILL_HANDLE: HandleUntyped =
     HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 16286090377316294491);
-const SIMPLE_FILL_IMPORT: &str = "bevy_smud::simple_fill";
+const SIMPLE_FILL_IMPORT: &str = "smud::simple_fill";
 
 pub struct ShaderLoadingPlugin;
 
@@ -41,8 +41,8 @@ impl Plugin for ShaderLoadingPlugin {
         shaders.set_untracked(PRELUDE_SHADER_HANDLE, prelude);
 
         let shapes = Shader::from_wgsl(include_str!("../assets/shapes.wgsl"), "shapes.wgsl")
-            .with_import_path(SHAPES_SHADER_IMPORT);
-        shaders.set_untracked(SHAPES_SHADER_HANDLE, shapes);
+            .with_import_path(SMUD_SHADER_IMPORT);
+        shaders.set_untracked(SMUD_SHADER_HANDLE, shapes);
 
         let view_bindings = Shader::from_wgsl(
             include_str!("../assets/view_bindings.wgsl"),

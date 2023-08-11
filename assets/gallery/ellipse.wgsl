@@ -1,7 +1,7 @@
-#define_import_path bevy_smud::gallery::ellipse
+#define_import_path smud::gallery::ellipse
 
-#import bevy_smud::shapes as shapes
+#import smud
 
 fn sdf(p: vec2<f32>) -> f32 {
-    return shapes::sd_ellipse(p, 25., 15.);
+    return smud::sd_ellipse(p, 25., 15.);
 }

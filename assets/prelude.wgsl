@@ -1,4 +1,4 @@
-#define_import_path bevy_smud::prelude
+#define_import_path smud::prelude
 
 alias float4 = vec4<f32>;
 alias float3 = vec3<f32>;

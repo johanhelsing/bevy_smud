@@ -1,7 +1,7 @@
-#define_import_path bevy_smud::gallery::pie
+#define_import_path smud::gallery::pie
 
-#import bevy_smud::shapes as shapes
+#import smud
 
 fn sdf(p: vec2<f32>) -> f32 {
-    return shapes::sd_pie(p, shapes::sin_cos(0.8), 25.);
+    return smud::sd_pie(p, smud::sin_cos(0.8), 25.);
 }

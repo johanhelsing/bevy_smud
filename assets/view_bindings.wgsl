@@ -1,4 +1,4 @@
-#define_import_path bevy_smud::view_bindings
+#define_import_path smud::view_bindings
 
 #import bevy_render::view  View
 #import bevy_render::globals  Globals

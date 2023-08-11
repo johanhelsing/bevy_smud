@@ -1,7 +1,7 @@
-#define_import_path bevy_smud::gallery::segment
+#define_import_path smud::gallery::segment
 
-#import bevy_smud::shapes as shapes
+#import smud
 
 fn sdf(p: vec2<f32>) -> f32 {
-    return shapes::sd_segment(p, vec2<f32>(-13.), vec2<f32>(13.)) - 3.;
+    return smud::sd_segment(p, vec2<f32>(-13.), vec2<f32>(13.)) - 3.;
 }

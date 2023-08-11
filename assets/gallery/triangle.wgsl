@@ -1,7 +1,7 @@
-#define_import_path bevy_smud::gallery::triangle
+#define_import_path smud::gallery::triangle
 
-#import bevy_smud::shapes as shapes
+#import smud
 
 fn sdf(p: vec2<f32>) -> f32 {
-    return shapes::sd_equilateral_triangle(p, 20.);
+    return smud::sd_equilateral_triangle(p, 20.);
 }

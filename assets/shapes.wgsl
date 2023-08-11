@@ -1,4 +1,4 @@
-#define_import_path bevy_smud::shapes
+#define_import_path smud
 // Most of these are ported versions of the ones on Inigo Quilez website, https://iquilezles.org
 
 fn sd_circle(p: vec2<f32>, r: f32) -> f32 {

@@ -1,7 +1,7 @@
-#define_import_path bevy_smud::gallery::horseshoe
+#define_import_path smud::gallery::horseshoe
 
-#import bevy_smud::shapes as shapes
+#import smud
 
 fn sdf(p: vec2<f32>) -> f32 {
-    return shapes::sd_rounded_x(p, 30., 4.);
+    return smud::sd_rounded_x(p, 30., 4.);
 }

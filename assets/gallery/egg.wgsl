@@ -1,7 +1,7 @@
-#define_import_path bevy_smud::gallery::egg
+#define_import_path smud::gallery::egg
 
-#import bevy_smud::shapes as shapes
+#import smud
 
 fn sdf(p: vec2<f32>) -> f32 {
-    return shapes::sd_egg(p, 25., 10.);
+    return smud::sd_egg(p, 25., 10.);
 }

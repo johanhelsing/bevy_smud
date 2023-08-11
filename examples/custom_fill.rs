@@ -50,7 +50,7 @@ fn setup(
             fill: shaders.add_fill_body(
                 r"
 let d_2 = abs(d - 1.) - 1.;
-let a = shapes::sd_fill_alpha_fwidth(d_2);
+let a = smud::sd_fill_alpha_fwidth(d_2);
 return vec4<f32>(color.rgb, a * color.a);
             ",
             ),

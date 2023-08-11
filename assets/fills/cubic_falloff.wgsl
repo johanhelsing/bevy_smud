@@ -1,4 +1,4 @@
-#define_import_path bevy_smud::default_fill
+#define_import_path smud::default_fill
 
 fn fill(d: f32, color: vec4<f32>) -> vec4<f32> {
     let d2 = 1. - (d * 0.13);

@@ -62,7 +62,7 @@ mod shader_loading;
 ///
 /// Intended to be included at the top of your file to minimize the amount of import noise.
 /// ```
-/// use bevy_smud::prelude::*;
+/// use smud::prelude::*;
 /// ```
 pub mod prelude {
     pub use crate::{
@@ -318,7 +318,7 @@ fn extract_sdf_shaders(mut main_world: ResMut<MainWorld>, mut pipeline: ResMut<S
                     ShaderImport::Custom(p) => p.to_owned(),
                     _ => {
                         let id = Uuid::new_v4();
-                        let path = format!("bevy_smud::generated::{id}");
+                        let path = format!("smud::generated::{id}");
                         shader.set_import_path(&path);
                         path
                     }
@@ -334,7 +334,7 @@ fn extract_sdf_shaders(mut main_world: ResMut<MainWorld>, mut pipeline: ResMut<S
                     ShaderImport::Custom(p) => p.to_owned(),
                     _ => {
                         let id = Uuid::new_v4();
-                        let path = format!("bevy_smud::generated::{id}");
+                        let path = format!("smud::generated::{id}");
                         shader.set_import_path(&path);
                         path
                     }
