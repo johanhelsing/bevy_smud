@@ -1,6 +1,6 @@
 //! This example shows that bevy_smud works with bloom enabled
 //!
-//! Note that you could probably achieve chieper and higher quality bloom-like
+//! Note that you could probably achieve cheaper and higher quality bloom-like
 //! effects by creating a custom fill.
 
 use bevy::{core_pipeline::bloom::BloomSettings, prelude::*};
