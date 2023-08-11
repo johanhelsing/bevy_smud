@@ -367,7 +367,7 @@ fn fragment(in: FragmentInput) -> @location(0) vec4<f32> {{
 }}
 "#
                 ),
-                file!(),
+                format!("smud::generated::{shader_key:?}"),
             );
 
             // todo does this work, or is it too late?
