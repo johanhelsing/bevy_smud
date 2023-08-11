@@ -62,7 +62,7 @@ mod shader_loading;
 ///
 /// Intended to be included at the top of your file to minimize the amount of import noise.
 /// ```
-/// use smud::prelude::*;
+/// use bevy_smud::prelude::*;
 /// ```
 pub mod prelude {
     pub use crate::{
