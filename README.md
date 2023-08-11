@@ -65,7 +65,7 @@ fn setup(
 
 Make sure you reuse the shaders, i.e. don't call `add_sdf_expr` every frame.
 
-You can also define shapes in .wgsl files. Note that in order to use the built-in shapes, you have to import [`bevy_smud::shapes`](https://github.com/johanhelsing/bevy_smud/blob/main/assets/shapes.wgsl), and you must create a function named `sdf` that takes a `vec2<f32>` and returns `f32`.
+You can also define shapes in .wgsl files. Note that in order to use the built-in shapes, you have to import [`smud`](https://github.com/johanhelsing/bevy_smud/blob/main/assets/smud.wgsl), and you must create a function named `sdf` that takes a `vec2<f32>` and returns `f32`.
 
 Other than that, make sure you understand how to combine shapes, use symmetries and change domains. For instance, the [bevy](https://github.com/johanhelsing/bevy_smud/blob/main/assets/bevy.wgsl) in the screenshot above is built up of several circles, ellipses, and a vesica for the beak.
 
@@ -91,7 +91,8 @@ I intend to support the `main` branch of Bevy in the `bevy-main` branch.
 
 |bevy|bevy_smud|
 |----|---------|
-|0.10|0.5, main|
+|0.11|0.6, main|
+|0.10|0.5      |
 |0.9 |0.4      |
 |0.8 |0.3      |
 |0.7 |0.2      |
