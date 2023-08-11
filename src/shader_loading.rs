@@ -40,9 +40,9 @@ impl Plugin for ShaderLoadingPlugin {
             .with_import_path(PRELUDE_SHADER_IMPORT);
         shaders.set_untracked(PRELUDE_SHADER_HANDLE, prelude);
 
-        let shapes = Shader::from_wgsl(include_str!("../assets/shapes.wgsl"), "shapes.wgsl")
+        let smud = Shader::from_wgsl(include_str!("../assets/smud.wgsl"), "smud.wgsl")
             .with_import_path(SMUD_SHADER_IMPORT);
-        shaders.set_untracked(SMUD_SHADER_HANDLE, shapes);
+        shaders.set_untracked(SMUD_SHADER_HANDLE, smud);
 
         let view_bindings = Shader::from_wgsl(
             include_str!("../assets/view_bindings.wgsl"),
