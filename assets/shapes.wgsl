@@ -555,18 +555,18 @@ fn sd_moon(p: vec2<f32>, d: f32, ra: f32, rb: f32) -> f32 {
     );
 }
 
-fn sd_renormalize_uv(uv: vec2<f32>) -> vec2<f32> {
+fn renormalize_uv(uv: vec2<f32>) -> vec2<f32> {
     return uv * 2. - vec2<f32>(1., 1.);
 }
 
-fn sd_exponential_falloff(d: f32, size: f32, power: f32) -> f32 {
+fn exponential_falloff(d: f32, size: f32, power: f32) -> f32 {
     var a = (size - d) / size;
     a = clamp(a, 0.0, 1.0);
     a = pow(a, power);
     return a;
 }
 
-fn sd_exponential_falloff_3_(d: f32, size: f32) -> f32 {
+fn exponential_falloff_3_(d: f32, size: f32) -> f32 {
     var a = (size - d) / size;
     a = clamp(a, 0.0, 1.0);
     a = a * a * a;
@@ -594,20 +594,20 @@ fn sd_fill_with_falloff_3_(d: f32, falloff_size: f32, falloff_color: vec4<f32>, 
     let aaf = 0.7 / fwidth(d); // TODO: this could just be a uniform instead
     let t_color = clamp(d * aaf, 0.0, 1.0);
     var color = mix(fill_color, falloff_color, t_color);
-    let falloff = sd_exponential_falloff_3_(d, falloff_size);
+    let falloff = exponential_falloff_3_(d, falloff_size);
     color.a = color.a * falloff;
     return color;
 }
 
-fn sd_union(distance_1: f32, distance_2: f32) -> f32 {
+fn op_union(distance_1: f32, distance_2: f32) -> f32 {
     return min(distance_1, distance_2);
 }
 
-fn sd_subtract(distance_1: f32, distance_2: f32) -> f32 {
+fn op_subtract(distance_1: f32, distance_2: f32) -> f32 {
     return max(-distance_1, distance_2);
 }
 
-fn sd_intersect(distance_1: f32, distance_2: f32) -> f32 {
+fn op_intersect(distance_1: f32, distance_2: f32) -> f32 {
     return max(distance_1, distance_2);
 }
 
@@ -618,7 +618,7 @@ fn sin_cos(a: f32) -> vec2<f32> {
 }
 
 // Rotation given sin cos vector
-fn sd_rotate(p: vec2<f32>, sc: vec2<f32>) -> vec2<f32> {
+fn rotate(p: vec2<f32>, sc: vec2<f32>) -> vec2<f32> {
     let s = sc.x;
     let c = sc.y;
     return vec2<f32>(
@@ -627,28 +627,28 @@ fn sd_rotate(p: vec2<f32>, sc: vec2<f32>) -> vec2<f32> {
     );
 }
 
-fn sd_rotate_rad(p: vec2<f32>, a: f32) -> vec2<f32> {
-    return sd_rotate(p, sin_cos(a));
+fn rotate_rad(p: vec2<f32>, a: f32) -> vec2<f32> {
+    return rotate(p, sin_cos(a));
 }
 
-fn sd_rotate_45_(p: vec2<f32>) -> vec2<f32> {
+fn rotate_45_(p: vec2<f32>) -> vec2<f32> {
     let c = 0.70710678118; // cos(pi / 4) == sin(pi / 4);
     let xc = p.x * c;
     let yc = p.y * c;
     return vec2<f32>(xc - yc, xc + yc);
 }
 
-fn sd_smooth_subtract(d1: f32, d2: f32, k: f32) -> f32 {
+fn op_smooth_subtract(d1: f32, d2: f32, k: f32) -> f32 {
     let h = clamp(0.5 - 0.5 * (d2 + d1) / k, 0., 1.);
     return mix(d2, -d1, h) + k * h * (1. - h);
 }
 
-fn sd_smooth_union(d1: f32, d2: f32, k: f32) -> f32 {
+fn op_smooth_union(d1: f32, d2: f32, k: f32) -> f32 {
     let h = clamp(0.5 + 0.5 * (d2 - d1) / k, 0., 1.);
     return mix(d2, d1, h) - k * h * (1. - h);
 }
 
-fn sd_smooth_intersect(d1: f32, d2: f32, k: f32) -> f32 {
+fn op_smooth_intersect(d1: f32, d2: f32, k: f32) -> f32 {
     let h = clamp(0.5 - 0.5 * (d2 - d1) / k, 0., 1.);
     return mix(d2, d1, h) + k * h * (1. - h);
 }
