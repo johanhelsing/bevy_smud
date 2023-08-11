@@ -1,4 +1,4 @@
-#import bevy_smud::prelude
+#define_import_path smud::vertex
 
 struct View {
     view_proj: mat4x4<f32>,

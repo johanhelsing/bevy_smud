@@ -39,7 +39,7 @@ use bevy::{
             ExtractedView, ViewTarget, ViewUniform, ViewUniformOffset, ViewUniforms,
             VisibleEntities,
         },
-        Extract, MainWorld, RenderApp, RenderSet,
+        Extract, MainWorld, Render, RenderApp, RenderSet,
     },
     utils::{FloatOrd, HashMap},
 };
@@ -84,7 +84,7 @@ pub struct SmudPlugin;
 impl Plugin for SmudPlugin {
     fn build(&self, app: &mut App) {
         // All the messy boiler-plate for loading a bunch of shaders
-        app.add_plugin(ShaderLoadingPlugin);
+        app.add_plugins(ShaderLoadingPlugin);
         // app.add_plugin(UiShapePlugin);
 
         if let Ok(render_app) = app.get_sub_app_mut(RenderApp) {
@@ -92,13 +92,18 @@ impl Plugin for SmudPlugin {
                 .add_render_command::<Transparent2d, DrawSmudShape>()
                 .init_resource::<ExtractedShapes>()
                 .init_resource::<ShapeMeta>()
-                .init_resource::<SmudPipeline>()
                 .init_resource::<SpecializedRenderPipelines<SmudPipeline>>()
-                .add_systems((extract_shapes, extract_sdf_shaders).in_schedule(ExtractSchedule))
-                .add_system(queue_shapes.in_set(RenderSet::Queue));
+                .add_systems(ExtractSchedule, (extract_shapes, extract_sdf_shaders))
+                .add_systems(Render, queue_shapes.in_set(RenderSet::Queue));
         }
 
         app.register_type::<SmudShape>();
+    }
+
+    fn finish(&self, app: &mut App) {
+        app.get_sub_app_mut(RenderApp)
+            .unwrap()
+            .init_resource::<SmudPipeline>();
     }
 }
 
@@ -310,10 +315,10 @@ fn extract_sdf_shaders(mut main_world: ResMut<MainWorld>, mut pipeline: ResMut<S
             // todo use asset events instead?
             let sdf_import_path = match shaders.get_mut(&shape.sdf.clone()) {
                 Some(shader) => match shader.import_path() {
-                    Some(ShaderImport::Custom(p)) => p.to_owned(),
+                    ShaderImport::Custom(p) => p.to_owned(),
                     _ => {
                         let id = Uuid::new_v4();
-                        let path = format!("bevy_smud::generated::{id}");
+                        let path = format!("smud::generated::{id}");
                         shader.set_import_path(&path);
                         path
                     }
@@ -326,10 +331,10 @@ fn extract_sdf_shaders(mut main_world: ResMut<MainWorld>, mut pipeline: ResMut<S
 
             let fill_import_path = match shaders.get_mut(&shape.fill.clone()) {
                 Some(shader) => match shader.import_path() {
-                    Some(ShaderImport::Custom(p)) => p.to_owned(),
+                    ShaderImport::Custom(p) => p.to_owned(),
                     _ => {
                         let id = Uuid::new_v4();
-                        let path = format!("bevy_smud::generated::{id}");
+                        let path = format!("smud::generated::{id}");
                         shader.set_import_path(&path);
                         path
                     }
@@ -341,16 +346,29 @@ fn extract_sdf_shaders(mut main_world: ResMut<MainWorld>, mut pipeline: ResMut<S
             };
 
             debug!("Generating shader");
-            let generated_shader = Shader::from_wgsl(format!(
-                r#"
-#import bevy_render::globals
+            let generated_shader = Shader::from_wgsl(
+                format!(
+                    r#"
+#import bevy_render::globals Globals
 @group(0) @binding(1)
 var<uniform> globals: Globals;
-#import {sdf_import_path}
-#import {fill_import_path}
-#import bevy_smud::fragment
+#import {sdf_import_path} as sdf
+#import {fill_import_path} as fill
+
+struct FragmentInput {{
+    @location(0) color: vec4<f32>,
+    @location(1) pos: vec2<f32>,
+}};
+
+@fragment
+fn fragment(in: FragmentInput) -> @location(0) vec4<f32> {{
+    let d = sdf::sdf(in.pos);
+    return fill::fill(d, in.color);
+}}
 "#
-            ));
+                ),
+                format!("smud::generated::{shader_key:?}"),
+            );
 
             // todo does this work, or is it too late?
             let generated_shader_handle = shaders.add(generated_shader);
@@ -401,7 +419,8 @@ fn extract_shapes(
 // fork of Mesh2DPipelineKey (in order to remove bevy_sprite dependency)
 // todo: merge with SmudPipelineKey?
 bitflags::bitflags! {
-#[repr(transparent)]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+    #[repr(transparent)]
     struct PipelineKey: u32 {
         const MSAA_RESERVED_BITS                = Self::MSAA_MASK_BITS << Self::MSAA_SHIFT_BITS;
         const PRIMITIVE_TOPOLOGY_RESERVED_BITS  = Self::PRIMITIVE_TOPOLOGY_MASK_BITS << Self::PRIMITIVE_TOPOLOGY_SHIFT_BITS;
@@ -421,7 +440,7 @@ impl PipelineKey {
     }
 
     pub fn msaa_samples(&self) -> u32 {
-        1 << ((self.bits >> Self::MSAA_SHIFT_BITS) & Self::MSAA_MASK_BITS)
+        1 << ((self.bits() >> Self::MSAA_SHIFT_BITS) & Self::MSAA_MASK_BITS)
     }
 
     pub fn from_primitive_topology(primitive_topology: PrimitiveTopology) -> Self {
@@ -432,8 +451,8 @@ impl PipelineKey {
     }
 
     pub fn primitive_topology(&self) -> PrimitiveTopology {
-        let primitive_topology_bits =
-            (self.bits >> Self::PRIMITIVE_TOPOLOGY_SHIFT_BITS) & Self::PRIMITIVE_TOPOLOGY_MASK_BITS;
+        let primitive_topology_bits = (self.bits() >> Self::PRIMITIVE_TOPOLOGY_SHIFT_BITS)
+            & Self::PRIMITIVE_TOPOLOGY_MASK_BITS;
         match primitive_topology_bits {
             x if x == PrimitiveTopology::PointList as u32 => PrimitiveTopology::PointList,
             x if x == PrimitiveTopology::LineList as u32 => PrimitiveTopology::LineList,

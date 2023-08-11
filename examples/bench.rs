@@ -17,13 +17,15 @@ fn main() {
             LoadingState::new(GameState::Loading).continue_to_state(GameState::Running),
         )
         .add_collection_to_loading_state::<_, AssetHandles>(GameState::Loading)
-        .add_plugins(DefaultPlugins)
-        .add_plugin(LogDiagnosticsPlugin::default())
-        .add_plugin(FrameTimeDiagnosticsPlugin)
-        .add_plugin(SmudPlugin)
-        .add_plugin(PanCamPlugin)
-        .add_plugin(bevy_lospec::PalettePlugin)
-        .add_system(setup.in_schedule(OnEnter(GameState::Running)))
+        .add_plugins((
+            DefaultPlugins,
+            LogDiagnosticsPlugin::default(),
+            FrameTimeDiagnosticsPlugin,
+            SmudPlugin,
+            PanCamPlugin,
+            bevy_lospec::PalettePlugin,
+        ))
+        .add_systems(OnEnter(GameState::Running), setup)
         // .add_system_set(SystemSet::on_update(GameState::Running).with_system(update))
         .run();
 }

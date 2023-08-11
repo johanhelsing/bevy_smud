@@ -32,7 +32,7 @@ impl Default for SmudShape {
 }
 
 /// Bounds for describing how far the fragment shader of a shape will reach, should be bigger than the shape unless you want to clip it
-#[derive(Reflect, FromReflect, Debug, Clone, Copy)]
+#[derive(Reflect, Debug, Clone, Copy)]
 pub enum Frame {
     /// A quad with a given half-size (!)
     Quad(f32), // todo: it probably makes sense for this to be the full width instead...

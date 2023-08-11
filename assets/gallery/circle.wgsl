@@ -1,5 +1,7 @@
-#import bevy_smud::shapes
+#define_import_path smud::gallery::circle
+
+#import smud
 
 fn sdf(p: vec2<f32>) -> f32 {
-    return sd_circle(p, 25.);
+    return smud::sd_circle(p, 25.);
 }
