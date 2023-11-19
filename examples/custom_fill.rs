@@ -36,7 +36,7 @@ fn setup(
         shape: SmudShape {
             color: Color::BLUE,
             sdf: asset_server.load("bevy.wgsl"),
-            fill: SIMPLE_FILL_HANDLE.typed(),
+            fill: SIMPLE_FILL_HANDLE,
             frame: Frame::Quad(295.),
         },
         ..default()

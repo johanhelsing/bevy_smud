@@ -10,9 +10,9 @@ fn bevy_head(p: vec2<f32>) -> f32 {
     return min(skull, beak);
 }
 
-fn bevy(p: vec2<f32>) -> f32 {
+fn bevy(p_in: vec2<f32>) -> f32 {
     let scale = 300.0;
-    var p = p / scale;
+    var p = p_in / scale;
 
     let p_upper_wing = p - vec2<f32>(-0.3, -0.25);
     let upper_wing = max(

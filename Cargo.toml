@@ -18,6 +18,7 @@ bevy = { version = "0.12", default-features = false, features = [
 bytemuck = { version = "1.7", features = ["derive"] }
 copyless = "0.1"
 bitflags = "2.4"
+fixedbitset = "0.4"
 
 [dev-dependencies]
 bevy = { version = "0.12", default-features = false, features = [
