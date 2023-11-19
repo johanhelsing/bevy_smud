@@ -85,7 +85,7 @@ impl Plugin for SmudPlugin {
     fn build(&self, app: &mut App) {
         // All the messy boiler-plate for loading a bunch of shaders
         app.add_plugins(ShaderLoadingPlugin);
-        // app.add_plugin(UiShapePlugin);
+        // app.add_plugins(UiShapePlugin);
 
         if let Ok(render_app) = app.get_sub_app_mut(RenderApp) {
             render_app

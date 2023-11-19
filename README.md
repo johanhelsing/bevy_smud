@@ -37,9 +37,8 @@ use bevy_smud::prelude::*;
 
 fn main() {
     App::new()
-        .add_plugins(DefaultPlugins)
-        .add_plugin(SmudPlugin)
-        .add_startup_system(setup)
+        .add_plugins((DefaultPlugins, SmudPlugin))
+        .add_systems(Startup, setup)
         .run();
 }
 
