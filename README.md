@@ -87,11 +87,10 @@ If you want something more finished, you should probably check out [bevy_prototy
 
 The `main` branch targets the latest bevy release.
 
-I intend to support the `main` branch of Bevy in the `bevy-main` branch.
-
 |bevy|bevy_smud|
 |----|---------|
-|0.11|0.6, main|
+|0.12|0.7, main|
+|0.11|0.6      |
 |0.10|0.5      |
 |0.9 |0.4      |
 |0.8 |0.3      |
