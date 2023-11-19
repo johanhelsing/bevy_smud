@@ -26,7 +26,7 @@ impl Default for SmudShape {
             color: Color::PINK,
             sdf: default(),
             frame: default(),
-            fill: DEFAULT_FILL_HANDLE.typed(),
+            fill: DEFAULT_FILL_HANDLE,
         }
     }
 }

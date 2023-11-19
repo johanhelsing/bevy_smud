@@ -37,9 +37,8 @@ use bevy_smud::prelude::*;
 
 fn main() {
     App::new()
-        .add_plugins(DefaultPlugins)
-        .add_plugin(SmudPlugin)
-        .add_startup_system(setup)
+        .add_plugins((DefaultPlugins, SmudPlugin))
+        .add_systems(Startup, setup)
         .run();
 }
 
@@ -87,11 +86,10 @@ If you want something more finished, you should probably check out [bevy_prototy
 
 The `main` branch targets the latest bevy release.
 
-I intend to support the `main` branch of Bevy in the `bevy-main` branch.
-
 |bevy|bevy_smud|
 |----|---------|
-|0.11|0.6, main|
+|0.12|0.7, main|
+|0.11|0.6      |
 |0.10|0.5      |
 |0.9 |0.4      |
 |0.8 |0.3      |

@@ -28,9 +28,9 @@ fn setup(
     let peanut = shaders.add_sdf_body(
         r"
 // Taking the absolute value of p.x creates a vertical line of symmetry
-let p = vec2<f32>(abs(p.x), p.y);
+let p_2 = vec2<f32>(abs(p.x), p.y);
 // By subtracting from p, we can move shapes
-return smud::sd_circle(p - vec2<f32>(20., 0.), 40.);
+return smud::sd_circle(p_2 - vec2<f32>(20., 0.), 40.);
     ",
     );
 
@@ -71,7 +71,7 @@ return smud::sd_circle(p - vec2<f32>(20., 0.), 40.);
             sdf: bevy,
             // You can also specify a custom type of fill
             // The simple fill is just a simple anti-aliased opaque fill
-            fill: SIMPLE_FILL_HANDLE.typed(),
+            fill: SIMPLE_FILL_HANDLE,
             frame: Frame::Quad(295.),
         },
         ..default()
