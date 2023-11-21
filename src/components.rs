@@ -31,7 +31,7 @@ impl Default for SmudShape {
             sdf: default(),
             frame: default(),
             params: default(),
-            fill: DEFAULT_FILL_HANDLE.typed(),
+            fill: DEFAULT_FILL_HANDLE,
         }
     }
 }
