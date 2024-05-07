@@ -6,14 +6,15 @@ use rand::prelude::*;
 
 fn main() {
     App::new()
-        .add_state::<GameState>()
+        .init_state::<GameState>()
         // bevy_smud comes with anti-aliasing built into the standards fills
         // which is more efficient than MSAA, and also works on Linux, wayland
         .insert_resource(Msaa::Off)
         .add_loading_state(
-            LoadingState::new(GameState::Loading).continue_to_state(GameState::Running),
+            LoadingState::new(GameState::Loading)
+                .continue_to_state(GameState::Running)
+                .load_collection::<AssetHandles>(),
         )
-        .add_collection_to_loading_state::<_, AssetHandles>(GameState::Loading)
         .add_plugins((
             DefaultPlugins,
             SmudPlugin,
@@ -39,6 +40,7 @@ struct AssetHandles {
     palette: Handle<bevy_lospec::Palette>,
 }
 
+#[allow(dead_code)]
 #[derive(Component)]
 struct Index(usize);
 
@@ -85,7 +87,7 @@ fn setup(
         asset_server.load("gallery/donut.wgsl"),
     ];
 
-    let fills = vec![
+    let fills = [
         // asset_server.load("fills/simple.wgsl"),
         asset_server.load("fills/cubic_falloff.wgsl"),
         asset_server.load("fills/outline.wgsl"),

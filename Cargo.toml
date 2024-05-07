@@ -10,25 +10,26 @@ repository = "https://github.com/johanhelsing/bevy_smud"
 version = "0.7.0"
 
 [dependencies]
-bevy = { version = "0.12", default-features = false, features = [
+bevy = { version = "0.13", default-features = false, features = [
   "bevy_core_pipeline",
   "bevy_render",
-  "bevy_asset", # needed for handle ids
-]}
-bytemuck = { version = "1.7", features = ["derive"] }
+  "bevy_asset",         # needed for handle ids
+] }
+bytemuck = { version = "1.15.0", features = ["derive"] }
 copyless = "0.1"
-bitflags = "2.4"
-fixedbitset = "0.4"
+bitflags = "2.5"
+fixedbitset = "0.5"
 
 [dev-dependencies]
-bevy = { version = "0.12", default-features = false, features = [
+bevy = { version = "0.13.2", default-features = false, features = [
   "bevy_winit",
-  "x11", # github actions runners don't have libxkbcommon installed, so can't use wayland
+  "x11",            # github actions runners don't have libxkbcommon installed, so can't use wayland
   "file_watcher",
+  "multi-threaded",
 ] }
-bevy_asset_loader = "0.18"
-bevy_lospec = "0.6"
-bevy_pancam = "0.10"
+bevy_asset_loader = "0.20"
+bevy_lospec = "0.7"
+bevy_pancam = "0.11"
 rand = "0.8"
 
 [profile.dev]

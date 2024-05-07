@@ -7,6 +7,7 @@ use std::ops::Range;
 use bevy::{
     core_pipeline::core_2d::Transparent2d,
     ecs::{
+        entity::EntityHashMap,
         query::ROQueryItem,
         system::{
             lifetimeless::{Read, SRes},
@@ -22,11 +23,11 @@ use bevy::{
             RenderPhase, SetItemPipeline, TrackedRenderPass,
         },
         render_resource::{
-            BindGroup, BindGroupEntries, BindGroupLayout, BindGroupLayoutDescriptor,
-            BindGroupLayoutEntry, BindingType, BlendState, BufferBindingType, BufferUsages,
-            BufferVec, CachedRenderPipelineId, ColorTargetState, ColorWrites, Face, FragmentState,
-            FrontFace, MultisampleState, PipelineCache, PolygonMode, PrimitiveState,
-            PrimitiveTopology, RenderPipelineDescriptor, ShaderImport, ShaderStages, ShaderType,
+            BindGroup, BindGroupEntries, BindGroupLayout, BindGroupLayoutEntry, BindingType,
+            BlendState, BufferBindingType, BufferUsages, BufferVec, CachedRenderPipelineId,
+            ColorTargetState, ColorWrites, Face, FragmentState, FrontFace, MultisampleState,
+            PipelineCache, PolygonMode, PrimitiveState, PrimitiveTopology,
+            RenderPipelineDescriptor, ShaderImport, ShaderStages, ShaderType,
             SpecializedRenderPipeline, SpecializedRenderPipelines, TextureFormat, VertexAttribute,
             VertexBufferLayout, VertexFormat, VertexState, VertexStepMode,
         },
@@ -38,7 +39,7 @@ use bevy::{
         },
         Extract, MainWorld, Render, RenderApp, RenderSet,
     },
-    utils::{EntityHashMap, FloatOrd, HashMap},
+    utils::{FloatOrd, HashMap},
 };
 use bytemuck::{Pod, Zeroable};
 use fixedbitset::FixedBitSet;
@@ -118,13 +119,13 @@ type DrawSmudShape = (SetItemPipeline, SetShapeViewBindGroup<0>, DrawShapeBatch)
 struct SetShapeViewBindGroup<const I: usize>;
 impl<P: PhaseItem, const I: usize> RenderCommand<P> for SetShapeViewBindGroup<I> {
     type Param = SRes<ShapeMeta>;
-    type ViewWorldQuery = Read<ViewUniformOffset>;
-    type ItemWorldQuery = ();
+    type ViewQuery = Read<ViewUniformOffset>;
+    type ItemQuery = ();
 
     fn render<'w>(
         _item: &P,
-        view_uniform: ROQueryItem<'w, Self::ViewWorldQuery>,
-        _view: (),
+        view_uniform: ROQueryItem<'w, Self::ViewQuery>,
+        _entity: Option<ROQueryItem<'w, Self::ItemQuery>>,
         shape_meta: SystemParamItem<'w, '_, Self::Param>,
         pass: &mut TrackedRenderPass<'w>,
     ) -> RenderCommandResult {
@@ -140,19 +141,21 @@ impl<P: PhaseItem, const I: usize> RenderCommand<P> for SetShapeViewBindGroup<I>
 struct DrawShapeBatch;
 impl<P: PhaseItem> RenderCommand<P> for DrawShapeBatch {
     type Param = SRes<ShapeMeta>;
-    type ViewWorldQuery = ();
-    type ItemWorldQuery = Read<ShapeBatch>;
+    type ViewQuery = ();
+    type ItemQuery = Read<ShapeBatch>;
 
     fn render<'w>(
         _item: &P,
         _view: (),
-        batch: &'_ ShapeBatch,
+        batch: Option<ROQueryItem<'w, Self::ItemQuery>>,
         shape_meta: SystemParamItem<'w, '_, Self::Param>,
         pass: &mut TrackedRenderPass<'w>,
     ) -> RenderCommandResult {
         let shape_meta = shape_meta.into_inner();
         pass.set_vertex_buffer(0, shape_meta.vertices.buffer().unwrap().slice(..));
-        pass.draw(0..4, batch.range.clone());
+        if let Some(batch) = batch {
+            pass.draw(0..4, batch.range.clone());
+        }
         RenderCommandResult::Success
     }
 }
@@ -167,8 +170,9 @@ impl FromWorld for SmudPipeline {
     fn from_world(world: &mut World) -> Self {
         let render_device = world.get_resource::<RenderDevice>().unwrap();
 
-        let view_layout = render_device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-            entries: &[
+        let view_layout = render_device.create_bind_group_layout(
+            Some("shape_view_layout"),
+            &[
                 BindGroupLayoutEntry {
                     binding: 0,
                     visibility: ShaderStages::VERTEX_FRAGMENT,
@@ -190,8 +194,7 @@ impl FromWorld for SmudPipeline {
                     count: None,
                 },
             ],
-            label: Some("shape_view_layout"),
-        });
+        );
 
         Self {
             view_layout,
@@ -397,7 +400,7 @@ struct ExtractedShape {
 
 #[derive(Resource, Default, Debug)]
 struct ExtractedShapes {
-    shapes: EntityHashMap<Entity, ExtractedShape>,
+    shapes: EntityHashMap<ExtractedShape>,
 }
 
 fn extract_shapes(
