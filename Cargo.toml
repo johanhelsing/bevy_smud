@@ -14,7 +14,6 @@ bevy = { version = "0.14", default-features = false, features = [
   "bevy_core_pipeline",
   "bevy_render",
   "bevy_asset",         # needed for handle ids
-  # "bevy_sprite",
   "multi_threaded",
 ] }
 bytemuck = { version = "1.15.0", features = ["derive"] }
@@ -25,6 +24,7 @@ uuid = "1.10.0"
 
 [dev-dependencies]
 bevy = { version = "0.14", default-features = false, features = [
+  "bevy_state",
   "bevy_winit",
   "x11",            # github actions runners don't have libxkbcommon installed, so can't use wayland
   "file_watcher",

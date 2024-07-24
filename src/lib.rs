@@ -35,7 +35,7 @@ use bevy::{
         texture::BevyDefault,
         view::{
             ExtractedView, ViewTarget, ViewUniform, ViewUniformOffset, ViewUniforms,
-            VisibleEntities, WithMesh,
+            VisibleEntities, WithMesh, check_visibility, VisibilitySystems,
         },
         Extract, MainWorld, Render, RenderApp, RenderSet,
     },
@@ -85,33 +85,34 @@ pub struct SmudPlugin;
 impl Plugin for SmudPlugin {
     fn build(&self, app: &mut App) {
         // All the messy boiler-plate for loading a bunch of shaders
-        app.add_plugins(ShaderLoadingPlugin);
+        app.add_plugins(ShaderLoadingPlugin)
+           .add_systems(
+                PostUpdate,
+                check_visibility::<With<SmudShape>>
+                    .in_set(VisibilitySystems::CheckVisibility)
+            );
         // app.add_plugins(UiShapePlugin);
 
-        if let Some(render_app) = app.get_sub_app_mut(RenderApp) {
-            render_app
-                .add_render_command::<Transparent2d, DrawSmudShape>()
-                .init_resource::<ExtractedShapes>()
-                .init_resource::<ShapeMeta>()
-                .init_resource::<SpecializedRenderPipelines<SmudPipeline>>()
-                .add_systems(ExtractSchedule, (extract_shapes, extract_sdf_shaders))
-                .add_systems(
-                    Render,
-                    (
-                        queue_shapes.in_set(RenderSet::Queue),
-                        prepare_shapes.in_set(RenderSet::PrepareBindGroups),
-                    ),
-                );
-        } else {
-            panic!("No render app");
-        }
         app.register_type::<SmudShape>();
     }
 
     fn finish(&self, app: &mut App) {
-        app.get_sub_app_mut(RenderApp)
-            .unwrap()
-            .init_resource::<SmudPipeline>();
+
+        let render_app = app.sub_app_mut(RenderApp);
+        render_app
+            .add_render_command::<Transparent2d, DrawSmudShape>()
+            .init_resource::<ExtractedShapes>()
+            .init_resource::<ShapeMeta>()
+            .init_resource::<SpecializedRenderPipelines<SmudPipeline>>()
+            .init_resource::<SmudPipeline>()
+            .add_systems(ExtractSchedule, (extract_shapes, extract_sdf_shaders))
+            .add_systems(
+                Render,
+                (
+                    queue_shapes.in_set(RenderSet::Queue),
+                    prepare_shapes.in_set(RenderSet::PrepareBindGroups),
+                ),
+            );
     }
 }
 
@@ -504,10 +505,8 @@ fn queue_shapes(
         //
         //
         let Some(transparent_phase) = transparent_render_phases.get_mut(&view_entity) else {
-            eprintln!("punt");
             continue;
         };
-            // eprintln!("got it");
 
         let mesh_key = PipelineKey::from_msaa_samples(msaa.samples())
             | PipelineKey::from_primitive_topology(PrimitiveTopology::TriangleStrip);
@@ -518,7 +517,6 @@ fn queue_shapes(
         transparent_phase
             .items
             .reserve(extracted_shapes.shapes.len());
-        eprintln!("shapes count {}", extracted_shapes.shapes.len());
 
         for (entity, extracted_shape) in extracted_shapes.shapes.iter() {
             let shader = (
@@ -546,7 +544,6 @@ fn queue_shapes(
             // These items will be sorted by depth with other phase items
             let sort_key = FloatOrd(extracted_shape.transform.translation().z);
 
-            eprintln!("added");
             // Add the item to the render phase
             transparent_phase.add(Transparent2d {
                 draw_function: draw_smud_shape_function,
