@@ -7,7 +7,7 @@ keywords = ["gamedev", "bevy", "sdf"]
 license = "MIT OR Apache-2.0"
 name = "bevy_smud"
 repository = "https://github.com/johanhelsing/bevy_smud"
-version = "0.7.0"
+version = "0.9.0"
 
 [dependencies]
 bevy = { version = "0.14", default-features = false, features = [
