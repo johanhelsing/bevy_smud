@@ -19,27 +19,27 @@ use bevy::{
     render::{
         globals::{GlobalsBuffer, GlobalsUniform},
         render_phase::{
-            AddRenderCommand, DrawFunctions, PhaseItem, RenderCommand, RenderCommandResult,
-            SetItemPipeline, TrackedRenderPass, ViewSortedRenderPhases, PhaseItemExtraIndex,
+            AddRenderCommand, DrawFunctions, PhaseItem, PhaseItemExtraIndex, RenderCommand,
+            RenderCommandResult, SetItemPipeline, TrackedRenderPass, ViewSortedRenderPhases,
         },
         render_resource::{
             BindGroup, BindGroupEntries, BindGroupLayout, BindGroupLayoutEntry, BindingType,
-            BlendState, BufferBindingType, BufferUsages, RawBufferVec, CachedRenderPipelineId,
-            ColorTargetState, ColorWrites, Face, FragmentState, FrontFace, MultisampleState,
-            PipelineCache, PolygonMode, PrimitiveState, PrimitiveTopology,
-            RenderPipelineDescriptor, ShaderImport, ShaderStages, ShaderType,
-            SpecializedRenderPipeline, SpecializedRenderPipelines, TextureFormat, VertexAttribute,
-            VertexBufferLayout, VertexFormat, VertexState, VertexStepMode,
+            BlendState, BufferBindingType, BufferUsages, CachedRenderPipelineId, ColorTargetState,
+            ColorWrites, Face, FragmentState, FrontFace, MultisampleState, PipelineCache,
+            PolygonMode, PrimitiveState, PrimitiveTopology, RawBufferVec, RenderPipelineDescriptor,
+            ShaderImport, ShaderStages, ShaderType, SpecializedRenderPipeline,
+            SpecializedRenderPipelines, TextureFormat, VertexAttribute, VertexBufferLayout,
+            VertexFormat, VertexState, VertexStepMode,
         },
         renderer::{RenderDevice, RenderQueue},
         texture::BevyDefault,
         view::{
-            ExtractedView, ViewTarget, ViewUniform, ViewUniformOffset, ViewUniforms,
-            VisibleEntities, WithMesh, check_visibility, VisibilitySystems,
+            check_visibility, ExtractedView, ViewTarget, ViewUniform, ViewUniformOffset,
+            ViewUniforms, VisibilitySystems, VisibleEntities, WithMesh,
         },
         Extract, MainWorld, Render, RenderApp, RenderSet,
     },
-    utils::{HashMap},
+    utils::HashMap,
 };
 use bytemuck::{Pod, Zeroable};
 use fixedbitset::FixedBitSet;
@@ -85,19 +85,16 @@ pub struct SmudPlugin;
 impl Plugin for SmudPlugin {
     fn build(&self, app: &mut App) {
         // All the messy boiler-plate for loading a bunch of shaders
-        app.add_plugins(ShaderLoadingPlugin)
-           .add_systems(
-                PostUpdate,
-                check_visibility::<With<SmudShape>>
-                    .in_set(VisibilitySystems::CheckVisibility)
-            );
+        app.add_plugins(ShaderLoadingPlugin).add_systems(
+            PostUpdate,
+            check_visibility::<With<SmudShape>>.in_set(VisibilitySystems::CheckVisibility),
+        );
         // app.add_plugins(UiShapePlugin);
 
         app.register_type::<SmudShape>();
     }
 
     fn finish(&self, app: &mut App) {
-
         let render_app = app.sub_app_mut(RenderApp);
         render_app
             .add_render_command::<Transparent2d, DrawSmudShape>()
@@ -512,7 +509,11 @@ fn queue_shapes(
             | PipelineKey::from_primitive_topology(PrimitiveTopology::TriangleStrip);
 
         view_entities.clear();
-        view_entities.extend(visible_entities.iter::<WithMesh>().map(|e| e.index() as usize));
+        view_entities.extend(
+            visible_entities
+                .iter::<WithMesh>()
+                .map(|e| e.index() as usize),
+        );
 
         transparent_phase
             .items
