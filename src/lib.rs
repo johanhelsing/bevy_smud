@@ -5,7 +5,6 @@
 use std::ops::Range;
 
 use bevy::{
-    sprite::WithMesh2d,
     core_pipeline::core_2d::Transparent2d,
     ecs::{
         entity::EntityHashMap,
@@ -36,7 +35,7 @@ use bevy::{
         texture::BevyDefault,
         view::{
             ExtractedView, ViewTarget, ViewUniform, ViewUniformOffset, ViewUniforms,
-            VisibleEntities,
+            VisibleEntities, WithMesh,
         },
         Extract, MainWorld, Render, RenderApp, RenderSet,
     },
@@ -103,8 +102,9 @@ impl Plugin for SmudPlugin {
                         prepare_shapes.in_set(RenderSet::PrepareBindGroups),
                     ),
                 );
+        } else {
+            panic!("No render app");
         }
-
         app.register_type::<SmudShape>();
     }
 
@@ -504,18 +504,21 @@ fn queue_shapes(
         //
         //
         let Some(transparent_phase) = transparent_render_phases.get_mut(&view_entity) else {
+            eprintln!("punt");
             continue;
         };
+            // eprintln!("got it");
 
         let mesh_key = PipelineKey::from_msaa_samples(msaa.samples())
             | PipelineKey::from_primitive_topology(PrimitiveTopology::TriangleStrip);
 
         view_entities.clear();
-        view_entities.extend(visible_entities.iter::<WithMesh2d>().map(|e| e.index() as usize));
+        view_entities.extend(visible_entities.iter::<WithMesh>().map(|e| e.index() as usize));
 
         transparent_phase
             .items
             .reserve(extracted_shapes.shapes.len());
+        eprintln!("shapes count {}", extracted_shapes.shapes.len());
 
         for (entity, extracted_shape) in extracted_shapes.shapes.iter() {
             let shader = (
@@ -543,6 +546,7 @@ fn queue_shapes(
             // These items will be sorted by depth with other phase items
             let sort_key = FloatOrd(extracted_shape.transform.translation().z);
 
+            eprintln!("added");
             // Add the item to the render phase
             transparent_phase.add(Transparent2d {
                 draw_function: draw_smud_shape_function,
