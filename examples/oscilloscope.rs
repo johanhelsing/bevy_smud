@@ -22,7 +22,8 @@ fn setup(
     // The fill takes a distance and a color and returns another color
     commands.spawn(ShapeBundle {
         shape: SmudShape {
-            color: css::GREEN.into(),
+            // color: css::GREEN.into(),
+            color: css::ORANGE.into(),
             sdf: asset_server.load("bevy.wgsl"),
             fill: shaders.add_fill_body(
                 r"
@@ -35,7 +36,7 @@ return vec4<f32>(col, color.a);
 // return vec4<f32>(aces_approx(col), color.a);
 }
 
-// HACK: We're gonna cheat on this template and add some auxiliary functions.
+// HACK: We're gonna cheat on this template and add an auxiliary function.
 
 // License: Unknown, author: Matt Taylor (https://github.com/64), found: https://64.github.io/tonemapping/
 fn aces_approx(v_: vec3<f32>) -> vec3<f32> {
