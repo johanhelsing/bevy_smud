@@ -1,5 +1,6 @@
 use bevy::{
     diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin},
+    color::palettes::css,
     prelude::*,
 };
 use bevy_asset_loader::prelude::*;
@@ -75,7 +76,7 @@ fn setup(
                 .filter(|c| *c != &clear_color)
                 .choose(&mut rng)
                 .copied()
-                .unwrap_or(Color::PINK);
+                .unwrap_or(css::PINK.into());
 
             commands.spawn((
                 ShapeBundle {

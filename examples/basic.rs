@@ -53,7 +53,7 @@ return smud::sd_circle(p_2 - vec2<f32>(20., 0.), 40.);
     commands.spawn(ShapeBundle {
         transform: Transform::from_translation(Vec3::X * 200.),
         shape: SmudShape {
-            color: Color::rgb(0.7, 0.6, 0.4),
+            color: Color::srgb(0.7, 0.6, 0.4),
             sdf: peanut,
             frame: Frame::Quad(80.),
             ..default()
