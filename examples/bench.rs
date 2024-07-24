@@ -10,6 +10,14 @@ use rand::prelude::*;
 
 fn main() {
     App::new()
+        .add_plugins((
+            DefaultPlugins,
+            LogDiagnosticsPlugin::default(),
+            FrameTimeDiagnosticsPlugin,
+            SmudPlugin,
+            PanCamPlugin,
+            bevy_lospec::PalettePlugin,
+        ))
         .init_state::<GameState>()
         // bevy_smud comes with anti-aliasing built into the standards fills
         // which is more efficient than MSAA, and also works on Linux, wayland
@@ -19,14 +27,6 @@ fn main() {
                 .continue_to_state(GameState::Running)
                 .load_collection::<AssetHandles>(),
         )
-        .add_plugins((
-            DefaultPlugins,
-            LogDiagnosticsPlugin::default(),
-            FrameTimeDiagnosticsPlugin,
-            SmudPlugin,
-            PanCamPlugin,
-            bevy_lospec::PalettePlugin,
-        ))
         .add_systems(OnEnter(GameState::Running), setup)
         // .add_system_set(SystemSet::on_update(GameState::Running).with_system(update))
         .run();

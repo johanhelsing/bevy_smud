@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bevy::color::palettes::css;
 use bevy_pancam::*;
 use bevy_smud::{prelude::*, SIMPLE_FILL_HANDLE};
 
@@ -23,7 +24,7 @@ fn setup(
 
     commands.spawn(ShapeBundle {
         shape: SmudShape {
-            color: Color::TEAL,
+            color: css::TEAL.into(),
             sdf: asset_server.load("bevy.wgsl"),
             fill: sin_fill,
             frame: Frame::Quad(295.),
@@ -34,7 +35,7 @@ fn setup(
     commands.spawn(ShapeBundle {
         transform: Transform::from_translation(Vec3::X * 600.),
         shape: SmudShape {
-            color: Color::BLUE,
+            color: css::BLUE.into(),
             sdf: asset_server.load("bevy.wgsl"),
             fill: SIMPLE_FILL_HANDLE,
             frame: Frame::Quad(295.),
@@ -45,7 +46,7 @@ fn setup(
     commands.spawn(ShapeBundle {
         transform: Transform::from_translation(Vec3::X * -600.),
         shape: SmudShape {
-            color: Color::ORANGE,
+            color: css::ORANGE.into(),
             sdf: asset_server.load("bevy.wgsl"),
             fill: shaders.add_fill_body(
                 r"

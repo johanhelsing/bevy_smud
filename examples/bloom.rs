@@ -4,6 +4,7 @@
 //! effects by creating a custom fill.
 
 use bevy::{core_pipeline::bloom::BloomSettings, prelude::*};
+use bevy::color::palettes::css;
 // The prelude contains the basic things needed to create shapes
 use bevy_smud::prelude::*;
 
@@ -27,7 +28,7 @@ fn setup(mut commands: Commands, mut shaders: ResMut<Assets<Shader>>) {
 
     commands.spawn(ShapeBundle {
         shape: SmudShape {
-            color: Color::TOMATO,
+            color: css::TOMATO.into(),
             sdf: circle,
             // The frame needs to be bigger than the shape we're drawing
             // Since the circle has radius 70, we make the half-size of the quad 80.
