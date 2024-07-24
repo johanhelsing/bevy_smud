@@ -5,6 +5,7 @@
 use std::ops::Range;
 
 use bevy::{
+    sprite::WithMesh2d,
     core_pipeline::core_2d::Transparent2d,
     ecs::{
         entity::EntityHashMap,
@@ -14,17 +15,17 @@ use bevy::{
             SystemParamItem,
         },
     },
-    math::Vec3Swizzles,
+    math::{FloatOrd, Vec3Swizzles},
     prelude::*,
     render::{
         globals::{GlobalsBuffer, GlobalsUniform},
         render_phase::{
             AddRenderCommand, DrawFunctions, PhaseItem, RenderCommand, RenderCommandResult,
-            RenderPhase, SetItemPipeline, TrackedRenderPass,
+            SetItemPipeline, TrackedRenderPass, ViewSortedRenderPhases, PhaseItemExtraIndex,
         },
         render_resource::{
             BindGroup, BindGroupEntries, BindGroupLayout, BindGroupLayoutEntry, BindingType,
-            BlendState, BufferBindingType, BufferUsages, BufferVec, CachedRenderPipelineId,
+            BlendState, BufferBindingType, BufferUsages, RawBufferVec, CachedRenderPipelineId,
             ColorTargetState, ColorWrites, Face, FragmentState, FrontFace, MultisampleState,
             PipelineCache, PolygonMode, PrimitiveState, PrimitiveTopology,
             RenderPipelineDescriptor, ShaderImport, ShaderStages, ShaderType,
@@ -39,7 +40,7 @@ use bevy::{
         },
         Extract, MainWorld, Render, RenderApp, RenderSet,
     },
-    utils::{FloatOrd, HashMap},
+    utils::{HashMap},
 };
 use bytemuck::{Pod, Zeroable};
 use fixedbitset::FixedBitSet;
@@ -88,7 +89,7 @@ impl Plugin for SmudPlugin {
         app.add_plugins(ShaderLoadingPlugin);
         // app.add_plugins(UiShapePlugin);
 
-        if let Ok(render_app) = app.get_sub_app_mut(RenderApp) {
+        if let Some(render_app) = app.get_sub_app_mut(RenderApp) {
             render_app
                 .add_render_command::<Transparent2d, DrawSmudShape>()
                 .init_resource::<ExtractedShapes>()
@@ -485,8 +486,10 @@ fn queue_shapes(
     pipeline_cache: ResMut<PipelineCache>,
     msaa: Res<Msaa>,
     extracted_shapes: ResMut<ExtractedShapes>,
+    mut transparent_render_phases: ResMut<ViewSortedRenderPhases<Transparent2d>>,
     mut views: Query<(
-        &mut RenderPhase<Transparent2d>,
+        Entity,
+        // &mut RenderPhase<Transparent2d>,
         &VisibleEntities,
         &ExtractedView,
     )>,
@@ -495,15 +498,20 @@ fn queue_shapes(
     let draw_smud_shape_function = draw_functions.read().get_id::<DrawSmudShape>().unwrap();
 
     // Iterate over each view (a camera is a view)
-    for (mut transparent_phase, visible_entities, view) in &mut views {
+    for (view_entity, visible_entities, view) in &mut views {
         // todo: bevy_sprite does some hdr stuff, should we?
         // let mut view_key = SpritePipelineKey::from_hdr(view.hdr) | msaa_key;
+        //
+        //
+        let Some(transparent_phase) = transparent_render_phases.get_mut(&view_entity) else {
+            continue;
+        };
 
         let mesh_key = PipelineKey::from_msaa_samples(msaa.samples())
             | PipelineKey::from_primitive_topology(PrimitiveTopology::TriangleStrip);
 
         view_entities.clear();
-        view_entities.extend(visible_entities.entities.iter().map(|e| e.index() as usize));
+        view_entities.extend(visible_entities.iter::<WithMesh2d>().map(|e| e.index() as usize));
 
         transparent_phase
             .items
@@ -543,7 +551,7 @@ fn queue_shapes(
                 sort_key,
                 // batch_range and dynamic_offset will be calculated in prepare_shapes
                 batch_range: 0..0,
-                dynamic_offset: None,
+                extra_index: PhaseItemExtraIndex::NONE,
             });
         }
     }
@@ -558,7 +566,8 @@ fn prepare_shapes(
     view_uniforms: Res<ViewUniforms>,
     smud_pipeline: Res<SmudPipeline>,
     extracted_shapes: Res<ExtractedShapes>,
-    mut phases: Query<&mut RenderPhase<Transparent2d>>,
+    mut phases: ResMut<ViewSortedRenderPhases<Transparent2d>>,
+    // mut phases: Query<&mut RenderPhase<Transparent2d>>,
     globals_buffer: Res<GlobalsBuffer>,
 ) {
     let globals = globals_buffer.buffer.binding().unwrap(); // todo if-let
@@ -578,7 +587,7 @@ fn prepare_shapes(
         // Vertex buffer index
         let mut index = 0;
 
-        for mut transparent_phase in &mut phases {
+        for (_entity, transparent_phase) in phases.iter_mut() {
             let mut batch_item_index = 0;
             // let mut batch_image_size = Vec2::ZERO;
             // let mut batch_image_handle = AssetId::invalid();
@@ -604,7 +613,8 @@ fn prepare_shapes(
 
                 let batch_shader_changed = batch_shader_handles != shader_handles;
 
-                let color = extracted_shape.color.as_linear_rgba_f32();
+                let lrgba: LinearRgba = extracted_shape.color.into();
+                let color = lrgba.to_f32_array();
 
                 let position = extracted_shape.transform.translation();
                 let position = position.into();
@@ -669,14 +679,14 @@ struct ShapeVertex {
 
 #[derive(Resource)]
 pub(crate) struct ShapeMeta {
-    vertices: BufferVec<ShapeVertex>,
+    vertices: RawBufferVec<ShapeVertex>,
     view_bind_group: Option<BindGroup>,
 }
 
 impl Default for ShapeMeta {
     fn default() -> Self {
         Self {
-            vertices: BufferVec::new(BufferUsages::VERTEX),
+            vertices: RawBufferVec::new(BufferUsages::VERTEX),
             view_bind_group: None,
         }
     }

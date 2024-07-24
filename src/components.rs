@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bevy::color::palettes::css;
 
 use crate::DEFAULT_FILL_HANDLE;
 
@@ -23,7 +24,7 @@ pub struct SmudShape {
 impl Default for SmudShape {
     fn default() -> Self {
         Self {
-            color: Color::PINK,
+            color: css::PINK.into(),
             sdf: default(),
             frame: default(),
             fill: DEFAULT_FILL_HANDLE,

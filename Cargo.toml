@@ -14,11 +14,14 @@ bevy = { version = "0.14", default-features = false, features = [
   "bevy_core_pipeline",
   "bevy_render",
   "bevy_asset",         # needed for handle ids
+  # "bevy_sprite",
+  "multi_threaded",
 ] }
 bytemuck = { version = "1.15.0", features = ["derive"] }
 copyless = "0.1"
 bitflags = "2.5"
 fixedbitset = "0.5"
+uuid = "1.10.0"
 
 [dev-dependencies]
 bevy = { version = "0.14", default-features = false, features = [
