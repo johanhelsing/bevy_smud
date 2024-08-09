@@ -52,7 +52,7 @@ fn setup(
 
     commands.spawn(ShapeBundle {
         shape: SmudShape {
-            color: Color::TOMATO,
+            color: Color::WHITE,
             sdf: circle,
             frame: Frame::Quad(55.),
             ..default()
@@ -88,7 +88,8 @@ The `main` branch targets the latest bevy release.
 
 |bevy|bevy_smud|
 |----|---------|
-|0.12|0.7, main|
+|0.14|0.9, main|
+|0.12|0.7      |
 |0.11|0.6      |
 |0.10|0.5      |
 |0.9 |0.4      |
