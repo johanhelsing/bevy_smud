@@ -25,7 +25,7 @@ impl SdfAssets for Assets<Shader> {
 
 #import smud
 
-fn sdf(p: vec2<f32>) -> f32 {{
+fn sdf(p: vec2<f32>, params: vec4<f32>) -> f32 {{
     {body}
 }}
 "#
