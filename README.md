@@ -5,7 +5,7 @@
 [![crates.io](https://img.shields.io/crates/d/bevy_smud.svg)](https://crates.io/crates/bevy_smud)
 [![docs.rs](https://img.shields.io/docsrs/bevy_smud)](https://docs.rs/bevy_smud)
 
-Sdf 2d shape rendering for [Bevy](https://bevyengine.org).
+[Signed_Distance_Field/Function][SDF] (SDF) 2D shape rendering for [Bevy](https://bevyengine.org).
 
 ![screenshot of a bird drawn with bevy_smud](https://johanhelsing.studio/assets/bevy_smud_banner.png)
 
@@ -17,7 +17,7 @@ If you keep the number of different sdf and fill combinations relatively low it'
 
 ## Usage
 
-A signed distance field (sdf) is a way to map points in space to distances to a surface. If a point maps to a positive value, it's outside the shape, if it's negative, it's inside the shape. These "mappings" can be described by functions, which takes a point as input and returns a distance to a surface. For instance, if you wanted to make a circle, it could be described as `length(position - center) - radius`. That way, all the points that are `radius` away from `center` would be 0 and would define the edge of the shape.
+An SDF is a way to map points in space to distances to a surface. If a point maps to a positive value, it's outside the shape, if it's negative, it's inside the shape. These "mappings" can be described by functions, which takes a point as input and returns a distance to a surface. For instance, if you wanted to make a circle, it could be described as `length(position - center) - radius`. That way, all the points that are `radius` away from `center` would be 0 and would define the edge of the shape.
 
 Many such functions describing geometric primitives are included in this library, they are imported automatically when using the single-expression or body shorthand for adding sdfs. For instance, the circle above could also be described as:
 
@@ -52,7 +52,7 @@ fn setup(
 
     commands.spawn(ShapeBundle {
         shape: SmudShape {
-            color: Color::TOMATO,
+            color: Color::WHITE,
             sdf: circle,
             frame: Frame::Quad(55.),
             ..default()
@@ -88,7 +88,8 @@ The `main` branch targets the latest bevy release.
 
 |bevy|bevy_smud|
 |----|---------|
-|0.12|0.7, main|
+|0.14|0.9, main|
+|0.12|0.7      |
 |0.11|0.6      |
 |0.10|0.5      |
 |0.9 |0.4      |
@@ -99,3 +100,5 @@ The `main` branch targets the latest bevy release.
 ## Thanks!
 
 Little of this crate is original work. It's mostly a mishmash of [`bevy_sprite`](https://github.com/bevyengine/bevy/tree/main/crates/bevy_sprite) and [Inigo Quilez sdf rendering primitives](https://iquilezles.org/www/articles/distfunctions2d/distfunctions2d.htm) ported to wgsl. I just put the two together in a way I found convenient.
+
+[SDF]: https://en.wikipedia.org/wiki/Signed_distance_function
