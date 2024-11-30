@@ -1,5 +1,6 @@
 use std::f32::consts::PI;
 
+use bevy::color::palettes::css as Colors;
 use bevy::prelude::*;
 use bevy_asset_loader::prelude::*;
 use bevy_smud::prelude::*;
@@ -11,13 +12,14 @@ use rand::{prelude::IteratorRandom, random};
 
 fn main() {
     App::new()
-        .add_state::<GameState>()
-        .add_loading_state(
-            LoadingState::new(GameState::Loading).continue_to_state(GameState::Running),
-        )
-        .add_collection_to_loading_state::<_, AssetHandles>(GameState::Loading)
-        .insert_resource(Msaa::Off)
         .add_plugins((DefaultPlugins, SmudPlugin, bevy_lospec::PalettePlugin))
+        .init_state::<GameState>()
+        .add_loading_state(
+            LoadingState::new(GameState::Loading)
+                .continue_to_state(GameState::Running)
+                .load_collection::<AssetHandles>(),
+        )
+        .insert_resource(Msaa::Off)
         .add_systems(OnEnter(GameState::Running), setup)
         .run();
 }
@@ -66,7 +68,7 @@ fn setup(
             .filter(|c| *c != &clear_color)
             .choose(&mut rng)
             .copied()
-            .unwrap_or(Color::PINK);
+            .unwrap_or(Colors::PINK.into());
 
         commands.spawn(ShapeBundle {
             transform,
