@@ -19,8 +19,6 @@ fn main() {
             bevy_lospec::PalettePlugin,
         ))
         .init_state::<GameState>()
-        // bevy_smud comes with anti-aliasing built into the standards fills
-        // which is more efficient than MSAA, and also works on Linux, wayland
         .add_loading_state(
             LoadingState::new(GameState::Loading)
                 .continue_to_state(GameState::Running)
@@ -96,6 +94,8 @@ fn setup(
             ));
         }
     }
+    // bevy_smud comes with anti-aliasing built into the standards fills
+    // which is more efficient than MSAA, and also works on Linux, wayland
     commands.spawn((Camera2d, PanCam::default(), Msaa::Off));
 }
 
