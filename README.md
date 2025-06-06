@@ -46,7 +46,7 @@ fn setup(
     mut commands: Commands,
     mut shaders: ResMut<Assets<Shader>>,
 ) {
-    commands.spawn(Camera2dBundle::default());
+    commands.spawn(Camera2d);
 
     let circle = shaders.add_sdf_expr("sd_circle(p, 50.)");
 
