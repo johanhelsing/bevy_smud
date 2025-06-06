@@ -607,8 +607,7 @@ fn queue_shapes(
                 };
             }
             if let Some(DebandDither::Enabled) = dither {
-                todo!("Handle dither in smud shapes");
-                // view_key |= PipelineKey::DEBAND_DITHER;
+                view_key |= PipelineKey::DEBAND_DITHER;
             }
         }
 
