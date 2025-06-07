@@ -54,13 +54,11 @@ use fixedbitset::FixedBitSet;
 use shader_loading::*;
 // use ui::UiShapePlugin;
 
-pub use bundle::ShapeBundle;
 pub use components::*;
 pub use shader_loading::{DEFAULT_FILL_HANDLE, SIMPLE_FILL_HANDLE};
 
 use crate::util::generate_shader_id;
 
-mod bundle;
 mod components;
 mod sdf_assets;
 mod shader_loading;
@@ -75,13 +73,7 @@ mod util;
 /// ```
 pub mod prelude {
     pub use crate::{
-        sdf_assets::SdfAssets,
-        Frame,
-        ShapeBundle,
-        SmudPlugin,
-        SmudShape,
-        // UiShapeBundle,
-        DEFAULT_FILL_HANDLE,
+        sdf_assets::SdfAssets, Frame, SmudPlugin, SmudShape, DEFAULT_FILL_HANDLE,
         SIMPLE_FILL_HANDLE,
     };
 }
