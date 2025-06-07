@@ -1,7 +1,7 @@
 use bevy::color::palettes::css;
 use bevy::prelude::*;
 use bevy_pancam::*;
-use bevy_smud::{prelude::*, SIMPLE_FILL_HANDLE};
+use bevy_smud::{SIMPLE_FILL_HANDLE, prelude::*};
 
 fn main() {
     App::new()

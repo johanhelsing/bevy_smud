@@ -6,23 +6,24 @@ use std::ops::Range;
 
 use bevy::{
     core_pipeline::{
-        core_2d::{Transparent2d, CORE_2D_DEPTH_FORMAT},
+        core_2d::{CORE_2D_DEPTH_FORMAT, Transparent2d},
         tonemapping::{
-            get_lut_bind_group_layout_entries, get_lut_bindings, DebandDither, Tonemapping,
-            TonemappingLuts,
+            DebandDither, Tonemapping, TonemappingLuts, get_lut_bind_group_layout_entries,
+            get_lut_bindings,
         },
     },
     ecs::{
         query::ROQueryItem,
         system::{
-            lifetimeless::{Read, SRes},
             SystemParamItem,
+            lifetimeless::{Read, SRes},
         },
     },
     math::{FloatOrd, Vec3Swizzles},
     platform::collections::HashMap,
     prelude::*,
     render::{
+        Extract, MainWorld, Render, RenderApp, RenderSet,
         globals::{GlobalsBuffer, GlobalsUniform},
         render_asset::RenderAssets,
         render_phase::{
@@ -30,14 +31,14 @@ use bevy::{
             RenderCommandResult, SetItemPipeline, TrackedRenderPass, ViewSortedRenderPhases,
         },
         render_resource::{
-            binding_types::uniform_buffer, BindGroup, BindGroupEntries, BindGroupLayout,
-            BindGroupLayoutEntries, BlendState, BufferUsages, CachedRenderPipelineId,
-            ColorTargetState, ColorWrites, CompareFunction, DepthBiasState, DepthStencilState,
-            Face, FragmentState, FrontFace, MultisampleState, PipelineCache, PolygonMode,
-            PrimitiveState, PrimitiveTopology, RawBufferVec, RenderPipelineDescriptor,
-            ShaderDefVal, ShaderImport, ShaderStages, SpecializedRenderPipeline,
-            SpecializedRenderPipelines, StencilFaceState, StencilState, TextureFormat,
-            VertexAttribute, VertexBufferLayout, VertexFormat, VertexState, VertexStepMode,
+            BindGroup, BindGroupEntries, BindGroupLayout, BindGroupLayoutEntries, BlendState,
+            BufferUsages, CachedRenderPipelineId, ColorTargetState, ColorWrites, CompareFunction,
+            DepthBiasState, DepthStencilState, Face, FragmentState, FrontFace, MultisampleState,
+            PipelineCache, PolygonMode, PrimitiveState, PrimitiveTopology, RawBufferVec,
+            RenderPipelineDescriptor, ShaderDefVal, ShaderImport, ShaderStages,
+            SpecializedRenderPipeline, SpecializedRenderPipelines, StencilFaceState, StencilState,
+            TextureFormat, VertexAttribute, VertexBufferLayout, VertexFormat, VertexState,
+            VertexStepMode, binding_types::uniform_buffer,
         },
         renderer::{RenderDevice, RenderQueue},
         sync_world::{MainEntity, RenderEntity},
@@ -46,7 +47,6 @@ use bevy::{
             ExtractedView, RenderVisibleEntities, RetainedViewEntity, ViewTarget, ViewUniform,
             ViewUniformOffset, ViewUniforms,
         },
-        Extract, MainWorld, Render, RenderApp, RenderSet,
     },
 };
 use bytemuck::{Pod, Zeroable};
@@ -73,8 +73,8 @@ mod util;
 /// ```
 pub mod prelude {
     pub use crate::{
-        sdf_assets::SdfAssets, Frame, SmudPlugin, SmudShape, DEFAULT_FILL_HANDLE,
-        SIMPLE_FILL_HANDLE,
+        DEFAULT_FILL_HANDLE, Frame, SIMPLE_FILL_HANDLE, SmudPlugin, SmudShape,
+        sdf_assets::SdfAssets,
     };
 }
 
@@ -575,11 +575,7 @@ impl PipelineKey {
     }
 
     pub fn from_hdr(hdr: bool) -> Self {
-        if hdr {
-            Self::HDR
-        } else {
-            Self::NONE
-        }
+        if hdr { Self::HDR } else { Self::NONE }
     }
 
     pub fn msaa_samples(&self) -> u32 {
