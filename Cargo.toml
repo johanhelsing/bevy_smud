@@ -2,7 +2,7 @@
 authors = ["Johan Helsing <johanhelsing@gmail.com>"]
 categories = ["game-development", "rendering", "graphics"]
 description = "2d sdf shape renderer plugin for Bevy"
-edition = "2021"
+edition = "2024"
 keywords = ["gamedev", "bevy", "sdf"]
 license = "MIT OR Apache-2.0"
 name = "bevy_smud"

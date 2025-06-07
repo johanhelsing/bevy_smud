@@ -76,18 +76,15 @@ fn setup(
                 .unwrap_or(css::PINK.into());
 
             commands.spawn((
-                ShapeBundle {
-                    transform: Transform::from_translation(Vec3::new(
-                        i as f32 * spacing - w as f32 * spacing / 2.,
-                        j as f32 * spacing - h as f32 * spacing / 2.,
-                        0.,
-                    )),
-                    shape: SmudShape {
-                        color,
-                        sdf: bevy_shape_shader.clone(),
-                        frame: Frame::Quad(295.),
-                        ..default()
-                    },
+                Transform::from_translation(Vec3::new(
+                    i as f32 * spacing - w as f32 * spacing / 2.,
+                    j as f32 * spacing - h as f32 * spacing / 2.,
+                    0.,
+                )),
+                SmudShape {
+                    color,
+                    sdf: bevy_shape_shader.clone(),
+                    frame: Frame::Quad(295.),
                     ..default()
                 },
                 Index(i + j * w),

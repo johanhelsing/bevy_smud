@@ -29,26 +29,13 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     };
 
     // Bevies, all the way down
-    commands
-        .spawn(ShapeBundle {
-            shape: shape.clone(),
-            ..default()
-        })
-        .with_children(|parent| {
-            parent
-                .spawn(ShapeBundle {
-                    transform,
-                    shape: shape.clone(),
-                    ..default()
-                })
-                .with_children(|parent| {
-                    parent.spawn(ShapeBundle {
-                        transform,
-                        shape: shape.clone(),
-                        ..default()
-                    });
-                });
-        });
+    commands.spawn(shape.clone()).with_children(|parent| {
+        parent
+            .spawn((transform, shape.clone()))
+            .with_children(|parent| {
+                parent.spawn((transform, shape.clone()));
+            });
+    });
 
     // bevy_smud comes with anti-aliasing built into the standards fills
     // which is more efficient than MSAA, and also works on Linux, wayland

@@ -37,36 +37,32 @@ return smud::sd_circle(p_2 - vec2<f32>(20., 0.), 40.);
     // If the sdf gets very complicated, you can keep it in a .wgsl file:
     let bevy = asset_server.load("bevy.wgsl");
 
-    commands.spawn(ShapeBundle {
-        shape: SmudShape {
-            color: css::TOMATO.into(),
-            sdf: circle,
-            // The frame needs to be bigger than the shape we're drawing
-            // Since the circle has radius 70, we make the half-size of the quad 80.
-            frame: Frame::Quad(80.),
-            ..default()
-        },
+    commands.spawn(SmudShape {
+        color: css::TOMATO.into(),
+        sdf: circle,
+        // The frame needs to be bigger than the shape we're drawing
+        // Since the circle has radius 70, we make the half-size of the quad 80.
+        frame: Frame::Quad(80.),
         ..default()
     });
 
-    commands.spawn(ShapeBundle {
-        transform: Transform::from_translation(Vec3::X * 200.),
-        shape: SmudShape {
+    commands.spawn((
+        Transform::from_translation(Vec3::X * 200.),
+        SmudShape {
             color: Color::srgb(0.7, 0.6, 0.4),
             sdf: peanut,
             frame: Frame::Quad(80.),
             ..default()
         },
-        ..default()
-    });
+    ));
 
-    commands.spawn(ShapeBundle {
-        transform: Transform {
+    commands.spawn((
+        Transform {
             translation: Vec3::X * -200.,
             scale: Vec3::splat(0.4),
             ..default()
         },
-        shape: SmudShape {
+        SmudShape {
             color: Color::WHITE,
             sdf: bevy,
             // You can also specify a custom type of fill
@@ -74,8 +70,7 @@ return smud::sd_circle(p_2 - vec2<f32>(20., 0.), 40.);
             fill: SIMPLE_FILL_HANDLE,
             frame: Frame::Quad(295.),
         },
-        ..default()
-    });
+    ));
 
     commands.spawn((Camera2d, Msaa::Off));
 }

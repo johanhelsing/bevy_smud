@@ -23,16 +23,15 @@ fn main() {
 fn setup(mut commands: Commands, mut shaders: ResMut<Assets<Shader>>) {
     let circle = shaders.add_sdf_expr("smud::sd_circle(p, 70.)");
 
-    commands.spawn(ShapeBundle {
-        transform: Transform::from_xyz(100., 0., 0.),
-        shape: SmudShape {
+    commands.spawn((
+        Transform::from_xyz(100., 0., 0.),
+        SmudShape {
             color: css::TOMATO.into(),
             sdf: circle,
             frame: Frame::Quad(80.),
             fill: SIMPLE_FILL_HANDLE,
         },
-        ..default()
-    });
+    ));
 
     // bevy square for comparison
     commands.spawn((
