@@ -5,8 +5,6 @@ use bevy_smud::prelude::*;
 
 fn main() {
     App::new()
-        // bevy_smud comes with anti-aliasing built into the standards fills
-        // which is more efficient than MSAA, and also works on Linux, wayland
         .add_plugins((DefaultPlugins, SmudPlugin))
         .add_systems(Startup, setup)
         .run();
@@ -72,5 +70,7 @@ return smud::sd_circle(p_2 - vec2<f32>(20., 0.), 40.);
         },
     ));
 
+    // bevy_smud comes with anti-aliasing built into the standard fills
+    // which is more efficient than MSAA, and also works on Linux, wayland
     commands.spawn((Camera2d, Msaa::Off));
 }
