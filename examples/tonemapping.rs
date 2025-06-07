@@ -1,12 +1,15 @@
-//! This example shows that bevy_smud works with bloom enabled
+//! This example shows that bevy_smud works with tonampping
 //!
-//! Note that you could probably achieve cheaper and higher quality bloom-like
-//! effects by creating a custom fill.
+//! There are two shapes rendered:
+//!
+//! - A circle, rendered by bevy_smud
+//! - A squaree rendered by bevy_sprite
+//!
+//! If tonemapping is working correctly, they should have the same color
 
 use bevy::color::palettes::css;
-use bevy::core_pipeline::bloom::Bloom;
+use bevy::core_pipeline::tonemapping::Tonemapping;
 use bevy::prelude::*;
-// The prelude contains the basic things needed to create shapes
 use bevy_smud::prelude::*;
 
 fn main() {
@@ -18,36 +21,36 @@ fn main() {
 }
 
 fn setup(mut commands: Commands, mut shaders: ResMut<Assets<Shader>>) {
-    // add_sdf_expr expects a wgsl expression
-    // p is the position of a fragment within the sdf shape, with 0, 0 at the center.
-    // Here we are using the built-in sd_circle function, which accepts the
-    // radius as a parameter.
     let circle = shaders.add_sdf_expr("smud::sd_circle(p, 70.)");
 
     commands.spawn(ShapeBundle {
+        transform: Transform::from_xyz(100., 0., 0.),
         shape: SmudShape {
             color: css::TOMATO.into(),
             sdf: circle,
-            // The frame needs to be bigger than the shape we're drawing
-            // Since the circle has radius 70, we make the half-size of the quad 80.
             frame: Frame::Quad(80.),
             fill: SIMPLE_FILL_HANDLE,
         },
         ..default()
     });
 
+    // bevy square for comparison
+    commands.spawn((
+        Transform::from_xyz(-100., 0., 0.),
+        Sprite {
+            color: css::TOMATO.into(),
+            custom_size: Some(Vec2::splat(160.)),
+            ..default()
+        },
+    ));
+
     commands.spawn((
         Camera2d,
         // bevy_smud comes with anti-aliasing built into the standards fills
         // which is more efficient than MSAA, and also works on Linux, wayland
         Msaa::Off,
-        Camera {
-            hdr: true,
-            ..default()
-        },
-        Bloom {
-            intensity: 0.7,
-            ..default()
-        },
+        // Reinhard tonemapping looks pretty different from no tonemapping,
+        // so we can clearly see the difference between tonemapping and no tonemapping
+        Tonemapping::Reinhard,
     ));
 }

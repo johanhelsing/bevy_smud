@@ -1,20 +1,27 @@
-use bevy::{asset::load_internal_asset, prelude::*};
+use bevy::{
+    asset::{load_internal_asset, weak_handle},
+    prelude::*,
+};
 
-const PRELUDE_SHADER_HANDLE: Handle<Shader> = Handle::weak_from_u128(11291576006157771079);
+const PRELUDE_SHADER_HANDLE: Handle<Shader> = weak_handle!("33980330-e199-4485-8687-423334e08152");
 
-const SMUD_SHADER_HANDLE: Handle<Shader> = Handle::weak_from_u128(10055894596049459186);
+const SMUD_SHADER_HANDLE: Handle<Shader> = weak_handle!("eca0ed31-c377-41be-94a8-55154ecb0810");
 
-const VIEW_BINDINGS_SHADER_HANDLE: Handle<Shader> = Handle::weak_from_u128(11792080578571156967);
+const VIEW_BINDINGS_SHADER_HANDLE: Handle<Shader> =
+    weak_handle!("f973016d-a9cc-469a-afb6-64ad829cd838");
 
-pub const VERTEX_SHADER_HANDLE: Handle<Shader> = Handle::weak_from_u128(16846632126033267571);
+pub const VERTEX_SHADER_HANDLE: Handle<Shader> =
+    weak_handle!("27b9d87f-6a69-49ee-a2e8-c0bc08ee4f61");
 
-pub const FRAGMENT_SHADER_HANDLE: Handle<Shader> = Handle::weak_from_u128(10370213491934870425);
+pub const FRAGMENT_SHADER_HANDLE: Handle<Shader> =
+    weak_handle!("b42388f6-f32a-488a-b2e1-5819f2aa659e");
 
 /// The default fill used by `SmudShape`
-pub const DEFAULT_FILL_HANDLE: Handle<Shader> = Handle::weak_from_u128(18184663565780163454);
+pub const DEFAULT_FILL_HANDLE: Handle<Shader> =
+    weak_handle!("30981e86-7600-4089-b4e7-992601dc96b4");
 
 /// Simple single-colored filled fill
-pub const SIMPLE_FILL_HANDLE: Handle<Shader> = Handle::weak_from_u128(16286090377316294491);
+pub const SIMPLE_FILL_HANDLE: Handle<Shader> = weak_handle!("cef2d2c2-1a68-4418-a815-5a8ac361f140");
 
 pub struct ShaderLoadingPlugin;
 

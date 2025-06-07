@@ -5,9 +5,14 @@
 use std::ops::Range;
 
 use bevy::{
-    core_pipeline::core_2d::Transparent2d,
+    core_pipeline::{
+        core_2d::{Transparent2d, CORE_2D_DEPTH_FORMAT},
+        tonemapping::{
+            get_lut_bind_group_layout_entries, get_lut_bindings, DebandDither, Tonemapping,
+            TonemappingLuts,
+        },
+    },
     ecs::{
-        entity::EntityHashMap,
         query::ROQueryItem,
         system::{
             lifetimeless::{Read, SRes},
@@ -15,31 +20,34 @@ use bevy::{
         },
     },
     math::{FloatOrd, Vec3Swizzles},
+    platform::collections::HashMap,
     prelude::*,
     render::{
         globals::{GlobalsBuffer, GlobalsUniform},
+        render_asset::RenderAssets,
         render_phase::{
             AddRenderCommand, DrawFunctions, PhaseItem, PhaseItemExtraIndex, RenderCommand,
             RenderCommandResult, SetItemPipeline, TrackedRenderPass, ViewSortedRenderPhases,
         },
         render_resource::{
-            BindGroup, BindGroupEntries, BindGroupLayout, BindGroupLayoutEntry, BindingType,
-            BlendState, BufferBindingType, BufferUsages, CachedRenderPipelineId, ColorTargetState,
-            ColorWrites, Face, FragmentState, FrontFace, MultisampleState, PipelineCache,
-            PolygonMode, PrimitiveState, PrimitiveTopology, RawBufferVec, RenderPipelineDescriptor,
-            ShaderImport, ShaderStages, ShaderType, SpecializedRenderPipeline,
-            SpecializedRenderPipelines, TextureFormat, VertexAttribute, VertexBufferLayout,
-            VertexFormat, VertexState, VertexStepMode,
+            binding_types::uniform_buffer, BindGroup, BindGroupEntries, BindGroupLayout,
+            BindGroupLayoutEntries, BlendState, BufferUsages, CachedRenderPipelineId,
+            ColorTargetState, ColorWrites, CompareFunction, DepthBiasState, DepthStencilState,
+            Face, FragmentState, FrontFace, MultisampleState, PipelineCache, PolygonMode,
+            PrimitiveState, PrimitiveTopology, RawBufferVec, RenderPipelineDescriptor,
+            ShaderDefVal, ShaderImport, ShaderStages, SpecializedRenderPipeline,
+            SpecializedRenderPipelines, StencilFaceState, StencilState, TextureFormat,
+            VertexAttribute, VertexBufferLayout, VertexFormat, VertexState, VertexStepMode,
         },
         renderer::{RenderDevice, RenderQueue},
-        texture::BevyDefault,
+        sync_world::{MainEntity, RenderEntity},
+        texture::{FallbackImage, GpuImage},
         view::{
-            check_visibility, ExtractedView, ViewTarget, ViewUniform, ViewUniformOffset,
-            ViewUniforms, VisibilitySystems, VisibleEntities, WithMesh,
+            ExtractedView, RenderVisibleEntities, RetainedViewEntity, ViewTarget, ViewUniform,
+            ViewUniformOffset, ViewUniforms,
         },
         Extract, MainWorld, Render, RenderApp, RenderSet,
     },
-    utils::HashMap,
 };
 use bytemuck::{Pod, Zeroable};
 use fixedbitset::FixedBitSet;
@@ -82,31 +90,50 @@ pub mod prelude {
 /// Main plugin for enabling rendering of Sdf shapes
 pub struct SmudPlugin;
 
+/// System set for shape rendering.
+#[derive(Debug, Hash, PartialEq, Eq, Clone, SystemSet)]
+pub enum ShapeSystem {
+    /// Extract shapes
+    ExtractShapes,
+    // ComputeSlices,
+}
+
 impl Plugin for SmudPlugin {
     fn build(&self, app: &mut App) {
         // All the messy boiler-plate for loading a bunch of shaders
-        app.add_plugins(ShaderLoadingPlugin).add_systems(
-            PostUpdate,
-            check_visibility::<With<SmudShape>>.in_set(VisibilitySystems::CheckVisibility),
-        );
+        app.add_plugins(ShaderLoadingPlugin);
         // app.add_plugins(UiShapePlugin);
 
         app.register_type::<SmudShape>();
+        // TODO: calculate bounds?
+
+        // TODO: picking
+        if let Some(render_app) = app.get_sub_app_mut(RenderApp) {
+            render_app
+                .init_resource::<SpecializedRenderPipelines<SmudPipeline>>()
+                .init_resource::<ShapeMeta>()
+                .init_resource::<ExtractedShapes>()
+                .add_render_command::<Transparent2d, DrawSmudShape>()
+                .add_systems(
+                    ExtractSchedule,
+                    (
+                        extract_shapes.in_set(ShapeSystem::ExtractShapes),
+                        extract_sdf_shaders,
+                    ),
+                );
+        }
     }
 
     fn finish(&self, app: &mut App) {
         let render_app = app.sub_app_mut(RenderApp);
         render_app
-            .add_render_command::<Transparent2d, DrawSmudShape>()
-            .init_resource::<ExtractedShapes>()
-            .init_resource::<ShapeMeta>()
-            .init_resource::<SpecializedRenderPipelines<SmudPipeline>>()
+            .init_resource::<ShapeBatches>()
             .init_resource::<SmudPipeline>()
-            .add_systems(ExtractSchedule, (extract_shapes, extract_sdf_shaders))
             .add_systems(
                 Render,
                 (
                     queue_shapes.in_set(RenderSet::Queue),
+                    prepare_shape_view_bind_groups.in_set(RenderSet::PrepareBindGroups),
                     prepare_shapes.in_set(RenderSet::PrepareBindGroups),
                 ),
             );
@@ -117,44 +144,41 @@ type DrawSmudShape = (SetItemPipeline, SetShapeViewBindGroup<0>, DrawShapeBatch)
 
 struct SetShapeViewBindGroup<const I: usize>;
 impl<P: PhaseItem, const I: usize> RenderCommand<P> for SetShapeViewBindGroup<I> {
-    type Param = SRes<ShapeMeta>;
-    type ViewQuery = Read<ViewUniformOffset>;
+    type Param = ();
+    type ViewQuery = (Read<ViewUniformOffset>, Read<ShapeViewBindGroup>);
     type ItemQuery = ();
 
     fn render<'w>(
         _item: &P,
-        view_uniform: ROQueryItem<'w, Self::ViewQuery>,
+        (view_uniform, shape_view_bind_group): ROQueryItem<'w, Self::ViewQuery>,
         _entity: Option<ROQueryItem<'w, Self::ItemQuery>>,
-        shape_meta: SystemParamItem<'w, '_, Self::Param>,
+        _param: SystemParamItem<'w, '_, Self::Param>,
         pass: &mut TrackedRenderPass<'w>,
     ) -> RenderCommandResult {
-        pass.set_bind_group(
-            I,
-            shape_meta.into_inner().view_bind_group.as_ref().unwrap(),
-            &[view_uniform.offset],
-        );
+        pass.set_bind_group(I, &shape_view_bind_group.value, &[view_uniform.offset]);
         RenderCommandResult::Success
     }
 }
 
 struct DrawShapeBatch;
 impl<P: PhaseItem> RenderCommand<P> for DrawShapeBatch {
-    type Param = SRes<ShapeMeta>;
-    type ViewQuery = ();
-    type ItemQuery = Read<ShapeBatch>;
+    type Param = (SRes<ShapeMeta>, SRes<ShapeBatches>);
+    type ViewQuery = Read<ExtractedView>;
+    type ItemQuery = ();
 
     fn render<'w>(
-        _item: &P,
-        _view: (),
-        batch: Option<ROQueryItem<'w, Self::ItemQuery>>,
-        shape_meta: SystemParamItem<'w, '_, Self::Param>,
+        item: &P,
+        view: ROQueryItem<'w, Self::ViewQuery>,
+        _entity: Option<()>,
+        (shape_meta, batches): SystemParamItem<'w, '_, Self::Param>,
         pass: &mut TrackedRenderPass<'w>,
     ) -> RenderCommandResult {
         let shape_meta = shape_meta.into_inner();
         pass.set_vertex_buffer(0, shape_meta.vertices.buffer().unwrap().slice(..));
-        if let Some(batch) = batch {
-            pass.draw(0..4, batch.range.clone());
-        }
+        let Some(batch) = batches.get(&(view.retained_view_entity, item.main_entity())) else {
+            return RenderCommandResult::Skip;
+        };
+        pass.draw(0..4, batch.range.clone());
         RenderCommandResult::Success
     }
 }
@@ -169,30 +193,27 @@ impl FromWorld for SmudPipeline {
     fn from_world(world: &mut World) -> Self {
         let render_device = world.get_resource::<RenderDevice>().unwrap();
 
+        let tonemapping_lut_entries = get_lut_bind_group_layout_entries();
         let view_layout = render_device.create_bind_group_layout(
             Some("shape_view_layout"),
-            &[
-                BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: ShaderStages::VERTEX_FRAGMENT,
-                    ty: BindingType::Buffer {
-                        ty: BufferBindingType::Uniform,
-                        has_dynamic_offset: true,
-                        min_binding_size: Some(ViewUniform::min_size()),
-                    },
-                    count: None,
-                },
-                BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: ShaderStages::VERTEX_FRAGMENT,
-                    ty: BindingType::Buffer {
-                        ty: BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: Some(GlobalsUniform::min_size()),
-                    },
-                    count: None,
-                },
-            ],
+            &BindGroupLayoutEntries::with_indices(
+                ShaderStages::VERTEX_FRAGMENT,
+                (
+                    (0, uniform_buffer::<ViewUniform>(true)),
+                    (
+                        1,
+                        uniform_buffer::<GlobalsUniform>(false).visibility(ShaderStages::FRAGMENT),
+                    ),
+                    (
+                        2,
+                        tonemapping_lut_entries[0].visibility(ShaderStages::FRAGMENT),
+                    ),
+                    (
+                        3,
+                        tonemapping_lut_entries[1].visibility(ShaderStages::FRAGMENT),
+                    ),
+                ),
+            ),
         );
 
         Self {
@@ -204,6 +225,7 @@ impl FromWorld for SmudPipeline {
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 struct SmudPipelineKey {
+    /// Mix of bevy_render Mesh2DPipelineKey and SpritePipelineKey
     mesh: PipelineKey,
     shader: (AssetId<Shader>, AssetId<Shader>),
     hdr: bool,
@@ -213,8 +235,59 @@ impl SpecializedRenderPipeline for SmudPipeline {
     type Key = SmudPipelineKey;
 
     fn specialize(&self, key: Self::Key) -> RenderPipelineDescriptor {
+        let mut shader_defs = Vec::new();
+
+        if key.mesh.contains(PipelineKey::TONEMAP_IN_SHADER) {
+            shader_defs.push("TONEMAP_IN_SHADER".into());
+            shader_defs.push(ShaderDefVal::UInt(
+                "TONEMAPPING_LUT_TEXTURE_BINDING_INDEX".into(),
+                2,
+            ));
+            shader_defs.push(ShaderDefVal::UInt(
+                "TONEMAPPING_LUT_SAMPLER_BINDING_INDEX".into(),
+                3,
+            ));
+
+            let method = key
+                .mesh
+                .intersection(PipelineKey::TONEMAP_METHOD_RESERVED_BITS);
+
+            match method {
+                PipelineKey::TONEMAP_METHOD_NONE => {
+                    shader_defs.push("TONEMAP_METHOD_NONE".into());
+                }
+                PipelineKey::TONEMAP_METHOD_REINHARD => {
+                    shader_defs.push("TONEMAP_METHOD_REINHARD".into());
+                }
+                PipelineKey::TONEMAP_METHOD_REINHARD_LUMINANCE => {
+                    shader_defs.push("TONEMAP_METHOD_REINHARD_LUMINANCE".into());
+                }
+                PipelineKey::TONEMAP_METHOD_ACES_FITTED => {
+                    shader_defs.push("TONEMAP_METHOD_ACES_FITTED".into());
+                }
+                PipelineKey::TONEMAP_METHOD_AGX => {
+                    shader_defs.push("TONEMAP_METHOD_AGX".into());
+                }
+                PipelineKey::TONEMAP_METHOD_SOMEWHAT_BORING_DISPLAY_TRANSFORM => {
+                    shader_defs.push("TONEMAP_METHOD_SOMEWHAT_BORING_DISPLAY_TRANSFORM".into());
+                }
+                PipelineKey::TONEMAP_METHOD_BLENDER_FILMIC => {
+                    shader_defs.push("TONEMAP_METHOD_BLENDER_FILMIC".into());
+                }
+                PipelineKey::TONEMAP_METHOD_TONY_MC_MAPFACE => {
+                    shader_defs.push("TONEMAP_METHOD_TONY_MC_MAPFACE".into());
+                }
+                _ => {}
+            }
+            // Debanding is tied to tonemapping in the shader, cannot run without it.
+            if key.mesh.contains(PipelineKey::DEBAND_DITHER) {
+                shader_defs.push("DEBAND_DITHER".into());
+            }
+        }
+
         let shader = self.shaders.0.get(&key.shader).unwrap();
         debug!("specializing for {shader:?}");
+        debug!("shader_defs: {shader_defs:?}");
 
         // Customize how to store the meshes' vertex attributes in the vertex buffer
         // Our meshes only have position and color
@@ -268,7 +341,7 @@ impl SpecializedRenderPipeline for SmudPipeline {
             fragment: Some(FragmentState {
                 shader: shader.clone_weak(),
                 entry_point: "fragment".into(),
-                shader_defs: Vec::new(),
+                shader_defs,
                 targets: vec![Some(ColorTargetState {
                     format: if key.hdr {
                         ViewTarget::TEXTURE_FORMAT_HDR
@@ -292,7 +365,22 @@ impl SpecializedRenderPipeline for SmudPipeline {
                 topology: key.mesh.primitive_topology(),
                 strip_index_format: None, // TODO: what does this do?
             },
-            depth_stencil: None,
+            depth_stencil: Some(DepthStencilState {
+                format: CORE_2D_DEPTH_FORMAT,
+                depth_write_enabled: false,
+                depth_compare: CompareFunction::GreaterEqual,
+                stencil: StencilState {
+                    front: StencilFaceState::IGNORE,
+                    back: StencilFaceState::IGNORE,
+                    read_mask: 0,
+                    write_mask: 0,
+                },
+                bias: DepthBiasState {
+                    constant: 0,
+                    slope_scale: 0.0,
+                    clamp: 0.0,
+                },
+            }),
             multisample: MultisampleState {
                 count: key.mesh.msaa_samples(),
                 mask: !0,                         // what does the mask do?
@@ -300,6 +388,7 @@ impl SpecializedRenderPipeline for SmudPipeline {
             },
             label: Some("bevy_smud_pipeline".into()),
             push_constant_ranges: Vec::new(),
+            zero_initialize_workgroup_memory: false,
         }
     }
 }
@@ -356,9 +445,12 @@ fn extract_sdf_shaders(mut main_world: ResMut<MainWorld>, mut pipeline: ResMut<S
             let generated_shader = Shader::from_wgsl(
                 format!(
                     r#"
-#import bevy_render::globals::Globals
-@group(0) @binding(1)
-var<uniform> globals: Globals;
+#ifdef TONEMAP_IN_SHADER
+#import bevy_core_pipeline::tonemapping
+#endif
+
+#import bevy_smud::view_bindings::view
+
 #import {sdf_import_path} as sdf
 #import {fill_import_path} as fill
 
@@ -370,7 +462,13 @@ struct FragmentInput {{
 @fragment
 fn fragment(in: FragmentInput) -> @location(0) vec4<f32> {{
     let d = sdf::sdf(in.pos);
-    return fill::fill(d, in.color);
+    var color = fill::fill(d, in.color);
+
+#ifdef TONEMAP_IN_SHADER
+    color = tonemapping::tone_mapping(color, view.color_grading);
+#endif
+
+    return color;
 }}
 "#
                 ),
@@ -390,6 +488,8 @@ fn fragment(in: FragmentInput) -> @location(0) vec4<f32> {{
 
 #[derive(Component, Clone, Debug)]
 struct ExtractedShape {
+    main_entity: Entity,
+    render_entity: Entity,
     color: Color,
     frame: f32,
     sdf_shader: Handle<Shader>,
@@ -399,32 +499,42 @@ struct ExtractedShape {
 
 #[derive(Resource, Default, Debug)]
 struct ExtractedShapes {
-    shapes: EntityHashMap<ExtractedShape>,
+    shapes: Vec<ExtractedShape>,
 }
 
+#[allow(clippy::type_complexity)]
 fn extract_shapes(
     mut extracted_shapes: ResMut<ExtractedShapes>,
-    shape_query: Extract<Query<(Entity, &ViewVisibility, &SmudShape, &GlobalTransform)>>,
+    shape_query: Extract<
+        Query<(
+            Entity,
+            RenderEntity,
+            &ViewVisibility,
+            &SmudShape,
+            &GlobalTransform,
+        )>,
+    >,
 ) {
     extracted_shapes.shapes.clear();
 
-    for (entity, view_visibility, shape, transform) in shape_query.iter() {
+    for (main_entity, render_entity, view_visibility, shape, transform) in shape_query.iter() {
         if !view_visibility.get() {
             continue;
         }
 
         let Frame::Quad(frame) = shape.frame;
 
-        extracted_shapes.shapes.insert(
-            entity,
-            ExtractedShape {
-                color: shape.color,
-                transform: *transform,
-                sdf_shader: shape.sdf.clone_weak(),
-                fill_shader: shape.fill.clone_weak(),
-                frame,
-            },
-        );
+        // TODO: bevy_sprite has some slice stuff here? what is it for?
+
+        extracted_shapes.shapes.push(ExtractedShape {
+            main_entity,
+            render_entity,
+            color: shape.color,
+            transform: *transform,
+            sdf_shader: shape.sdf.clone_weak(),
+            fill_shader: shape.fill.clone_weak(),
+            frame,
+        });
     }
 }
 
@@ -433,9 +543,27 @@ fn extract_shapes(
 bitflags::bitflags! {
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
     #[repr(transparent)]
-    struct PipelineKey: u32 {
+    // NOTE: Apparently quadro drivers support up to 64x MSAA.
+    // MSAA uses the highest 3 bits for the MSAA log2(sample count) to support up to 128x MSAA.
+    // FIXME: make normals optional?
+    pub(crate) struct PipelineKey: u32 {
+        const NONE                              = 0;
+        const HDR                               = 1 << 0;
+        const TONEMAP_IN_SHADER                 = 1 << 1;
+        const DEBAND_DITHER                     = 1 << 2;
+        const BLEND_ALPHA                       = 1 << 3;
+        const MAY_DISCARD                       = 1 << 4;
         const MSAA_RESERVED_BITS                = Self::MSAA_MASK_BITS << Self::MSAA_SHIFT_BITS;
         const PRIMITIVE_TOPOLOGY_RESERVED_BITS  = Self::PRIMITIVE_TOPOLOGY_MASK_BITS << Self::PRIMITIVE_TOPOLOGY_SHIFT_BITS;
+        const TONEMAP_METHOD_RESERVED_BITS      = Self::TONEMAP_METHOD_MASK_BITS << Self::TONEMAP_METHOD_SHIFT_BITS;
+        const TONEMAP_METHOD_NONE               = 0 << Self::TONEMAP_METHOD_SHIFT_BITS;
+        const TONEMAP_METHOD_REINHARD           = 1 << Self::TONEMAP_METHOD_SHIFT_BITS;
+        const TONEMAP_METHOD_REINHARD_LUMINANCE = 2 << Self::TONEMAP_METHOD_SHIFT_BITS;
+        const TONEMAP_METHOD_ACES_FITTED        = 3 << Self::TONEMAP_METHOD_SHIFT_BITS;
+        const TONEMAP_METHOD_AGX                = 4 << Self::TONEMAP_METHOD_SHIFT_BITS;
+        const TONEMAP_METHOD_SOMEWHAT_BORING_DISPLAY_TRANSFORM = 5 << Self::TONEMAP_METHOD_SHIFT_BITS;
+        const TONEMAP_METHOD_TONY_MC_MAPFACE    = 6 << Self::TONEMAP_METHOD_SHIFT_BITS;
+        const TONEMAP_METHOD_BLENDER_FILMIC     = 7 << Self::TONEMAP_METHOD_SHIFT_BITS;
     }
 }
 
@@ -444,11 +572,22 @@ impl PipelineKey {
     const MSAA_SHIFT_BITS: u32 = 32 - Self::MSAA_MASK_BITS.count_ones();
     const PRIMITIVE_TOPOLOGY_MASK_BITS: u32 = 0b111;
     const PRIMITIVE_TOPOLOGY_SHIFT_BITS: u32 = Self::MSAA_SHIFT_BITS - 3;
+    const TONEMAP_METHOD_MASK_BITS: u32 = 0b111;
+    const TONEMAP_METHOD_SHIFT_BITS: u32 =
+        Self::PRIMITIVE_TOPOLOGY_SHIFT_BITS - Self::TONEMAP_METHOD_MASK_BITS.count_ones();
 
     pub fn from_msaa_samples(msaa_samples: u32) -> Self {
         let msaa_bits =
             (msaa_samples.trailing_zeros() & Self::MSAA_MASK_BITS) << Self::MSAA_SHIFT_BITS;
-        Self::from_bits(msaa_bits).unwrap()
+        Self::from_bits_retain(msaa_bits)
+    }
+
+    pub fn from_hdr(hdr: bool) -> Self {
+        if hdr {
+            Self::HDR
+        } else {
+            Self::NONE
+        }
     }
 
     pub fn msaa_samples(&self) -> u32 {
@@ -459,7 +598,7 @@ impl PipelineKey {
         let primitive_topology_bits = ((primitive_topology as u32)
             & Self::PRIMITIVE_TOPOLOGY_MASK_BITS)
             << Self::PRIMITIVE_TOPOLOGY_SHIFT_BITS;
-        Self::from_bits(primitive_topology_bits).unwrap()
+        Self::from_bits_retain(primitive_topology_bits)
     }
 
     pub fn primitive_topology(&self) -> PrimitiveTopology {
@@ -476,50 +615,73 @@ impl PipelineKey {
     }
 }
 
+#[allow(clippy::type_complexity)]
 fn queue_shapes(
     mut view_entities: Local<FixedBitSet>,
     draw_functions: Res<DrawFunctions<Transparent2d>>,
     smud_pipeline: Res<SmudPipeline>,
     mut pipelines: ResMut<SpecializedRenderPipelines<SmudPipeline>>,
     pipeline_cache: ResMut<PipelineCache>,
-    msaa: Res<Msaa>,
     extracted_shapes: ResMut<ExtractedShapes>,
     mut transparent_render_phases: ResMut<ViewSortedRenderPhases<Transparent2d>>,
     mut views: Query<(
-        Entity,
-        // &mut RenderPhase<Transparent2d>,
-        &VisibleEntities,
+        &RenderVisibleEntities,
         &ExtractedView,
+        &Msaa,
+        Option<&Tonemapping>,
+        Option<&DebandDither>,
     )>,
     // ?
 ) {
     let draw_smud_shape_function = draw_functions.read().get_id::<DrawSmudShape>().unwrap();
 
     // Iterate over each view (a camera is a view)
-    for (view_entity, visible_entities, view) in &mut views {
-        // todo: bevy_sprite does some hdr stuff, should we?
-        // let mut view_key = SpritePipelineKey::from_hdr(view.hdr) | msaa_key;
-        //
-        //
-        let Some(transparent_phase) = transparent_render_phases.get_mut(&view_entity) else {
+    for (visible_entities, view, msaa, tonemapping, dither) in &mut views {
+        let Some(transparent_phase) = transparent_render_phases.get_mut(&view.retained_view_entity)
+        else {
             continue;
         };
 
         let mesh_key = PipelineKey::from_msaa_samples(msaa.samples())
             | PipelineKey::from_primitive_topology(PrimitiveTopology::TriangleStrip);
 
+        let mut view_key = PipelineKey::from_hdr(view.hdr) | mesh_key;
+
+        if !view.hdr {
+            if let Some(tonemapping) = tonemapping {
+                view_key |= PipelineKey::TONEMAP_IN_SHADER;
+                view_key |= match tonemapping {
+                    Tonemapping::None => PipelineKey::TONEMAP_METHOD_NONE,
+                    Tonemapping::Reinhard => PipelineKey::TONEMAP_METHOD_REINHARD,
+                    Tonemapping::ReinhardLuminance => {
+                        PipelineKey::TONEMAP_METHOD_REINHARD_LUMINANCE
+                    }
+                    Tonemapping::AcesFitted => PipelineKey::TONEMAP_METHOD_ACES_FITTED,
+                    Tonemapping::AgX => PipelineKey::TONEMAP_METHOD_AGX,
+                    Tonemapping::SomewhatBoringDisplayTransform => {
+                        PipelineKey::TONEMAP_METHOD_SOMEWHAT_BORING_DISPLAY_TRANSFORM
+                    }
+                    Tonemapping::TonyMcMapface => PipelineKey::TONEMAP_METHOD_TONY_MC_MAPFACE,
+                    Tonemapping::BlenderFilmic => PipelineKey::TONEMAP_METHOD_BLENDER_FILMIC,
+                };
+            }
+            if let Some(DebandDither::Enabled) = dither {
+                view_key |= PipelineKey::DEBAND_DITHER;
+            }
+        }
+
         view_entities.clear();
         view_entities.extend(
             visible_entities
-                .iter::<WithMesh>()
-                .map(|e| e.index() as usize),
+                .iter::<SmudShape>()
+                .map(|(_, e)| e.index() as usize),
         );
 
         transparent_phase
             .items
             .reserve(extracted_shapes.shapes.len());
 
-        for (entity, extracted_shape) in extracted_shapes.shapes.iter() {
+        for (index, extracted_shape) in extracted_shapes.shapes.iter().enumerate() {
             let shader = (
                 extracted_shape.sdf_shader.id(),
                 extracted_shape.fill_shader.id(),
@@ -530,7 +692,7 @@ fn queue_shapes(
             if let Some(_shader) = smud_pipeline.shaders.0.get(&shader) {
                 // todo pass the shader into specialize
                 let specialize_key = SmudPipelineKey {
-                    mesh: mesh_key,
+                    mesh: view_key,
                     shader,
                     hdr: view.hdr,
                 };
@@ -549,124 +711,154 @@ fn queue_shapes(
             transparent_phase.add(Transparent2d {
                 draw_function: draw_smud_shape_function,
                 pipeline,
-                entity: *entity,
+                entity: (
+                    extracted_shape.render_entity,
+                    extracted_shape.main_entity.into(),
+                ),
                 sort_key,
                 // batch_range and dynamic_offset will be calculated in prepare_shapes
                 batch_range: 0..0,
-                extra_index: PhaseItemExtraIndex::NONE,
+                extra_index: PhaseItemExtraIndex::None,
+                extracted_index: index,
+                indexed: true,
             });
         }
     }
 }
 
-fn prepare_shapes(
+fn prepare_shape_view_bind_groups(
     mut commands: Commands,
-    mut previous_len: Local<usize>,
+    render_device: Res<RenderDevice>,
+    smud_pipeline: Res<SmudPipeline>,
+    view_uniforms: Res<ViewUniforms>,
+    views: Query<(Entity, &Tonemapping), With<ExtractedView>>,
+    tonemapping_luts: Res<TonemappingLuts>,
+    images: Res<RenderAssets<GpuImage>>,
+    fallback_image: Res<FallbackImage>,
+    globals_buffer: Res<GlobalsBuffer>,
+) {
+    let (Some(view_binding), Some(globals)) = (
+        view_uniforms.uniforms.binding(),
+        globals_buffer.buffer.binding(),
+    ) else {
+        return;
+    };
+
+    for (entity, tonemapping) in &views {
+        let lut_bindings =
+            get_lut_bindings(&images, &tonemapping_luts, tonemapping, &fallback_image);
+        let view_bind_group = render_device.create_bind_group(
+            "mesh2d_view_bind_group",
+            &smud_pipeline.view_layout,
+            &BindGroupEntries::with_indices((
+                (0, view_binding.clone()),
+                (1, globals.clone()),
+                (2, lut_bindings.0),
+                (3, lut_bindings.1),
+            )),
+        );
+
+        commands.entity(entity).insert(ShapeViewBindGroup {
+            value: view_bind_group,
+        });
+    }
+}
+
+fn prepare_shapes(
     render_device: Res<RenderDevice>,
     render_queue: Res<RenderQueue>,
     mut shape_meta: ResMut<ShapeMeta>,
-    view_uniforms: Res<ViewUniforms>,
-    smud_pipeline: Res<SmudPipeline>,
     extracted_shapes: Res<ExtractedShapes>,
     mut phases: ResMut<ViewSortedRenderPhases<Transparent2d>>,
-    // mut phases: Query<&mut RenderPhase<Transparent2d>>,
-    globals_buffer: Res<GlobalsBuffer>,
+    mut batches: ResMut<ShapeBatches>,
 ) {
-    let globals = globals_buffer.buffer.binding().unwrap(); // todo if-let
+    batches.clear();
 
-    if let Some(view_binding) = view_uniforms.uniforms.binding() {
-        let mut batches: Vec<(Entity, ShapeBatch)> = Vec::with_capacity(*previous_len);
+    // Clear the vertex buffer
+    shape_meta.vertices.clear();
 
-        // Clear the vertex buffer
-        shape_meta.vertices.clear();
+    // Vertex buffer index
+    let mut index = 0;
 
-        shape_meta.view_bind_group = Some(render_device.create_bind_group(
-            "smud_shape_view_bind_group",
-            &smud_pipeline.view_layout,
-            &BindGroupEntries::sequential((view_binding, globals.clone())),
-        ));
+    for (retained_view, transparent_phase) in phases.iter_mut() {
+        let mut current_batch = None;
+        let mut batch_item_index = 0;
+        // let mut batch_image_size = Vec2::ZERO;
+        // let mut batch_image_handle = AssetId::invalid();
+        let mut batch_shader_handles = (AssetId::invalid(), AssetId::invalid());
 
-        // Vertex buffer index
-        let mut index = 0;
+        // Iterate through the phase items and detect when successive shapes that can be batched.
+        // Spawn an entity with a `ShapeBatch` component for each possible batch.
+        // Compatible items share the same entity.
+        for item_index in 0..transparent_phase.items.len() {
+            let item = &transparent_phase.items[item_index];
 
-        for (_entity, transparent_phase) in phases.iter_mut() {
-            let mut batch_item_index = 0;
-            // let mut batch_image_size = Vec2::ZERO;
-            // let mut batch_image_handle = AssetId::invalid();
-            let mut batch_shader_handles = (AssetId::invalid(), AssetId::invalid());
+            let Some(extracted_shape) = extracted_shapes
+                .shapes
+                .get(item.extracted_index)
+                .filter(|extracted_shape| extracted_shape.render_entity == item.entity())
+            else {
+                // If there is a phase item that is not a shape, then we must start a new
+                // batch to draw the other phase item(s) and to respect draw order. This can be
+                // done by invalidating the batch_shader_handles
+                batch_shader_handles = (AssetId::invalid(), AssetId::invalid());
+                continue;
+            };
 
-            // Iterate through the phase items and detect when successive shapes that can be batched.
-            // Spawn an entity with a `ShapeBatch` component for each possible batch.
-            // Compatible items share the same entity.
-            for item_index in 0..transparent_phase.items.len() {
-                let item = &transparent_phase.items[item_index];
-                let Some(extracted_shape) = extracted_shapes.shapes.get(&item.entity) else {
-                    // If there is a phase item that is not a shape, then we must start a new
-                    // batch to draw the other phase item(s) and to respect draw order. This can be
-                    // done by invalidating the batch_shader_handles
-                    batch_shader_handles = (AssetId::invalid(), AssetId::invalid());
-                    continue;
-                };
+            let shader_handles = (
+                extracted_shape.sdf_shader.id(),
+                extracted_shape.fill_shader.id(),
+            );
 
-                let shader_handles = (
-                    extracted_shape.sdf_shader.id(),
-                    extracted_shape.fill_shader.id(),
-                );
+            let batch_shader_changed = batch_shader_handles != shader_handles;
 
-                let batch_shader_changed = batch_shader_handles != shader_handles;
+            let lrgba: LinearRgba = extracted_shape.color.into();
+            let color = lrgba.to_f32_array();
 
-                let lrgba: LinearRgba = extracted_shape.color.into();
-                let color = lrgba.to_f32_array();
+            let position = extracted_shape.transform.translation();
+            let position = position.into();
 
-                let position = extracted_shape.transform.translation();
-                let position = position.into();
+            let rotation_and_scale = extracted_shape
+                .transform
+                .affine()
+                .transform_vector3(Vec3::X)
+                .xy();
 
-                let rotation_and_scale = extracted_shape
-                    .transform
-                    .affine()
-                    .transform_vector3(Vec3::X)
-                    .xy();
+            let scale = rotation_and_scale.length();
+            let rotation = (rotation_and_scale / scale).into();
 
-                let scale = rotation_and_scale.length();
-                let rotation = (rotation_and_scale / scale).into();
+            let vertex = ShapeVertex {
+                position,
+                color,
+                rotation,
+                scale,
+                frame: extracted_shape.frame,
+            };
+            shape_meta.vertices.push(vertex);
 
-                let vertex = ShapeVertex {
-                    position,
-                    color,
-                    rotation,
-                    scale,
-                    frame: extracted_shape.frame,
-                };
-                shape_meta.vertices.push(vertex);
+            if batch_shader_changed {
+                batch_item_index = item_index;
 
-                if batch_shader_changed {
-                    batch_item_index = item_index;
-
-                    batches.push((
-                        item.entity,
-                        ShapeBatch {
-                            shader: shader_handles,
-                            range: index..index,
-                        },
-                    ));
-                }
-
-                transparent_phase.items[batch_item_index]
-                    .batch_range_mut()
-                    .end += 1;
-
-                batches.last_mut().unwrap().1.range.end += 1;
-                index += 1;
+                current_batch = Some(batches.entry((*retained_view, item.main_entity())).insert(
+                    ShapeBatch {
+                        shader: shader_handles,
+                        range: index..index,
+                    },
+                ));
             }
+
+            transparent_phase.items[batch_item_index]
+                .batch_range_mut()
+                .end += 1;
+
+            current_batch.as_mut().unwrap().get_mut().range.end += 1;
+            index += 1;
         }
-
-        shape_meta
-            .vertices
-            .write_buffer(&render_device, &render_queue);
-
-        *previous_len = batches.len();
-        commands.insert_or_spawn_batch(batches);
     }
+
+    shape_meta
+        .vertices
+        .write_buffer(&render_device, &render_queue);
 }
 
 #[repr(C)]
@@ -682,20 +874,26 @@ struct ShapeVertex {
 #[derive(Resource)]
 pub(crate) struct ShapeMeta {
     vertices: RawBufferVec<ShapeVertex>,
-    view_bind_group: Option<BindGroup>,
 }
 
 impl Default for ShapeMeta {
     fn default() -> Self {
         Self {
             vertices: RawBufferVec::new(BufferUsages::VERTEX),
-            view_bind_group: None,
         }
     }
 }
 
+#[derive(Component)]
+struct ShapeViewBindGroup {
+    value: BindGroup,
+}
+
+#[derive(Resource, Deref, DerefMut, Default)]
+struct ShapeBatches(HashMap<(RetainedViewEntity, MainEntity), ShapeBatch>);
+
 #[derive(Component, Eq, PartialEq, Clone)]
-pub(crate) struct ShapeBatch {
+struct ShapeBatch {
     shader: (AssetId<Shader>, AssetId<Shader>),
     range: Range<u32>,
 }

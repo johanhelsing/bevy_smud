@@ -1,4 +1,5 @@
 use bevy::color::palettes::css;
+use bevy::diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin};
 use bevy::prelude::*;
 use bevy_asset_loader::prelude::*;
 use bevy_pancam::*;
@@ -12,13 +13,12 @@ fn main() {
         .add_plugins((
             DefaultPlugins,
             SmudPlugin,
-            bevy::diagnostic::LogDiagnosticsPlugin::default(),
-            bevy::diagnostic::FrameTimeDiagnosticsPlugin,
+            LogDiagnosticsPlugin::default(),
+            FrameTimeDiagnosticsPlugin::default(),
             PanCamPlugin,
             bevy_lospec::PalettePlugin,
         ))
         .init_state::<GameState>()
-        .insert_resource(Msaa::Off)
         .add_loading_state(
             LoadingState::new(GameState::Loading)
                 .continue_to_state(GameState::Running)
@@ -52,7 +52,7 @@ fn setup(
     asset_server: Res<AssetServer>,
 ) {
     let palette = palettes.get(&assets.palette).unwrap();
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let spacing = 100.0;
     // let w = 316;
     let w = 200;
@@ -126,7 +126,9 @@ fn setup(
         }
     }
 
-    commands.spawn((Camera2dBundle::default(), PanCam::default()));
+    // bevy_smud comes with anti-aliasing built into the standards fills
+    // which is more efficient than MSAA, and also works on Linux, wayland
+    commands.spawn((Camera2d, PanCam::default(), Msaa::Off));
 }
 
 // fn update(mut query: Query<(&mut Transform, &Index), With<SmudShape>>, time: Res<Time>) {
