@@ -17,12 +17,10 @@ fn setup(
     mut shaders: ResMut<Assets<Shader>>,
 ) {
     // The fill takes a distance and a color and returns another color
-    commands.spawn(ShapeBundle {
-        shape: SmudShape {
-            // color: css::GREEN.into(),
-            color: css::ORANGE.into(),
-            sdf: asset_server.load("bevy.wgsl"),
-            fill: shaders.add_fill_body(
+    commands.spawn(SmudShape {
+        color: css::ORANGE.into(),
+        sdf: asset_server.load("bevy.wgsl"),
+        fill: shaders.add_fill_body(
                 r"
 var col = color.rgb / sqrt(abs(d));
 // col *= smoothstep(1.5, 0.5, length(p)); // We don't have p. This would give a vignette.
@@ -46,11 +44,8 @@ fn aces_approx(v_: vec3<f32>) -> vec3<f32> {
     let e: f32 = 0.14;
     return saturate((v * (a * v + b)) / (v * (c * v + d) + e));
 ",
-            ),
-
-            frame: Frame::Quad(295.),
-        },
-        ..default()
+        ),
+        frame: Frame::Quad(295.),
     });
 
     // bevy_smud comes with anti-aliasing built into the standards fills

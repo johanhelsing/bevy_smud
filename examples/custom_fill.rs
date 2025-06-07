@@ -19,30 +19,26 @@ fn setup(
     // The fill takes a distance and a color and returns another color
     let sin_fill = shaders.add_fill_body("return vec4<f32>(color.rgb, sin(d));");
 
-    commands.spawn(ShapeBundle {
-        shape: SmudShape {
-            color: css::TEAL.into(),
-            sdf: asset_server.load("bevy.wgsl"),
-            fill: sin_fill,
-            frame: Frame::Quad(295.),
-        },
-        ..default()
+    commands.spawn(SmudShape {
+        color: css::TEAL.into(),
+        sdf: asset_server.load("bevy.wgsl"),
+        fill: sin_fill,
+        frame: Frame::Quad(295.),
     });
 
-    commands.spawn(ShapeBundle {
-        transform: Transform::from_translation(Vec3::X * 600.),
-        shape: SmudShape {
+    commands.spawn((
+        Transform::from_translation(Vec3::X * 600.),
+        SmudShape {
             color: css::BLUE.into(),
             sdf: asset_server.load("bevy.wgsl"),
             fill: SIMPLE_FILL_HANDLE,
             frame: Frame::Quad(295.),
         },
-        ..default()
-    });
+    ));
 
-    commands.spawn(ShapeBundle {
-        transform: Transform::from_translation(Vec3::X * -600.),
-        shape: SmudShape {
+    commands.spawn((
+        Transform::from_translation(Vec3::X * -600.),
+        SmudShape {
             color: css::ORANGE.into(),
             sdf: asset_server.load("bevy.wgsl"),
             fill: shaders.add_fill_body(
@@ -55,8 +51,7 @@ return vec4<f32>(color.rgb, a * color.a);
 
             frame: Frame::Quad(295.),
         },
-        ..default()
-    });
+    ));
 
     // bevy_smud comes with anti-aliasing built into the standards fills
     // which is more efficient than MSAA, and also works on Linux, wayland

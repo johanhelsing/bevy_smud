@@ -24,16 +24,13 @@ fn setup(mut commands: Commands, mut shaders: ResMut<Assets<Shader>>) {
     // radius as a parameter.
     let circle = shaders.add_sdf_expr("smud::sd_circle(p, 70.)");
 
-    commands.spawn(ShapeBundle {
-        shape: SmudShape {
-            color: css::TOMATO.into(),
-            sdf: circle,
-            // The frame needs to be bigger than the shape we're drawing
-            // Since the circle has radius 70, we make the half-size of the quad 80.
-            frame: Frame::Quad(80.),
-            fill: SIMPLE_FILL_HANDLE,
-        },
-        ..default()
+    commands.spawn(SmudShape {
+        color: css::TOMATO.into(),
+        sdf: circle,
+        // The frame needs to be bigger than the shape we're drawing
+        // Since the circle has radius 70, we make the half-size of the quad 80.
+        frame: Frame::Quad(80.),
+        fill: SIMPLE_FILL_HANDLE,
     });
 
     commands.spawn((

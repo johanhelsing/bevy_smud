@@ -50,13 +50,10 @@ fn setup(
 
     let circle = shaders.add_sdf_expr("sd_circle(p, 50.)");
 
-    commands.spawn(ShapeBundle {
-        shape: SmudShape {
-            color: Color::WHITE,
-            sdf: circle,
-            frame: Frame::Quad(55.),
-            ..default()
-        },
+    commands.spawn(SmudShape {
+        color: Color::WHITE,
+        sdf: circle,
+        frame: Frame::Quad(55.),
         ..default()
     });
 }

@@ -106,20 +106,17 @@ fn setup(
             let index = i + j * w;
 
             commands.spawn((
-                ShapeBundle {
-                    transform: Transform::from_translation(Vec3::new(
-                        i as f32 * spacing - w as f32 * spacing / 2.,
-                        j as f32 * spacing - h as f32 * spacing / 2.,
-                        0.,
-                    )),
-                    shape: SmudShape {
-                        color,
-                        // sdf_shader: shaders[index % shaders.len()].clone(),
-                        sdf: shaders.choose(&mut rng).unwrap().clone(),
-                        frame: Frame::Quad(50.),
-                        fill: fills.choose(&mut rng).unwrap().clone(),
-                    },
-                    ..default()
+                Transform::from_translation(Vec3::new(
+                    i as f32 * spacing - w as f32 * spacing / 2.,
+                    j as f32 * spacing - h as f32 * spacing / 2.,
+                    0.,
+                )),
+                SmudShape {
+                    color,
+                    // sdf_shader: shaders[index % shaders.len()].clone(),
+                    sdf: shaders.choose(&mut rng).unwrap().clone(),
+                    frame: Frame::Quad(50.),
+                    fill: fills.choose(&mut rng).unwrap().clone(),
                 },
                 Index(index),
             ));
