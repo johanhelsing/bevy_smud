@@ -226,6 +226,7 @@ impl FromWorld for SmudPipeline {
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 struct SmudPipelineKey {
+    /// Mix of bevy_render Mesh2DPipelineKey and SpritePipelineKey
     mesh: PipelineKey,
     shader: (AssetId<Shader>, AssetId<Shader>),
     hdr: bool,
