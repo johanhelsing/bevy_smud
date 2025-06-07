@@ -1,8 +1,8 @@
+//! This example just shows that transforms work
+
 use bevy::prelude::*;
 use bevy_pancam::{PanCam, PanCamPlugin};
 use bevy_smud::*;
-
-// This example just shows that transforms work
 
 fn main() {
     App::new()
