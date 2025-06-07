@@ -88,7 +88,9 @@ The `main` branch targets the latest bevy release.
 
 |bevy|bevy_smud|
 |----|---------|
-|0.14|0.9, main|
+|0.16|0.11, main|
+|0.15|no support|
+|0.14|0.9      |
 |0.12|0.7      |
 |0.11|0.6      |
 |0.10|0.5      |
