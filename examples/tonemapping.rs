@@ -45,7 +45,7 @@ fn setup(mut commands: Commands, mut shaders: ResMut<Assets<Shader>>) {
 
     commands.spawn((
         Camera2d,
-        // bevy_smud comes with anti-aliasing built into the standards fills
+        // bevy_smud comes with anti-aliasing built into the standard fills
         // which is more efficient than MSAA, and also works on Linux, wayland
         Msaa::Off,
         // Reinhard tonemapping looks pretty different from no tonemapping,
