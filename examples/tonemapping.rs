@@ -30,7 +30,7 @@ fn setup(mut commands: Commands, mut shaders: ResMut<Assets<Shader>>) {
             sdf: circle,
             frame: Frame::Quad(80.),
             fill: SIMPLE_FILL_HANDLE,
-            params: Vec4::ZERO,
+            ..default()
         },
     ));
 
