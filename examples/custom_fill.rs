@@ -1,13 +1,10 @@
 use bevy::color::palettes::css;
 use bevy::prelude::*;
 use bevy_pancam::*;
-use bevy_smud::{prelude::*, SIMPLE_FILL_HANDLE};
+use bevy_smud::{SIMPLE_FILL_HANDLE, prelude::*};
 
 fn main() {
     App::new()
-        // bevy_smud comes with anti-aliasing built into the standards fills
-        // which is more efficient than MSAA, and also works on Linux, wayland
-        .insert_resource(Msaa::Off)
         .insert_resource(ClearColor(Color::BLACK))
         .add_plugins((DefaultPlugins, SmudPlugin, PanCamPlugin))
         .add_systems(Startup, setup)
@@ -22,30 +19,26 @@ fn setup(
     // The fill takes a distance and a color and returns another color
     let sin_fill = shaders.add_fill_body("return vec4<f32>(color.rgb, sin(d));");
 
-    commands.spawn(ShapeBundle {
-        shape: SmudShape {
-            color: css::TEAL.into(),
-            sdf: asset_server.load("bevy.wgsl"),
-            fill: sin_fill,
-            frame: Frame::Quad(295.),
-        },
-        ..default()
+    commands.spawn(SmudShape {
+        color: css::TEAL.into(),
+        sdf: asset_server.load("bevy.wgsl"),
+        fill: sin_fill,
+        frame: Frame::Quad(295.),
     });
 
-    commands.spawn(ShapeBundle {
-        transform: Transform::from_translation(Vec3::X * 600.),
-        shape: SmudShape {
+    commands.spawn((
+        Transform::from_translation(Vec3::X * 600.),
+        SmudShape {
             color: css::BLUE.into(),
             sdf: asset_server.load("bevy.wgsl"),
             fill: SIMPLE_FILL_HANDLE,
             frame: Frame::Quad(295.),
         },
-        ..default()
-    });
+    ));
 
-    commands.spawn(ShapeBundle {
-        transform: Transform::from_translation(Vec3::X * -600.),
-        shape: SmudShape {
+    commands.spawn((
+        Transform::from_translation(Vec3::X * -600.),
+        SmudShape {
             color: css::ORANGE.into(),
             sdf: asset_server.load("bevy.wgsl"),
             fill: shaders.add_fill_body(
@@ -58,8 +51,9 @@ return vec4<f32>(color.rgb, a * color.a);
 
             frame: Frame::Quad(295.),
         },
-        ..default()
-    });
+    ));
 
-    commands.spawn((Camera2dBundle::default(), PanCam::default()));
+    // bevy_smud comes with anti-aliasing built into the standards fills
+    // which is more efficient than MSAA, and also works on Linux, wayland
+    commands.spawn((Camera2d, PanCam::default(), Msaa::Off));
 }

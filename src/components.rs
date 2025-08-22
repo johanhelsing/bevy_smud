@@ -1,10 +1,14 @@
 use bevy::color::palettes::css;
 use bevy::prelude::*;
+use bevy::render::sync_world::SyncToRenderWorld;
+use bevy::render::view::{self, VisibilityClass};
 
 use crate::DEFAULT_FILL_HANDLE;
 
 #[derive(Component, Reflect, Debug, Clone)]
-#[reflect(Component)]
+#[require(Transform, Visibility, SyncToRenderWorld, VisibilityClass)] // TODO: anchor?
+#[reflect(Component, Default, Debug, Clone)]
+#[component(on_add = view::add_visibility_class::<SmudShape>)]
 /// Main component used for describing an sdf shape
 pub struct SmudShape {
     /// The color used by the fill shader
