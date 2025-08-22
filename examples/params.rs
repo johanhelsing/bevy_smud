@@ -42,7 +42,7 @@ fn setup(
     assets: Res<AssetHandles>,
     palettes: Res<Assets<bevy_lospec::Palette>>,
 ) {
-    let box_sdf = shaders.add_sdf_expr("smud::sd_box(p, params.xy)");
+    let box_sdf = shaders.add_sdf_expr_with_params("smud::sd_box(p, params.xy)");
     let padding = 5.; // need some padding for the outline/falloff
     let spacing = 70.;
     let palette = palettes.get(&assets.palette).unwrap();
@@ -75,7 +75,7 @@ fn setup(
                 color,
                 sdf: box_sdf.clone(),
                 frame: Frame::Quad(f32::max(size.x, size.y) + padding),
-                params: Vec4::new(size.x, size.y, 0., 0.),
+                params: Some(Vec4::new(size.x, size.y, 0., 0.)),
                 ..default()
             },
         ));

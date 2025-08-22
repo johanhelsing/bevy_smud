@@ -219,7 +219,7 @@ impl FromWorld for SmudPipeline {
 struct SmudPipelineKey {
     /// Mix of bevy_render Mesh2DPipelineKey and SpritePipelineKey
     mesh: PipelineKey,
-    shader: (AssetId<Shader>, AssetId<Shader>),
+    shader: (AssetId<Shader>, AssetId<Shader>, bool),
     hdr: bool,
 }
 
@@ -393,7 +393,7 @@ impl SpecializedRenderPipeline for SmudPipeline {
 }
 
 #[derive(Default)]
-struct ShapeShaders(HashMap<(AssetId<Shader>, AssetId<Shader>), Handle<Shader>>);
+struct ShapeShaders(HashMap<(AssetId<Shader>, AssetId<Shader>, bool), Handle<Shader>>);
 
 // TODO: do some of this work in the main world instead, so we don't need to take a mutable
 // reference to MainWorld.
@@ -402,7 +402,8 @@ fn extract_sdf_shaders(mut main_world: ResMut<MainWorld>, mut pipeline: ResMut<S
         let mut shapes = world.query::<&SmudShape>();
 
         for shape in shapes.iter(world) {
-            let shader_key = (shape.sdf.id(), shape.fill.id());
+            let uses_params = shape.params.is_some();
+            let shader_key = (shape.sdf.id(), shape.fill.id(), uses_params);
             if pipeline.shaders.0.contains_key(&shader_key) {
                 continue;
             }
@@ -441,6 +442,12 @@ fn extract_sdf_shaders(mut main_world: ResMut<MainWorld>, mut pipeline: ResMut<S
             };
 
             debug!("Generating shader");
+            let fragment_sdf_call = if uses_params {
+                "let d = sdf::sdf(in.pos, in.params);"
+            } else {
+                "let d = sdf::sdf(in.pos);"
+            };
+            
             let generated_shader = Shader::from_wgsl(
                 format!(
                     r#"
@@ -461,7 +468,7 @@ struct FragmentInput {{
 
 @fragment
 fn fragment(in: FragmentInput) -> @location(0) vec4<f32> {{
-    let d = sdf::sdf(in.pos, in.params);
+    {fragment_sdf_call}
     var color = fill::fill(d, in.color);
 
 #ifdef TONEMAP_IN_SHADER
@@ -491,7 +498,7 @@ struct ExtractedShape {
     main_entity: Entity,
     render_entity: Entity,
     color: Color,
-    params: Vec4,
+    params: Option<Vec4>,
     frame: f32,
     sdf_shader: Handle<Shader>,
     fill_shader: Handle<Shader>,
@@ -683,6 +690,7 @@ fn queue_shapes(
             let shader = (
                 extracted_shape.sdf_shader.id(),
                 extracted_shape.fill_shader.id(),
+                extracted_shape.params.is_some(),
             );
 
             let mut pipeline = CachedRenderPipelineId::INVALID;
@@ -812,7 +820,7 @@ fn prepare_shapes(
 
             let lrgba: LinearRgba = extracted_shape.color.into();
             let color = lrgba.to_f32_array();
-            let params = extracted_shape.params.to_array();
+            let params = extracted_shape.params.unwrap_or(Vec4::ZERO).to_array();
 
             let position = extracted_shape.transform.translation();
             let position = position.into();

@@ -24,9 +24,9 @@ pub struct SmudShape {
     /// The outer bounds for the shape, should be bigger than the sdf shape
     pub frame: Frame,
     /// Parameters to pass to shapes, for things such as width of a box
-    // perhaps it would be a better idea to have this as a separate component?
-    // keeping it here for now...
-    pub params: Vec4,
+    /// If None, the shape shader is expected to have signature `fn sdf(p: vec2<f32>) -> f32`
+    /// If Some(params), the shape shader is expected to have signature `fn sdf(p: vec2<f32>, params: vec4<f32>) -> f32`
+    pub params: Option<Vec4>,
 }
 
 impl Default for SmudShape {
