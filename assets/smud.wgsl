@@ -1,6 +1,12 @@
 #define_import_path smud
 // Most of these are ported versions of the ones on Inigo Quilez website, https://iquilezles.org
 
+// Input struct for SDF functions containing all available data
+struct SdfInput {
+    pos: vec2<f32>,      // Position in shape space
+    params: vec4<f32>,   // User-defined parameters
+}
+
 fn sd_circle(p: vec2<f32>, r: f32) -> f32 {
     return length(p) - r;
 }

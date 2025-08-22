@@ -449,7 +449,7 @@ fn extract_sdf_shaders(mut main_world: ResMut<MainWorld>, mut pipeline: ResMut<S
 #endif
 
 #import bevy_smud::view_bindings::view
-#import smud::prelude::SdfInput
+#import smud
 
 #import {sdf_import_path} as sdf
 #import {fill_import_path} as fill
@@ -462,7 +462,7 @@ struct FragmentInput {{
 
 @fragment
 fn fragment(in: FragmentInput) -> @location(0) vec4<f32> {{
-    let sdf_input = SdfInput(in.pos, in.params);
+    let sdf_input = smud::SdfInput(in.pos, in.params);
     let d = sdf::sdf(sdf_input);
     var color = fill::fill(d, in.color);
 

@@ -24,9 +24,8 @@ impl SdfAssets for Assets<Shader> {
 #define_import_path smud::sdf{id}
 
 #import smud
-#import smud::prelude::SdfInput
 
-fn sdf(input: SdfInput) -> f32 {{
+fn sdf(input: smud::SdfInput) -> f32 {{
     // Backward compatibility aliases for the old API
     let p = input.pos;
     let params = input.params;

@@ -1,8 +1,7 @@
 #define_import_path smud::gallery::donut
 
 #import smud
-#import smud::prelude::SdfInput
 
-fn sdf(input: SdfInput) -> f32 {
+fn sdf(input: smud::SdfInput) -> f32 {
     return abs(smud::sd_circle(input.pos, 18.)) - 3.;
 }

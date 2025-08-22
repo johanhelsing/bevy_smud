@@ -2,7 +2,6 @@
 
 #import smud
 #import smud::view_bindings::globals
-#import smud::prelude::SdfInput
 
 fn bevy_head(p: vec2<f32>) -> f32 {
     let skull = smud::sd_ellipse(p, 0.22, 0.20);
@@ -63,7 +62,7 @@ fn star(p: vec2<f32>) -> f32 {
     return smud::sd_star_5_(p / s, 0.3, 0.6) * s; 
 }
 
-fn sdf(input: SdfInput) -> f32 {
+fn sdf(input: smud::SdfInput) -> f32 {
     let b = bevy(input.pos);
     let s = star(input.pos);
     return mix(b, s, sin(globals.time) * 0.5 + 0.5);
