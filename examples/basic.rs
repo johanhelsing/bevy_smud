@@ -21,15 +21,15 @@ fn setup(
     // p is the position of a fragment within the sdf shape, with 0, 0 at the center.
     // Here we are using the built-in sd_circle function, which accepts the
     // radius as a parameter.
-    let circle = shaders.add_sdf_expr("smud::sd_circle(input.pos, 70.)");
+    let circle = shaders.add_sdf_expr("smud::sd_circle(p, 70.)");
 
     // There are other ways to define sdfs as well:
     // .add_sdf_body let's you add multiple lines and needs to end with a return statements
     let peanut = shaders.add_sdf_body(
         r"
-// Taking the absolute value of input.pos.x creates a vertical line of symmetry
-let p_2 = vec2<f32>(abs(input.pos.x), input.pos.y);
-// By subtracting from input.pos, we can move shapes
+// Taking the absolute value of p.x creates a vertical line of symmetry
+let p_2 = vec2<f32>(abs(p.x), p.y);
+// By subtracting from p, we can move shapes
 return smud::sd_circle(p_2 - vec2<f32>(20., 0.), 40.);
     ",
     );
