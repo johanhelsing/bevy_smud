@@ -1,6 +1,8 @@
 #define_import_path smud
 // Most of these are ported versions of the ones on Inigo Quilez website, https://iquilezles.org
 
+const PI: f32 = 3.141592653589793;
+
 // Input struct for SDF functions containing all available data
 struct SdfInput {
     pos: vec2<f32>,      // Position in shape space
