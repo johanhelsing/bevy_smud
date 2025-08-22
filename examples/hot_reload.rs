@@ -26,6 +26,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
             // The simple fill is just a simple anti-aliased opaque fill
             fill: SIMPLE_FILL_HANDLE,
             frame: Frame::Quad(295.),
+            params: Vec4::ZERO,
         },
     ));
 

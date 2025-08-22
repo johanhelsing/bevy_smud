@@ -42,7 +42,7 @@ fn setup(
     assets: Res<AssetHandles>,
     palettes: Res<Assets<bevy_lospec::Palette>>,
 ) {
-    let box_sdf = shaders.add_sdf_expr("smud::sd_box(p, params.xy)");
+    let box_sdf = shaders.add_sdf_expr("smud::sd_box(input.pos, input.params.xy)");
     let padding = 5.; // need some padding for the outline/falloff
     let spacing = 70.;
     let palette = palettes.get(&assets.palette).unwrap();

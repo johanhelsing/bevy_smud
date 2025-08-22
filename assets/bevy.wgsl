@@ -1,6 +1,7 @@
 #define_import_path smud::bevy
 
 #import smud
+#import smud::prelude::SdfInput
 
 fn bevy_head(p: vec2<f32>) -> f32 {
     let skull = smud::sd_ellipse(p, 0.22, 0.20);
@@ -9,9 +10,9 @@ fn bevy_head(p: vec2<f32>) -> f32 {
     return min(skull, beak);
 }
 
-fn sdf(p_in: vec2<f32>) -> f32 {
+fn sdf(input: SdfInput) -> f32 {
     let scale = 300.0;
-    var p = p_in / scale;
+    var p = input.pos / scale;
 
     let p_upper_wing = p - vec2<f32>(-0.3, -0.25);
     let upper_wing = max(

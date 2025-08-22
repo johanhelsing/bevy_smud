@@ -1,7 +1,8 @@
 #define_import_path smud::gallery::pie
 
 #import smud
+#import smud::prelude::SdfInput
 
-fn sdf(p: vec2<f32>) -> f32 {
-    return smud::sd_pie(p, smud::sin_cos(0.8), 25.);
+fn sdf(input: SdfInput) -> f32 {
+    return smud::sd_pie(input.pos, smud::sin_cos(0.8), 25.);
 }

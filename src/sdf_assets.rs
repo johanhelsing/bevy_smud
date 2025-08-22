@@ -24,8 +24,9 @@ impl SdfAssets for Assets<Shader> {
 #define_import_path smud::sdf{id}
 
 #import smud
+#import smud::prelude::SdfInput
 
-fn sdf(p: vec2<f32>, params: vec4<f32>) -> f32 {{
+fn sdf(input: SdfInput) -> f32 {{
     {body}
 }}
 "#

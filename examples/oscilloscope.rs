@@ -46,6 +46,7 @@ fn aces_approx(v_: vec3<f32>) -> vec3<f32> {
 ",
         ),
         frame: Frame::Quad(295.),
+        params: Vec4::ZERO,
     });
 
     // bevy_smud comes with anti-aliasing built into the standards fills
