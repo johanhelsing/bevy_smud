@@ -19,7 +19,6 @@ fn main() {
                 .continue_to_state(GameState::Running)
                 .load_collection::<AssetHandles>(),
         )
-        .insert_resource(Msaa::Off)
         .add_systems(OnEnter(GameState::Running), setup)
         .run();
 }
@@ -50,7 +49,7 @@ fn setup(
 
     let clear_color = palette.lightest();
     commands.insert_resource(ClearColor(clear_color));
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
 
     for i in 0..100 {
         let size = Vec2::new(random::<f32>() * 20. + 1., random::<f32>() * 20. + 1.);
@@ -70,18 +69,17 @@ fn setup(
             .copied()
             .unwrap_or(Colors::PINK.into());
 
-        commands.spawn(ShapeBundle {
+        commands.spawn((
             transform,
-            shape: SmudShape {
+            SmudShape {
                 color,
                 sdf: box_sdf.clone(),
                 frame: Frame::Quad(f32::max(size.x, size.y) + padding),
                 params: Vec4::new(size.x, size.y, 0., 0.),
-                ..Default::default()
+                ..default()
             },
-            ..Default::default()
-        });
+        ));
     }
 
-    commands.spawn(Camera2dBundle::default());
+    commands.spawn(Camera2d);
 }
