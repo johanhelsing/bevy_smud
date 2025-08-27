@@ -3,13 +3,14 @@ use std::{cmp::Ordering, ops::Range};
 use bevy::{
     asset::HandleId,
     ecs::system::{
-        lifetimeless::{Read, SQuery, SRes},
         SystemParamItem,
+        lifetimeless::{Read, SQuery, SRes},
     },
     math::Vec3Swizzles,
     prelude::*,
     reflect::Uuid,
     render::{
+        Extract, RenderApp, RenderStage,
         render_phase::{
             AddRenderCommand, DrawFunctions, EntityRenderCommand, RenderCommandResult, RenderPhase,
             SetItemPipeline, TrackedRenderPass,
@@ -18,7 +19,6 @@ use bevy::{
             CachedRenderPipelineId, PipelineCache, PrimitiveTopology, SpecializedRenderPipelines,
         },
         renderer::{RenderDevice, RenderQueue},
-        Extract, RenderApp, RenderStage,
     },
     sprite::Mesh2dPipelineKey,
     ui::TransparentUi,
@@ -105,13 +105,14 @@ fn extract_ui_shapes(
 
         extracted_shapes.0.alloc().init(ExtractedShape {
             main_entity: entity,
-            render_entity: entity,  // For UI shapes, use the same entity
+            render_entity: entity, // For UI shapes, use the same entity
             color: shape.color * Vec4::from(color.0),
             transform: *transform,
             sdf_shader: shape.sdf.clone_weak(),
             fill_shader: shape.fill.clone_weak(),
             frame,
             params: shape.params,
+            fill_params: shape.fill_params,
             blend_mode: shape.blend_mode,
         });
     }
@@ -202,6 +203,7 @@ fn prepare_ui_shapes(
 
         let color = extracted_shape.color.as_linear_rgba_f32();
         let params = extracted_shape.params.to_array();
+        let fill_params = extracted_shape.fill_params.to_array();
 
         let position = position.into();
 
@@ -218,6 +220,7 @@ fn prepare_ui_shapes(
             position,
             color,
             params,
+            fill_params,
             rotation,
             scale,
             frame: extracted_shape.frame,
