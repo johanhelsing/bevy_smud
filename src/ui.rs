@@ -109,6 +109,7 @@ fn extract_ui_shapes(
             fill_shader: shape.fill.clone_weak(),
             frame,
             params: shape.params,
+            fill_params: shape.fill_params,
         });
     }
 }
@@ -198,6 +199,7 @@ fn prepare_ui_shapes(
 
         let color = extracted_shape.color.as_linear_rgba_f32();
         let params = extracted_shape.params.to_array();
+        let fill_params = extracted_shape.fill_params.to_array();
 
         let position = position.into();
 
@@ -214,6 +216,7 @@ fn prepare_ui_shapes(
             position,
             color,
             params,
+            fill_params,
             rotation,
             scale,
             frame: extracted_shape.frame,

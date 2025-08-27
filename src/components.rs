@@ -27,6 +27,8 @@ pub struct SmudShape {
     // perhaps it would be a better idea to have this as a separate component?
     // keeping it here for now...
     pub params: Vec4,
+    /// Parameters to pass to fill shaders
+    pub fill_params: Vec4,
 }
 
 impl Default for SmudShape {
@@ -36,6 +38,7 @@ impl Default for SmudShape {
             sdf: default(),
             frame: default(),
             params: default(),
+            fill_params: default(),
             fill: DEFAULT_FILL_HANDLE,
         }
     }
