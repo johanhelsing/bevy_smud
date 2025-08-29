@@ -5,6 +5,16 @@ use bevy::render::view::{self, VisibilityClass};
 
 use crate::DEFAULT_FILL_HANDLE;
 
+/// Blend mode for shapes
+#[derive(Reflect, Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum BlendMode {
+    /// Standard alpha blending
+    #[default]
+    Alpha,
+    /// Additive blending (colors are added together)
+    Additive,
+}
+
 #[derive(Component, Reflect, Debug, Clone)]
 #[require(Transform, Visibility, SyncToRenderWorld, VisibilityClass)] // TODO: anchor?
 #[reflect(Component, Default, Debug, Clone)]
@@ -27,6 +37,8 @@ pub struct SmudShape {
     // perhaps it would be a better idea to have this as a separate component?
     // keeping it here for now...
     pub params: Vec4,
+    /// Blend mode for the shape
+    pub blend_mode: BlendMode,
 }
 
 impl Default for SmudShape {
@@ -37,6 +49,7 @@ impl Default for SmudShape {
             frame: default(),
             params: default(),
             fill: DEFAULT_FILL_HANDLE,
+            blend_mode: BlendMode::default(),
         }
     }
 }
