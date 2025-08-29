@@ -31,14 +31,15 @@ use bevy::{
             RenderCommandResult, SetItemPipeline, TrackedRenderPass, ViewSortedRenderPhases,
         },
         render_resource::{
-            BindGroup, BindGroupEntries, BindGroupLayout, BindGroupLayoutEntries, BlendState,
-            BufferUsages, CachedRenderPipelineId, ColorTargetState, ColorWrites, CompareFunction,
-            DepthBiasState, DepthStencilState, Face, FragmentState, FrontFace, MultisampleState,
-            PipelineCache, PolygonMode, PrimitiveState, PrimitiveTopology, RawBufferVec,
-            RenderPipelineDescriptor, ShaderDefVal, ShaderImport, ShaderStages,
-            SpecializedRenderPipeline, SpecializedRenderPipelines, StencilFaceState, StencilState,
-            TextureFormat, VertexAttribute, VertexBufferLayout, VertexFormat, VertexState,
-            VertexStepMode, binding_types::uniform_buffer,
+            BindGroup, BindGroupEntries, BindGroupLayout, BindGroupLayoutEntries, BlendComponent,
+            BlendFactor, BlendOperation, BlendState, BufferUsages, CachedRenderPipelineId,
+            ColorTargetState, ColorWrites, CompareFunction, DepthBiasState, DepthStencilState,
+            Face, FragmentState, FrontFace, MultisampleState, PipelineCache, PolygonMode,
+            PrimitiveState, PrimitiveTopology, RawBufferVec, RenderPipelineDescriptor,
+            ShaderDefVal, ShaderImport, ShaderStages, SpecializedRenderPipeline,
+            SpecializedRenderPipelines, StencilFaceState, StencilState, TextureFormat,
+            VertexAttribute, VertexBufferLayout, VertexFormat, VertexState, VertexStepMode,
+            binding_types::uniform_buffer,
         },
         renderer::{RenderDevice, RenderQueue},
         sync_world::{MainEntity, RenderEntity},
@@ -75,7 +76,7 @@ mod util;
 /// ```
 pub mod prelude {
     pub use crate::{
-        DEFAULT_FILL_HANDLE, Frame, SIMPLE_FILL_HANDLE, SmudPlugin, SmudShape,
+        BlendMode, DEFAULT_FILL_HANDLE, Frame, SIMPLE_FILL_HANDLE, SmudPlugin, SmudShape,
         sdf_assets::SdfAssets,
     };
 
@@ -354,7 +355,22 @@ impl SpecializedRenderPipeline for SmudPipeline {
                     } else {
                         TextureFormat::bevy_default()
                     },
-                    blend: Some(BlendState::ALPHA_BLENDING),
+                    blend: Some(if key.mesh.contains(PipelineKey::BLEND_ADDITIVE) {
+                        BlendState {
+                            color: BlendComponent {
+                                src_factor: BlendFactor::SrcAlpha,
+                                dst_factor: BlendFactor::One,
+                                operation: BlendOperation::Add,
+                            },
+                            alpha: BlendComponent {
+                                src_factor: BlendFactor::One,
+                                dst_factor: BlendFactor::One,
+                                operation: BlendOperation::Add,
+                            },
+                        }
+                    } else {
+                        BlendState::ALPHA_BLENDING
+                    }),
                     write_mask: ColorWrites::ALL,
                 })],
             }),
@@ -505,6 +521,7 @@ struct ExtractedShape {
     sdf_shader: Handle<Shader>,
     fill_shader: Handle<Shader>,
     transform: GlobalTransform,
+    blend_mode: BlendMode,
 }
 
 #[derive(Resource, Default, Debug)]
@@ -545,6 +562,7 @@ fn extract_shapes(
             sdf_shader: shape.sdf.clone_weak(),
             fill_shader: shape.fill.clone_weak(),
             frame,
+            blend_mode: shape.blend_mode,
         });
     }
 }
@@ -562,7 +580,7 @@ bitflags::bitflags! {
         const HDR                               = 1 << 0;
         const TONEMAP_IN_SHADER                 = 1 << 1;
         const DEBAND_DITHER                     = 1 << 2;
-        const BLEND_ALPHA                       = 1 << 3;
+        const BLEND_ADDITIVE                    = 1 << 3;
         const MAY_DISCARD                       = 1 << 4;
         const MSAA_RESERVED_BITS                = Self::MSAA_MASK_BITS << Self::MSAA_SHIFT_BITS;
         const PRIMITIVE_TOPOLOGY_RESERVED_BITS  = Self::PRIMITIVE_TOPOLOGY_MASK_BITS << Self::PRIMITIVE_TOPOLOGY_SHIFT_BITS;
@@ -618,6 +636,13 @@ impl PipelineKey {
             x if x == PrimitiveTopology::TriangleList as u32 => PrimitiveTopology::TriangleList,
             x if x == PrimitiveTopology::TriangleStrip as u32 => PrimitiveTopology::TriangleStrip,
             _ => PrimitiveTopology::default(),
+        }
+    }
+
+    pub fn from_blend_mode(blend_mode: crate::BlendMode) -> Self {
+        match blend_mode {
+            crate::BlendMode::Alpha => Self::NONE,
+            crate::BlendMode::Additive => Self::BLEND_ADDITIVE,
         }
     }
 }
@@ -698,8 +723,9 @@ fn queue_shapes(
 
             if let Some(_shader) = smud_pipeline.shaders.0.get(&shader) {
                 // todo pass the shader into specialize
+                let shape_key = view_key | PipelineKey::from_blend_mode(extracted_shape.blend_mode);
                 let specialize_key = SmudPipelineKey {
-                    mesh: view_key,
+                    mesh: shape_key,
                     shader,
                     hdr: view.hdr,
                 };
