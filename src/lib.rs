@@ -81,7 +81,7 @@ pub mod prelude {
 
     #[cfg(feature = "bevy_picking")]
     pub use crate::picking_backend::{
-        SdfPickingShape, SmudPickingCamera, SmudPickingPlugin, SmudPickingSettings,
+        SmudPickingCamera, SmudPickingPlugin, SmudPickingSettings, SmudPickingShape,
     };
 }
 

@@ -35,13 +35,13 @@ pub struct SmudPickingCamera;
 /// if a point is inside or outside the shape. The function takes a local position
 /// (Vec2) and returns the signed distance to the shape surface.
 #[derive(Component)]
-pub struct SdfPickingShape {
+pub struct SmudPickingShape {
     /// The signed distance function. Returns negative values inside the shape,
     /// positive values outside, and zero on the surface.
     pub distance_fn: Box<dyn Fn(Vec2) -> f32 + Send + Sync>,
 }
 
-impl SdfPickingShape {
+impl SmudPickingShape {
     /// Create a new SDF picking shape with the given distance function.
     pub fn new<F>(distance_fn: F) -> Self
     where
@@ -101,7 +101,7 @@ pub fn smud_picking(
         &GlobalTransform,
         &ViewVisibility,
         Option<&Pickable>,
-        Option<&SdfPickingShape>,
+        Option<&SmudPickingShape>,
     )>,
     mut output: EventWriter<PointerHits>,
 ) {
@@ -157,7 +157,7 @@ pub fn smud_picking(
         let mut blocked = false;
 
         // Test intersection with each shape
-        for (entity, shape, shape_transform, pickable, sdf_shape) in &sorted_shapes {
+        for (entity, shape, shape_transform, pickable, sdf_picking) in &sorted_shapes {
             if blocked {
                 break;
             }
@@ -175,14 +175,14 @@ pub fn smud_picking(
             }
 
             let t = (shape_z - ray_start.z) / ray_direction.z;
-            let intersection_point = ray_start + ray_direction * t;
+            let intersection_point = ray_start + *ray_direction * t;
 
             // Transform the intersection point to shape local space
             let world_to_shape = shape_transform.affine().inverse();
             let local_point = world_to_shape.transform_point3(intersection_point);
 
             // Check if the point is within the shape using SDF or frame bounds
-            let is_hit = if let Some(sdf_shape) = sdf_shape {
+            let is_hit = if let Some(sdf_shape) = sdf_picking {
                 // Use the custom SDF function for precise hit testing
                 let local_2d = Vec2::new(local_point.x, local_point.y);
                 let distance = (sdf_shape.distance_fn)(local_2d);
