@@ -60,6 +60,8 @@ pub use shader_loading::{DEFAULT_FILL_HANDLE, SIMPLE_FILL_HANDLE};
 use crate::util::generate_shader_id;
 
 mod components;
+#[cfg(feature = "bevy_picking")]
+mod picking_backend;
 mod sdf_assets;
 mod shader_loading;
 mod util;
@@ -76,6 +78,9 @@ pub mod prelude {
         DEFAULT_FILL_HANDLE, Frame, SIMPLE_FILL_HANDLE, SmudPlugin, SmudShape,
         sdf_assets::SdfAssets,
     };
+
+    #[cfg(feature = "bevy_picking")]
+    pub use crate::picking_backend::{SmudPickingCamera, SmudPickingPlugin, SmudPickingSettings};
 }
 
 #[derive(Default)]
