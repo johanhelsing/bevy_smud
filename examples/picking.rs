@@ -25,9 +25,8 @@ fn setup(mut commands: Commands, mut shaders: ResMut<Assets<Shader>>) {
         },
         Pickable::default(),
         SmudPickingShape::new(|p| {
-            // Circle SDF: distance to center minus radius
-            let radius = 100.0;
-            p.length() - radius
+            // Circle SDF using the sdf module
+            sdf::circle(p, 100.0)
         }),
     ));
 
