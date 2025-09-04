@@ -67,6 +67,23 @@ Other than that, make sure you understand how to combine shapes, use symmetries 
 
 Also, check out the [examples](https://github.com/johanhelsing/bevy_smud/blob/main/examples). In particular, the [basic](https://github.com/johanhelsing/bevy_smud/blob/main/examples/basic.rs) example should be a good place to start.
 
+## Picking
+
+Bevy_smud includes a picking backend that allows SDF shapes to respond to mouse/touch input. Add the `SmudPickingPlugin` to enable picking support:
+
+```rust no_run
+use bevy::prelude::*;
+use bevy_smud::prelude::*;
+
+fn main() {
+    App::new()
+        .add_plugins((DefaultPlugins, SmudPlugin, SmudPickingPlugin));
+        // ...
+}
+```
+
+The picking backend supports both frame-based picking (fast, uses shape bounds) and precise SDF-based picking (accurate, uses Rust distance functions that match the shape geometry). See the [picking example](https://github.com/johanhelsing/bevy_smud/blob/main/examples/picking.rs) for details.
+
 ## Showcase
 
 Send me a PR if you want your project featured here:
