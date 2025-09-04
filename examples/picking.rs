@@ -27,7 +27,7 @@ fn setup(mut commands: Commands, mut shaders: ResMut<Assets<Shader>>) {
         SmudPickingShape::new(|p| {
             // Circle SDF: distance to center minus radius
             let radius = 100.0;
-            (p.x * p.x + p.y * p.y).sqrt() - radius
+            p.length() - radius
         }),
     ));
 
