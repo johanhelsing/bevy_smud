@@ -9,6 +9,10 @@ name = "bevy_smud"
 repository = "https://github.com/johanhelsing/bevy_smud"
 version = "0.11.0"
 
+[features]
+default = ["bevy_picking"]
+bevy_picking = ["bevy/bevy_picking"]
+
 [dependencies]
 bevy = { version = "0.16", default-features = false, features = [
   "bevy_asset",         # needed for handle ids
