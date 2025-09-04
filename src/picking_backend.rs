@@ -29,6 +29,43 @@ use crate::{Frame, SmudShape};
 #[reflect(Debug, Default, Component)]
 pub struct SmudPickingCamera;
 
+/// An optional component that provides a custom distance function for precise hit testing.
+///
+/// When present, this will be used instead of simple frame-based picking to determine
+/// if a point is inside or outside the shape. The function takes a local position
+/// (Vec2) and returns the signed distance to the shape surface.
+#[derive(Component)]
+pub struct SdfPickingShape {
+    /// The signed distance function. Returns negative values inside the shape,
+    /// positive values outside, and zero on the surface.
+    pub distance_fn: Box<dyn Fn(Vec2) -> f32 + Send + Sync>,
+}
+
+impl SdfPickingShape {
+    /// Create a new SDF picking shape with the given distance function.
+    pub fn new<F>(distance_fn: F) -> Self
+    where
+        F: Fn(Vec2) -> f32 + Send + Sync + 'static,
+    {
+        Self {
+            distance_fn: Box::new(distance_fn),
+        }
+    }
+
+    /// Create a circle SDF picking shape with the given radius.
+    pub fn circle(radius: f32) -> Self {
+        Self::new(move |p| p.length() - radius)
+    }
+
+    /// Create a rectangle SDF picking shape with the given half-extents.
+    pub fn rect(half_width: f32, half_height: f32) -> Self {
+        Self::new(move |p| {
+            let d = Vec2::new(p.x.abs() - half_width, p.y.abs() - half_height);
+            Vec2::new(d.x.max(0.0), d.y.max(0.0)).length() + d.x.max(d.y).min(0.0)
+        })
+    }
+}
+
 /// Runtime settings for SDF shape picking.
 #[derive(Resource, Reflect, Default)]
 #[reflect(Resource, Default)]
@@ -53,6 +90,7 @@ impl Plugin for SmudPickingPlugin {
 }
 
 /// The main picking system that tests pointer intersections with SDF shapes.
+#[allow(clippy::type_complexity)]
 pub fn smud_picking(
     ray_map: Res<RayMap>,
     cameras: Query<(Entity, &Camera, &GlobalTransform, Has<SmudPickingCamera>)>,
@@ -63,36 +101,39 @@ pub fn smud_picking(
         &GlobalTransform,
         &ViewVisibility,
         Option<&Pickable>,
+        Option<&SdfPickingShape>,
     )>,
     mut output: EventWriter<PointerHits>,
 ) {
     // Collect shapes sorted by depth (back to front for proper ordering)
     let mut sorted_shapes: Vec<_> = shapes
         .iter()
-        .filter_map(|(entity, shape, transform, visibility, pickable)| {
-            // Skip if visibility is off or transform is invalid
-            if !visibility.get() || transform.affine().is_nan() {
-                return None;
-            }
+        .filter_map(
+            |(entity, shape, transform, visibility, pickable, sdf_shape)| {
+                // Skip if visibility is off or transform is invalid
+                if !visibility.get() || transform.affine().is_nan() {
+                    return None;
+                }
 
-            // If markers are required, check if entity has Pickable component
-            if settings.require_markers && pickable.is_none() {
-                return None;
-            }
+                // If markers are required, check if entity has Pickable component
+                if settings.require_markers && pickable.is_none() {
+                    return None;
+                }
 
-            // If entity has Pickable component, check if it's hoverable
-            if let Some(pickable) = pickable
-                && !pickable.is_hoverable
-            {
-                return None;
-            }
+                // If entity has Pickable component, check if it's hoverable
+                if let Some(pickable) = pickable
+                    && !pickable.is_hoverable
+                {
+                    return None;
+                }
 
-            Some((entity, shape, transform, pickable))
-        })
+                Some((entity, shape, transform, pickable, sdf_shape))
+            },
+        )
         .collect();
 
     // Sort by Z coordinate (back to front)
-    sorted_shapes.sort_by(|(_, _, transform_a, _), (_, _, transform_b, _)| {
+    sorted_shapes.sort_by(|(_, _, transform_a, _, _), (_, _, transform_b, _, _)| {
         transform_b
             .translation()
             .z
@@ -116,7 +157,7 @@ pub fn smud_picking(
         let mut blocked = false;
 
         // Test intersection with each shape
-        for (entity, shape, shape_transform, pickable) in &sorted_shapes {
+        for (entity, shape, shape_transform, pickable, sdf_shape) in &sorted_shapes {
             if blocked {
                 break;
             }
@@ -140,14 +181,22 @@ pub fn smud_picking(
             let world_to_shape = shape_transform.affine().inverse();
             let local_point = world_to_shape.transform_point3(intersection_point);
 
-            // Check if the point is within the shape's frame
-            let is_within_frame = match shape.frame {
-                Frame::Quad(half_size) => {
-                    local_point.x.abs() <= half_size && local_point.y.abs() <= half_size
+            // Check if the point is within the shape using SDF or frame bounds
+            let is_hit = if let Some(sdf_shape) = sdf_shape {
+                // Use the custom SDF function for precise hit testing
+                let local_2d = Vec2::new(local_point.x, local_point.y);
+                let distance = (sdf_shape.distance_fn)(local_2d);
+                distance <= 0.0 // Inside or on the surface
+            } else {
+                // Fall back to frame-based hit testing
+                match shape.frame {
+                    Frame::Quad(half_size) => {
+                        local_point.x.abs() <= half_size && local_point.y.abs() <= half_size
+                    }
                 }
             };
 
-            if is_within_frame {
+            if is_hit {
                 // Calculate depth from camera's near plane
                 let hit_pos_cam = cam_transform
                     .affine()

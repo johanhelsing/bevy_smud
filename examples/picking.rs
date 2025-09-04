@@ -14,18 +14,38 @@ fn main() {
 fn setup(mut commands: Commands, mut shaders: ResMut<Assets<Shader>>) {
     commands.spawn(Camera2d);
 
-    // Spawn a single SDF shape (a circle) with Pickable
+    // Left circle: Uses precise SDF-based picking
     commands.spawn((
+        Transform::from_translation(Vec3::new(-200.0, 0.0, 0.0)),
         SmudShape {
             color: css::ORANGE.into(),
-            sdf: shaders.add_sdf_body("return smud::sd_circle(p, 100.);"),
-            frame: Frame::Quad(105.), // A little larger than the circle
+            sdf: shaders.add_sdf_expr("smud::sd_circle(p, 100.)"),
+            frame: Frame::Quad(150.), // Frame is larger than the circle
             ..default()
         },
-        Pickable::default(), // This will automatically add PickingInteraction
+        Pickable::default(),
+        SdfPickingShape::new(|p| {
+            // Circle SDF: distance to center minus radius
+            let radius = 100.0;
+            (p.x * p.x + p.y * p.y).sqrt() - radius
+        }),
     ));
 
-    info!("Hover over the circle to see it change color! Click to see the pressed state.");
+    // Right star: Uses frame-based picking (no SdfPickingShape component)
+    commands.spawn((
+        Transform::from_translation(Vec3::new(200.0, 0.0, 0.0)),
+        SmudShape {
+            color: css::ORANGE.into(),
+            sdf: shaders.add_sdf_expr("smud::sd_star_5_(p, 60.0, 2.0)"),
+            frame: Frame::Quad(150.), // Frame is larger than the star
+            ..default()
+        },
+        Pickable::default(),
+    ));
+
+    info!("Left circle: Precise SDF-based picking - only responds inside the circle");
+    info!("Right star: Frame-based picking - responds in the entire square frame");
+    info!("Hover and click to see the difference!");
 }
 
 fn update_hover_colors(
