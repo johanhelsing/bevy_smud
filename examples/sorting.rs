@@ -16,7 +16,7 @@ fn setup(mut commands: Commands, mut shaders: ResMut<Assets<Shader>>) {
         Transform::from_translation(Vec3::Z * 3.),
         SmudShape {
             color: Color::srgb(0.0, 0.0, 0.0),
-            sdf: shaders.add_sdf_body("return smud::sd_circle(p, 70.);"),
+            sdf: shaders.add_sdf_body("return smud::sd_circle(input.pos, 70.);"),
             frame: Frame::Quad(80.),
             ..default()
         },
@@ -27,7 +27,7 @@ fn setup(mut commands: Commands, mut shaders: ResMut<Assets<Shader>>) {
         Transform::from_translation(Vec3::Z * 2.),
         SmudShape {
             color: Color::srgb(0.46, 0.42, 0.80),
-            sdf: shaders.add_sdf_body("return smud::sd_circle(p, 150.);"),
+            sdf: shaders.add_sdf_body("return smud::sd_circle(input.pos, 150.);"),
             frame: Frame::Quad(200.),
             ..default()
         },

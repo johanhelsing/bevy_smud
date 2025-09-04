@@ -2,6 +2,6 @@
 
 #import smud
 
-fn sdf(p: vec2<f32>) -> f32 {
-    return smud::sd_box(p, vec2<f32>(30., 20.));
+fn sdf(input: smud::SdfInput) -> f32 {
+    return smud::sd_box(input.pos, vec2<f32>(30., 20.));
 }

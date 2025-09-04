@@ -62,9 +62,9 @@ fn star(p: vec2<f32>) -> f32 {
     return smud::sd_star_5_(p / s, 0.3, 0.6) * s; 
 }
 
-fn sdf(p: vec2<f32>) -> f32 {
-    let b = bevy(p);
-    let s = star(p);
+fn sdf(input: smud::SdfInput) -> f32 {
+    let b = bevy(input.pos);
+    let s = star(input.pos);
     return mix(b, s, sin(globals.time) * 0.5 + 0.5);
     // return mix(b, s, 1.0);
 }

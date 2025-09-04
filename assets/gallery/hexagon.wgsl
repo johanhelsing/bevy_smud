@@ -2,6 +2,6 @@
 
 #import smud
 
-fn sdf(p: vec2<f32>) -> f32 {
-    return smud::sd_hexagon(p, 20.);
+fn sdf(input: smud::SdfInput) -> f32 {
+    return smud::sd_hexagon(input.pos, 20.);
 }

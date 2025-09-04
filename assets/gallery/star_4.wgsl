@@ -2,6 +2,6 @@
 
 #import smud
 
-fn sdf(p: vec2<f32>) -> f32 {
-    return smud::sd_star(p * 0.5, 10., 4, 3.0);
+fn sdf(input: smud::SdfInput) -> f32 {
+    return smud::sd_star(input.pos * 0.5, 10., 4, 3.0);
 }

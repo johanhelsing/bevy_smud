@@ -24,6 +24,7 @@ fn setup(
         sdf: asset_server.load("bevy.wgsl"),
         fill: sin_fill,
         frame: Frame::Quad(295.),
+        ..default()
     });
 
     commands.spawn((
@@ -33,6 +34,7 @@ fn setup(
             sdf: asset_server.load("bevy.wgsl"),
             fill: SIMPLE_FILL_HANDLE,
             frame: Frame::Quad(295.),
+            ..default()
         },
     ));
 
@@ -50,6 +52,7 @@ return vec4<f32>(color.rgb, a * color.a);
             ),
 
             frame: Frame::Quad(295.),
+            ..default()
         },
     ));
 

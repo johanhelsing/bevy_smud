@@ -3,8 +3,6 @@ use bevy::{
     prelude::*,
 };
 
-const PRELUDE_SHADER_HANDLE: Handle<Shader> = weak_handle!("33980330-e199-4485-8687-423334e08152");
-
 const SMUD_SHADER_HANDLE: Handle<Shader> = weak_handle!("eca0ed31-c377-41be-94a8-55154ecb0810");
 
 const VIEW_BINDINGS_SHADER_HANDLE: Handle<Shader> =
@@ -27,13 +25,6 @@ pub struct ShaderLoadingPlugin;
 
 impl Plugin for ShaderLoadingPlugin {
     fn build(&self, app: &mut App) {
-        load_internal_asset!(
-            app,
-            PRELUDE_SHADER_HANDLE,
-            "../assets/prelude.wgsl",
-            Shader::from_wgsl
-        );
-
         load_internal_asset!(
             app,
             SMUD_SHADER_HANDLE,

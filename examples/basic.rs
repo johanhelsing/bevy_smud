@@ -67,6 +67,7 @@ return smud::sd_circle(p_2 - vec2<f32>(20., 0.), 40.);
             // The simple fill is just a simple anti-aliased opaque fill
             fill: SIMPLE_FILL_HANDLE,
             frame: Frame::Quad(295.),
+            ..default()
         },
     ));
 

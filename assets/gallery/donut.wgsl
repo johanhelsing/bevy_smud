@@ -2,6 +2,6 @@
 
 #import smud
 
-fn sdf(p: vec2<f32>) -> f32 {
-    return abs(smud::sd_circle(p, 18.)) - 3.;
+fn sdf(input: smud::SdfInput) -> f32 {
+    return abs(smud::sd_circle(input.pos, 18.)) - 3.;
 }

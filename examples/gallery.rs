@@ -115,6 +115,7 @@ fn setup(
                     sdf: shaders.choose(&mut rng).unwrap().clone(),
                     frame: Frame::Quad(50.),
                     fill: fills.choose(&mut rng).unwrap().clone(),
+                    ..default()
                 },
                 Index(index),
             ));

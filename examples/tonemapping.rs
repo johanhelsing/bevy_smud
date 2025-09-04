@@ -21,7 +21,7 @@ fn main() {
 }
 
 fn setup(mut commands: Commands, mut shaders: ResMut<Assets<Shader>>) {
-    let circle = shaders.add_sdf_expr("smud::sd_circle(p, 70.)");
+    let circle = shaders.add_sdf_expr("smud::sd_circle(input.pos, 70.)");
 
     commands.spawn((
         Transform::from_xyz(100., 0., 0.),
@@ -30,6 +30,7 @@ fn setup(mut commands: Commands, mut shaders: ResMut<Assets<Shader>>) {
             sdf: circle,
             frame: Frame::Quad(80.),
             fill: SIMPLE_FILL_HANDLE,
+            ..default()
         },
     ));
 

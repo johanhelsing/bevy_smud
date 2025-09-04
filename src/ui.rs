@@ -108,6 +108,7 @@ fn extract_ui_shapes(
             sdf_shader: shape.sdf.clone_weak(),
             fill_shader: shape.fill.clone_weak(),
             frame,
+            params: shape.params,
         });
     }
 }
@@ -196,6 +197,7 @@ fn prepare_ui_shapes(
         }
 
         let color = extracted_shape.color.as_linear_rgba_f32();
+        let params = extracted_shape.params.to_array();
 
         let position = position.into();
 
@@ -211,6 +213,7 @@ fn prepare_ui_shapes(
         let vertex = ShapeVertex {
             position,
             color,
+            params,
             rotation,
             scale,
             frame: extracted_shape.frame,

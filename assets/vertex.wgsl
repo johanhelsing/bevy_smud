@@ -11,15 +11,17 @@ var<uniform> view: View;
 struct Vertex {
     @location(0) position: vec3<f32>,
     @location(1) color: vec4<f32>,
-    @location(2) rotation: vec2<f32>,
-    @location(3) scale: f32,
-    @location(4) frame: f32,
+    @location(2) params: vec4<f32>,
+    @location(3) rotation: vec2<f32>,
+    @location(4) scale: f32,
+    @location(5) frame: f32,
 };
 
 struct VertexOutput {
     @builtin(position) clip_position: vec4<f32>,
     @location(0) color: vec4<f32>,
     @location(1) pos: vec2<f32>,
+    @location(2) params: vec4<f32>,
 };
 
 @vertex
@@ -37,6 +39,7 @@ fn vertex(
     // Project the world position of the mesh into screen position
     out.clip_position = view.view_proj * vec4<f32>(pos, 1.);
     out.color = vertex.color;
+    out.params = vertex.params;
     out.pos = vec2<f32>(x, y) * vertex.frame;
     return out;
 }

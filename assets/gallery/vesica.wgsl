@@ -2,6 +2,6 @@
 
 #import smud
 
-fn sdf(p: vec2<f32>) -> f32 {
-    return smud::sd_vesica(p, 30., 15.);
+fn sdf(input: smud::SdfInput) -> f32 {
+    return smud::sd_vesica(input.pos, 30., 15.);
 }

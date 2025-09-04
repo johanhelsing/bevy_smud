@@ -1,13 +1,21 @@
 #define_import_path smud
 // Most of these are ported versions of the ones on Inigo Quilez website, https://iquilezles.org
 
+const PI: f32 = 3.141592653589793;
+
+// Input struct for SDF functions containing all available data
+struct SdfInput {
+    pos: vec2<f32>,      // Position in shape space
+    params: vec4<f32>,   // User-defined parameters
+}
+
 fn sd_circle(p: vec2<f32>, r: f32) -> f32 {
     return length(p) - r;
 }
 
 fn sd_rounded_box(p: vec2<f32>, b: vec2<f32>, r: vec4<f32>) -> f32 {
     var r_2 = r;
-    // swizzle assigment isn't supported yet
+    // swizzle assignment isn't supported yet
     // r_2.xy = select(r_2.zw, r_2.xy, p.x > 0.);
     let tmp = select(r_2.zw, r_2.xy, p.x > 0.);
     r_2.x = tmp.x;

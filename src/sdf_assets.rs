@@ -25,7 +25,11 @@ impl SdfAssets for Assets<Shader> {
 
 #import smud
 
-fn sdf(p: vec2<f32>) -> f32 {{
+fn sdf(input: smud::SdfInput) -> f32 {{
+    // Backward compatibility aliases for the old API
+    let p = input.pos;
+    let params = input.params;
+    
     {body}
 }}
 "#
