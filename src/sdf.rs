@@ -110,7 +110,7 @@ pub fn equilateral_triangle(p: Vec2, r: f32) -> f32 {
     let k = (3.0_f32).sqrt();
     let mut p = p;
     p.x = p.x.abs() - r;
-    p.y = p.y + r / k;
+    p.y += r / k;
     if p.x + k * p.y > 0.0 {
         p = Vec2::new((p.x - k * p.y) * 0.5, (-k * p.x - p.y) * 0.5);
     }
@@ -182,7 +182,7 @@ pub fn uneven_capsule(p: Vec2, r1: f32, r2: f32, h: f32) -> f32 {
 
 /// Signed distance to a pentagon
 pub fn pentagon(p: Vec2, r: f32) -> f32 {
-    let k = Vec3::new(0.809016994, 0.587785252, 0.726542528);
+    let k = Vec3::new(0.809_017, 0.587_785_24, 0.726_542_53);
     let mut p = p;
     p.x = p.x.abs();
     p = p - 2.0 * f32::min(Vec2::new(-k.x, k.y).dot(p), 0.0) * Vec2::new(-k.x, k.y);
@@ -193,7 +193,7 @@ pub fn pentagon(p: Vec2, r: f32) -> f32 {
 
 /// Signed distance to a hexagon
 pub fn hexagon(p: Vec2, r: f32) -> f32 {
-    let k = Vec3::new(-0.866025404, 0.5, 0.577350269);
+    let k = Vec3::new(-0.866_025_4, 0.5, 0.577_350_26);
     let mut p = p.abs();
     p = p - 2.0 * f32::min(Vec2::new(k.x, k.y).dot(p), 0.0) * Vec2::new(k.x, k.y);
     p = Vec2::new(p.x - clamp(p.x, -k.z * r, k.z * r), p.y - r);
@@ -202,7 +202,7 @@ pub fn hexagon(p: Vec2, r: f32) -> f32 {
 
 /// Signed distance to an octagon
 pub fn octagon(p: Vec2, r: f32) -> f32 {
-    let k = Vec3::new(-0.9238795325, 0.3826834323, 0.4142135623);
+    let k = Vec3::new(-0.923_879_5, 0.382_683_43, 0.414_213_57);
     let mut p = p.abs();
     p = p - 2.0 * f32::min(Vec2::new(k.x, k.y).dot(p), 0.0) * Vec2::new(k.x, k.y);
     p = p - 2.0 * f32::min(Vec2::new(-k.x, k.y).dot(p), 0.0) * Vec2::new(-k.x, k.y);
@@ -212,7 +212,7 @@ pub fn octagon(p: Vec2, r: f32) -> f32 {
 
 /// Signed distance to a hexagram (6-pointed star)
 pub fn hexagram(p: Vec2, r: f32) -> f32 {
-    let k = Vec4::new(-0.5, 0.8660254038, 0.5773502692, 1.7320508076);
+    let k = Vec4::new(-0.5, 0.866_025_4, 0.577_350_26, 1.732_050_8);
     let mut p = p.abs();
     p = p - 2.0 * f32::min(Vec2::new(k.x, k.y).dot(p), 0.0) * Vec2::new(k.x, k.y);
     p = p - 2.0 * f32::min(Vec2::new(k.y, k.x).dot(p), 0.0) * Vec2::new(k.y, k.x);
@@ -222,14 +222,14 @@ pub fn hexagram(p: Vec2, r: f32) -> f32 {
 
 /// Signed distance to a 5-pointed star
 pub fn star_5(p: Vec2, r: f32, rf: f32) -> f32 {
-    let k1 = Vec2::new(0.809016994375, -0.587785252292);
+    let k1 = Vec2::new(0.809_017, -0.587_785_24);
     let k2 = Vec2::new(-k1.x, k1.y);
     let mut p = p;
     p.x = p.x.abs();
     p = p - 2.0 * f32::max(k1.dot(p), 0.0) * k1;
     p = p - 2.0 * f32::max(k2.dot(p), 0.0) * k2;
     p.x = p.x.abs();
-    p.y = p.y - r;
+    p.y -= r;
     let ba = Vec2::new(rf * (-k1.y), rf * k1.x - 1.0);
     let h = clamp(p.dot(ba) / ba.dot(ba), 0.0, r);
     (p - ba * h).length() * sign(p.y * ba.x - p.x * ba.y)
@@ -244,7 +244,7 @@ pub fn star(p: Vec2, r: f32, n: i32, m: f32) -> f32 {
 
     let bn = modulo(p.y.atan2(p.x), 2.0 * an) - an;
     let mut p_star = Vec2::new(p.length() * bn.cos(), p.length() * bn.sin().abs());
-    p_star = p_star - r * acs;
+    p_star -= r * acs;
     p_star = p_star + ecs * clamp(-p_star.dot(ecs), 0.0, r * acs.y / ecs.y);
     p_star.length() * sign(p_star.x)
 }
@@ -508,14 +508,14 @@ pub fn stairs(p: Vec2, wh: Vec2, n: f32) -> f32 {
         (wh.y * p.x + wh.x * p.y) / dia,
     );
     let id = clamp((p.x / dia).round(), 0.0, n - 1.0);
-    p.x = p.x - id * dia;
+    p.x -= id * dia;
     p = Vec2::new(
         (wh.x * p.x + wh.y * p.y) / dia,
         (-wh.y * p.x + wh.x * p.y) / dia,
     );
 
     let hh = wh.y / 2.0;
-    p.y = p.y - hh;
+    p.y -= hh;
     if p.y > hh * sign(p.x) {
         s = 1.0;
     }
@@ -554,7 +554,8 @@ pub fn moon(p: Vec2, d: f32, ra: f32, rb: f32) -> f32 {
         f32::max(p.length() - ra, -((p - Vec2::new(d, 0.0)).length() - rb))
     }
 }
-/// Operations for combining SDF shapes
+
+// Operations for combining SDF shapes
 
 /// Union of two SDF shapes
 pub fn op_union(d1: f32, d2: f32) -> f32 {
