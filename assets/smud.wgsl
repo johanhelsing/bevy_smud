@@ -644,7 +644,7 @@ fn rotate_45_(p: vec2<f32>) -> vec2<f32> {
     let c = 0.70710678118; // cos(pi / 4) == sin(pi / 4);
     let xc = p.x * c;
     let yc = p.y * c;
-    return vec2<f32>(xc + yc, xc - yc);
+    return vec2<f32>(xc + yc, -xc + yc);
 }
 
 fn op_smooth_subtract(d1: f32, d2: f32, k: f32) -> f32 {
