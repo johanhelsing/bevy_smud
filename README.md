@@ -90,12 +90,6 @@ Send me a PR if you want your project featured here:
 
 - Dis order: [![dis order screenshot](https://johanhelsing.studio/assets/dis-order.png)](https://jhelsing.itch.io/dis-order)
 
-## Word of caution
-
-This crate is still fairly experimental.
-
-If you want something more finished, you should probably check out [bevy_prototype_lyon](https://github.com/Nilirad/bevy_prototype_lyon).
-
 ## Bevy version support
 
 The `main` branch targets the latest bevy release.
