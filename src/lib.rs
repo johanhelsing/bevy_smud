@@ -85,6 +85,8 @@ pub mod prelude {
     pub use crate::picking_backend::{
         SmudPickingCamera, SmudPickingPlugin, SmudPickingSettings, SmudPickingShape,
     };
+
+    pub use crate::sdf;
 }
 
 #[derive(Default)]
