@@ -22,7 +22,7 @@ An SDF is a way to map points in space to distances to a surface. If a point map
 Many such functions describing geometric primitives are included in this library, they are imported automatically when using the single-expression or body shorthand for adding sdfs. For instance, the circle above could also be described as:
 
 ```wgsl
-sd_circle(p - center, 50.)
+smud::sd_circle(p - center, 50.)
 ```
 
 Similarly there are a bunch of other shapes (`sd_ellipse`, `sd_box`, `sd_rounded_box`, `sd_egg` etc. etc.)
@@ -48,7 +48,7 @@ fn setup(
 ) {
     commands.spawn(Camera2d);
 
-    let circle = shaders.add_sdf_expr("sd_circle(p, 50.)");
+    let circle = shaders.add_sdf_expr("smud::sd_circle(p, 50.)");
 
     commands.spawn(SmudShape {
         color: Color::WHITE,
@@ -61,7 +61,7 @@ fn setup(
 
 Make sure you reuse the shaders, i.e. don't call `add_sdf_expr` every frame.
 
-You can also define shapes in .wgsl files. Note that in order to use the built-in shapes, you have to import [`smud`](https://github.com/johanhelsing/bevy_smud/blob/main/assets/smud.wgsl), and you must create a function named `sdf` that takes a `vec2<f32>` and returns `f32`.
+You can also define shapes in .wgsl files. Note that in order to use the built-in shapes, you have to import [`smud`](https://github.com/johanhelsing/bevy_smud/blob/main/assets/smud.wgsl), and you must create a function named `sdf` that takes a `smud::SdfInput` and returns `f32`.
 
 Other than that, make sure you understand how to combine shapes, use symmetries and change domains. For instance, the [bevy](https://github.com/johanhelsing/bevy_smud/blob/main/assets/bevy.wgsl) in the screenshot above is built up of several circles, ellipses, and a vesica for the beak.
 

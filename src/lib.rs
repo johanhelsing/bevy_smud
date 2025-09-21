@@ -63,6 +63,7 @@ use crate::util::generate_shader_id;
 mod components;
 #[cfg(feature = "bevy_picking")]
 mod picking_backend;
+pub mod sdf;
 mod sdf_assets;
 mod shader_loading;
 mod util;
@@ -84,6 +85,8 @@ pub mod prelude {
     pub use crate::picking_backend::{
         SmudPickingCamera, SmudPickingPlugin, SmudPickingSettings, SmudPickingShape,
     };
+
+    pub use crate::sdf;
 }
 
 #[derive(Default)]
