@@ -1,7 +1,9 @@
 #define_import_path smud::star_bevy
 
 #import smud
-#import smud::view_bindings::globals
+#import bevy_render::globals::Globals
+
+@group(0) @binding(1) var<uniform> globals: Globals;
 
 fn bevy_head(p: vec2<f32>) -> f32 {
     let skull = smud::sd_ellipse(p, 0.22, 0.20);
