@@ -8,6 +8,9 @@
 use bevy::math::{Vec2, Vec3, Vec4};
 use std::f32::consts::PI;
 
+// Helpers, some of these have perfect implementations in rust std
+// but we keep these for clarity and to 1-to-1 match with the WGSL versions
+
 /// Helper function to calculate squared length of a 2D vector
 fn dot2(p: Vec2) -> f32 {
     p.length_squared()
@@ -33,6 +36,8 @@ fn sign(x: f32) -> f32 {
 fn modulo(x: f32, y: f32) -> f32 {
     x - y * (x / y).floor()
 }
+
+// Distance functions
 
 /// Signed distance to a circle
 pub fn circle(p: Vec2, radius: f32) -> f32 {
