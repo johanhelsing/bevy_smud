@@ -15,7 +15,6 @@ struct Vertex {
     @location(3) rotation: vec2<f32>,
     @location(4) scale: f32,
     @location(5) frame: f32,
-    @location(6) fill_params: vec4<f32>,
 };
 
 struct VertexOutput {
@@ -23,7 +22,6 @@ struct VertexOutput {
     @location(0) color: vec4<f32>,
     @location(1) pos: vec2<f32>,
     @location(2) params: vec4<f32>,
-    @location(3) fill_params: vec4<f32>,
 };
 
 @vertex
@@ -42,7 +40,6 @@ fn vertex(
     out.clip_position = view.view_proj * vec4<f32>(pos, 1.);
     out.color = vertex.color;
     out.params = vertex.params;
-    out.fill_params = vertex.fill_params;
     out.pos = vec2<f32>(x, y) * vertex.frame;
     return out;
 }

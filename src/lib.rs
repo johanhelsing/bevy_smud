@@ -315,33 +315,27 @@ impl SpecializedRenderPipeline for SmudPipeline {
                 offset: (4 + 1) * 4,
                 shader_location: 2,
             },
-            // FillParams
-            VertexAttribute {
-                format: VertexFormat::Float32x4,
-                offset: (4 + 1 + 4) * 4,
-                shader_location: 6,
-            },
             // Position
             VertexAttribute {
                 format: VertexFormat::Float32x3,
-                offset: (4 + 1 + 4 + 4) * 4,
+                offset: (4 + 1 + 4) * 4,
                 shader_location: 0,
             },
             // Rotation
             VertexAttribute {
                 format: VertexFormat::Float32x2,
-                offset: (4 + 1 + 4 + 4 + 3) * 4,
+                offset: (4 + 1 + 4 + 3) * 4,
                 shader_location: 3,
             },
             // Scale
             VertexAttribute {
                 format: VertexFormat::Float32,
-                offset: (4 + 1 + 4 + 4 + 3 + 2) * 4,
+                offset: (4 + 1 + 4 + 3 + 2) * 4,
                 shader_location: 4,
             },
         ];
         // This is the sum of the size of the attributes above
-        let vertex_array_stride = (4 + 1 + 4 + 4 + 3 + 2 + 1) * 4;
+        let vertex_array_stride = (4 + 1 + 4 + 3 + 2 + 1) * 4;
 
         RenderPipelineDescriptor {
             vertex: VertexState {
@@ -490,7 +484,6 @@ struct FragmentInput {{
     @location(0) color: vec4<f32>,
     @location(1) pos: vec2<f32>,
     @location(2) params: vec4<f32>,
-    @location(3) fill_params: vec4<f32>,
 }};
 
 @fragment
@@ -499,7 +492,7 @@ fn fragment(in: FragmentInput) -> @location(0) vec4<f32> {{
     let d = sdf::sdf(sdf_input);
     let fill_input = smud::FillInput(
         in.pos,
-        in.fill_params,
+        in.params,
         d,
         in.color,
     );
@@ -533,7 +526,6 @@ struct ExtractedShape {
     render_entity: Entity,
     color: Color,
     params: Vec4,
-    fill_params: Vec4,
     frame: f32,
     sdf_shader: Handle<Shader>,
     fill_shader: Handle<Shader>,
@@ -575,7 +567,6 @@ fn extract_shapes(
             render_entity,
             color: shape.color,
             params: shape.params,
-            fill_params: shape.fill_params,
             transform: *transform,
             sdf_shader: shape.sdf.clone_weak(),
             fill_shader: shape.fill.clone_weak(),
@@ -866,7 +857,6 @@ fn prepare_shapes(
             let lrgba: LinearRgba = extracted_shape.color.into();
             let color = lrgba.to_f32_array();
             let params = extracted_shape.params.to_array();
-            let fill_params = extracted_shape.fill_params.to_array();
 
             let position = extracted_shape.transform.translation();
             let position = position.into();
@@ -884,7 +874,6 @@ fn prepare_shapes(
                 position,
                 color,
                 params,
-                fill_params,
                 rotation,
                 scale,
                 frame: extracted_shape.frame,
@@ -921,8 +910,7 @@ fn prepare_shapes(
 struct ShapeVertex {
     pub color: [f32; 4],
     pub frame: f32,
-    pub params: [f32; 4],      // for now all shapes have 4 f32 parameters
-    pub fill_params: [f32; 4], // parameters for fill shaders
+    pub params: [f32; 4], // for now all shapes have 4 f32 parameters
     pub position: [f32; 3],
     pub rotation: [f32; 2],
     pub scale: f32,

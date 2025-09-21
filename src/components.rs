@@ -39,8 +39,6 @@ pub struct SmudShape {
     pub params: Vec4,
     /// Blend mode for the shape
     pub blend_mode: BlendMode,
-    /// Parameters to pass to fill shaders
-    pub fill_params: Vec4,
 }
 
 impl Default for SmudShape {
@@ -50,7 +48,6 @@ impl Default for SmudShape {
             sdf: default(),
             frame: default(),
             params: default(),
-            fill_params: default(),
             fill: DEFAULT_FILL_HANDLE,
             blend_mode: BlendMode::default(),
         }
