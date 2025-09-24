@@ -11,9 +11,6 @@ const VIEW_BINDINGS_SHADER_HANDLE: Handle<Shader> =
 pub const VERTEX_SHADER_HANDLE: Handle<Shader> =
     weak_handle!("27b9d87f-6a69-49ee-a2e8-c0bc08ee4f61");
 
-pub const FRAGMENT_SHADER_HANDLE: Handle<Shader> =
-    weak_handle!("b42388f6-f32a-488a-b2e1-5819f2aa659e");
-
 /// The default fill used by `SmudShape`
 pub const DEFAULT_FILL_HANDLE: Handle<Shader> =
     weak_handle!("30981e86-7600-4089-b4e7-992601dc96b4");
@@ -43,13 +40,6 @@ impl Plugin for ShaderLoadingPlugin {
             app,
             VERTEX_SHADER_HANDLE,
             "../assets/vertex.wgsl",
-            Shader::from_wgsl
-        );
-
-        load_internal_asset!(
-            app,
-            FRAGMENT_SHADER_HANDLE,
-            "../assets/fragment.wgsl",
             Shader::from_wgsl
         );
 
