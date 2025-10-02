@@ -20,10 +20,11 @@ use bevy::{
         },
     },
     math::{FloatOrd, Vec3Swizzles},
+    mesh::VertexBufferLayout,
     platform::collections::HashMap,
     prelude::*,
     render::{
-        Extract, MainWorld, Render, RenderApp, RenderSet,
+        Extract, MainWorld, Render, RenderApp, RenderSystems,
         globals::{GlobalsBuffer, GlobalsUniform},
         render_asset::RenderAssets,
         render_phase::{
@@ -36,10 +37,9 @@ use bevy::{
             ColorTargetState, ColorWrites, CompareFunction, DepthBiasState, DepthStencilState,
             Face, FragmentState, FrontFace, MultisampleState, PipelineCache, PolygonMode,
             PrimitiveState, PrimitiveTopology, RawBufferVec, RenderPipelineDescriptor,
-            ShaderDefVal, ShaderImport, ShaderStages, SpecializedRenderPipeline,
-            SpecializedRenderPipelines, StencilFaceState, StencilState, TextureFormat,
-            VertexAttribute, VertexBufferLayout, VertexFormat, VertexState, VertexStepMode,
-            binding_types::uniform_buffer,
+            ShaderStages, SpecializedRenderPipeline, SpecializedRenderPipelines, StencilFaceState,
+            StencilState, TextureFormat, VertexAttribute, VertexFormat, VertexState,
+            VertexStepMode, binding_types::uniform_buffer,
         },
         renderer::{RenderDevice, RenderQueue},
         sync_world::{MainEntity, RenderEntity},
@@ -49,6 +49,7 @@ use bevy::{
             ViewUniformOffset, ViewUniforms,
         },
     },
+    shader::{ShaderDefVal, ShaderImport},
 };
 use bytemuck::{Pod, Zeroable};
 use fixedbitset::FixedBitSet;
@@ -135,9 +136,9 @@ impl Plugin for SmudPlugin {
             .add_systems(
                 Render,
                 (
-                    queue_shapes.in_set(RenderSet::Queue),
-                    prepare_shape_view_bind_groups.in_set(RenderSet::PrepareBindGroups),
-                    prepare_shapes.in_set(RenderSet::PrepareBindGroups),
+                    queue_shapes.in_set(RenderSystems::Queue),
+                    prepare_shape_view_bind_groups.in_set(RenderSystems::PrepareBindGroups),
+                    prepare_shapes.in_set(RenderSystems::PrepareBindGroups),
                 ),
             );
     }
@@ -153,8 +154,8 @@ impl<P: PhaseItem, const I: usize> RenderCommand<P> for SetShapeViewBindGroup<I>
 
     fn render<'w>(
         _item: &P,
-        (view_uniform, shape_view_bind_group): ROQueryItem<'w, Self::ViewQuery>,
-        _entity: Option<ROQueryItem<'w, Self::ItemQuery>>,
+        (view_uniform, shape_view_bind_group): ROQueryItem<'w, '_, Self::ViewQuery>,
+        _entity: Option<ROQueryItem<'w, '_, Self::ItemQuery>>,
         _param: SystemParamItem<'w, '_, Self::Param>,
         pass: &mut TrackedRenderPass<'w>,
     ) -> RenderCommandResult {
@@ -171,7 +172,7 @@ impl<P: PhaseItem> RenderCommand<P> for DrawShapeBatch {
 
     fn render<'w>(
         item: &P,
-        view: ROQueryItem<'w, Self::ViewQuery>,
+        view: ROQueryItem<'w, '_, Self::ViewQuery>,
         _entity: Option<()>,
         (shape_meta, batches): SystemParamItem<'w, '_, Self::Param>,
         pass: &mut TrackedRenderPass<'w>,
@@ -340,7 +341,7 @@ impl SpecializedRenderPipeline for SmudPipeline {
         RenderPipelineDescriptor {
             vertex: VertexState {
                 shader: VERTEX_SHADER_HANDLE,
-                entry_point: "vertex".into(),
+                entry_point: Some("vertex".into()),
                 shader_defs: Vec::new(),
                 buffers: vec![VertexBufferLayout {
                     array_stride: vertex_array_stride,
@@ -349,8 +350,8 @@ impl SpecializedRenderPipeline for SmudPipeline {
                 }],
             },
             fragment: Some(FragmentState {
-                shader: shader.clone_weak(),
-                entry_point: "fragment".into(),
+                shader: shader.clone(),
+                entry_point: Some("fragment".into()),
                 shader_defs,
                 targets: vec![Some(ColorTargetState {
                     format: if key.hdr {
@@ -568,8 +569,8 @@ fn extract_shapes(
             color: shape.color,
             params: shape.params,
             transform: *transform,
-            sdf_shader: shape.sdf.clone_weak(),
-            fill_shader: shape.fill.clone_weak(),
+            sdf_shader: shape.sdf.clone(),
+            fill_shader: shape.fill.clone(),
             frame,
             blend_mode: shape.blend_mode,
         });

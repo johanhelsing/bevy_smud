@@ -17,7 +17,7 @@
 //! - The `normal` points away from the shape using the transform's back vector
 //! - Depth is calculated based on the shape's Z position in camera space
 
-use bevy::{picking::PickSet, picking::backend::prelude::*, prelude::*};
+use bevy::{picking::PickingSystems, picking::backend::prelude::*, prelude::*};
 
 use crate::{Frame, SmudShape};
 
@@ -85,7 +85,7 @@ pub struct SmudPickingPlugin;
 impl Plugin for SmudPickingPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<SmudPickingSettings>()
-            .add_systems(PreUpdate, smud_picking.in_set(PickSet::Backend));
+            .add_systems(PreUpdate, smud_picking.in_set(PickingSystems::Backend));
     }
 }
 
@@ -103,7 +103,7 @@ pub fn smud_picking(
         Option<&Pickable>,
         Option<&SmudPickingShape>,
     )>,
-    mut output: EventWriter<PointerHits>,
+    mut output: MessageWriter<PointerHits>,
 ) {
     // Collect shapes sorted by depth (back to front for proper ordering)
     let mut sorted_shapes: Vec<_> = shapes

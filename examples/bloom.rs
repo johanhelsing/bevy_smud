@@ -4,8 +4,9 @@
 //! effects by creating a custom fill.
 
 use bevy::color::palettes::css;
-use bevy::core_pipeline::bloom::Bloom;
+use bevy::post_process::bloom::Bloom;
 use bevy::prelude::*;
+use bevy::render::view::Hdr;
 // The prelude contains the basic things needed to create shapes
 use bevy_smud::prelude::*;
 
@@ -39,10 +40,7 @@ fn setup(mut commands: Commands, mut shaders: ResMut<Assets<Shader>>) {
         // bevy_smud comes with anti-aliasing built into the standard fills
         // which is more efficient than MSAA, and also works on Linux, wayland
         Msaa::Off,
-        Camera {
-            hdr: true,
-            ..default()
-        },
+        Hdr,
         Bloom {
             intensity: 0.7,
             ..default()
