@@ -49,7 +49,7 @@ fn sdf(input: smud::SdfInput) -> f32 {{
 
 #import smud
 
-fn fill(d: f32, color: vec4<f32>) -> vec4<f32> {{
+fn fill(input: smud::FillInput) -> vec4<f32> {{
     {body}
 }}
 "#

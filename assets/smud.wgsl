@@ -9,6 +9,14 @@ struct SdfInput {
     params: vec4<f32>,   // User-defined parameters
 }
 
+// Input struct for fill functions containing all available data
+struct FillInput {
+    pos: vec2<f32>,      // Position in shape space
+    params: vec4<f32>,   // User-defined parameters for fill
+    distance: f32,
+    color: vec4<f32>,
+}
+
 fn sd_circle(p: vec2<f32>, r: f32) -> f32 {
     return length(p) - r;
 }

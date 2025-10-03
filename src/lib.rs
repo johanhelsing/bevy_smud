@@ -490,7 +490,13 @@ struct FragmentInput {{
 fn fragment(in: FragmentInput) -> @location(0) vec4<f32> {{
     let sdf_input = smud::SdfInput(in.pos, in.params);
     let d = sdf::sdf(sdf_input);
-    var color = fill::fill(d, in.color);
+    let fill_input = smud::FillInput(
+        in.pos,
+        in.params,
+        d,
+        in.color,
+    );
+    var color = fill::fill(fill_input);
 
 #ifdef TONEMAP_IN_SHADER
     color = tonemapping::tone_mapping(color, view.color_grading);
