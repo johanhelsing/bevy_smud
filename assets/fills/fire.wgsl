@@ -99,13 +99,58 @@ fn fbm_simplex_3d(pos: vec3<f32>, octaves: i32, lacunarity: f32, gain: f32) -> f
 }
 
 fn fill(input: smud::FillInput) -> vec4<f32> {
-    let d2 = 1. - (input.distance * 0.13);
-    let alpha = clamp(d2 * d2 * d2, 0., 1.) * input.color.a;
-    let aaf = 0.7 / fwidth(input.distance);
     let t = globals.time;
-    let noise = fbm_simplex_3d(vec3<f32>(input.pos.x * 0.001, input.pos.y * 0.001 - t * 0.5, 0.), 5, 2., 0.5) * 0.3;
-    let c = vec3<f32>(1.0, -input.pos.y * 0.003 + noise + 0.3, 0.0);
+    let p = input.pos;
+    var d = input.distance;
+    let noise_scale = 0.03;
+    let scroll_speed = 0.4;
+
+    // Domain warping: use noise to offset the position before sampling main noise
+    let warp_noise = fbm_simplex_3d(vec3<f32>(p.x * 0.01, p.y * 0.01 - t * 0.2, t * 0.08), 3, 2., 0.5);
+    let warped_pos = p + vec2<f32>(warp_noise * 10.0, warp_noise * 5.0);
+
+    let noise = fbm_simplex_3d(vec3<f32>(warped_pos.x * noise_scale, warped_pos.y * noise_scale - t * scroll_speed, t * 0.05), 7, 2., 0.5) * 0.3;
+
+    // Increase distortion towards the top of the flame
+    let flame_distortion_t = saturate(p.y * 0.002 + 0.5);
+    d -= (mix(0, noise, flame_distortion_t) + 0.2) * 30.0;
+
+    // Alpha with cubic falloff
+    let d2 = 1. - (d * 0.13);
+    let alpha = clamp(d2 * d2 * d2, 0., 1.) * input.color.a;
+    let aaf = 0.7 / fwidth(d);
+
+    // Color palette: white-hot core -> yellow -> orange -> red -> dark
+    // Temperature gradient based on height and distance from core
+    let height_temp = -p.y * 0.0017 + noise * 0.15;
+    let core_temp = clamp(-d * 0.008, 0., 1.);
+
+    // Time-based flickering for dynamic intensity
+    let flicker_scale = 0.003; // very low scale for large area flicker
+    var flicker = simplex_noise_3d(vec3<f32>(p.x * flicker_scale, p.y * flicker_scale, t * 2.0)) * 0.1 + 0.95; // Range: 0.85 to 1.05
+
+    // As d approaches 0 (the edge), fade to dark/smoke regardless of other factors
+    let edge_fade = smoothstep(10.0, -10.0, d); // 1 when deep inside, 0 at edge
+    let temp = saturate(height_temp + core_temp + 0.3) * edge_fade * flicker;
+
+    // Fire color ramp
+    var c: vec3<f32>;
+    if (temp > 0.8) {
+        // White hot core
+        c = mix(vec3<f32>(1.0, 0.9, 0.5), vec3<f32>(1.0, 1.0, 1.0), (temp - 0.8) * 5.0);
+    } else if (temp > 0.5) {
+        // Yellow to orange
+        c = mix(vec3<f32>(1.0, 0.5, 0.0), vec3<f32>(1.0, 0.9, 0.5), (temp - 0.5) * 3.33);
+    } else if (temp > 0.2) {
+        // Red to orange
+        c = mix(vec3<f32>(0.8, 0.1, 0.0), vec3<f32>(1.0, 0.5, 0.0), (temp - 0.2) * 3.33);
+    } else {
+        // Dark red to black
+        c = mix(vec3<f32>(0.0, 0.0, 0.0), vec3<f32>(0.8, 0.1, 0.0), temp * 5.0);
+    }
+
     let shadow_color = 0.2 * c;
-    let c_falloff = mix(c, shadow_color, clamp(input.distance * aaf, 0., 1.));
+    let c_falloff = mix(c, shadow_color, clamp(d * aaf, 0., 1.));
+
     return vec4<f32>(c_falloff, alpha);
 }

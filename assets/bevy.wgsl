@@ -9,10 +9,7 @@ fn bevy_head(p: vec2<f32>) -> f32 {
     return min(skull, beak);
 }
 
-fn sdf(input: smud::SdfInput) -> f32 {
-    let scale = 300.0;
-    var p = input.pos / scale;
-
+fn sd_bevy(p: vec2<f32>) -> f32 {
     let p_upper_wing = p - vec2<f32>(-0.3, -0.25);
     let upper_wing = max(
         smud::sd_ellipse(p_upper_wing, 0.7, 0.6),
@@ -27,7 +24,7 @@ fn sdf(input: smud::SdfInput) -> f32 {
 
     let wings = max(min(lower_wing, upper_wing), max(-p.y - 0.5, p.x - 0.10));
 
-    let chest_clip = max(-p.y - 0.35, p.x - 0.1);
+    let chest_clip = max(-p.y - 0.15, p.x + 0.1 - p.y * 0.9);
     let tail_clip = p.x + 0.7;
 
     let head = bevy_head(p - vec2<f32>(0.18, 0.40));
@@ -53,5 +50,11 @@ fn sdf(input: smud::SdfInput) -> f32 {
     let eye = smud::sd_circle(p - vec2<f32>(0.20, 0.45), 0.05);
     let bevy = max(body, -eye);
 
-    return bevy * scale;
+    return bevy;
+}
+
+fn sdf(input: smud::SdfInput) -> f32 {
+    let scale = 300.0;
+    var p = input.pos / scale;
+    return sd_bevy(p) * scale;
 }
