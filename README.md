@@ -53,7 +53,7 @@ fn setup(
     commands.spawn(SmudShape {
         color: Color::WHITE,
         sdf: circle,
-        frame: Frame::Quad(55.),
+        frame: Frame::quad_half_size(55.),
         ..default()
     });
 }

@@ -57,12 +57,27 @@ impl Default for SmudShape {
 /// Bounds for describing how far the fragment shader of a shape will reach, should be bigger than the shape unless you want to clip it
 #[derive(Reflect, Debug, Clone, Copy)]
 pub enum Frame {
-    /// A quad with a given half-size (!)
-    Quad(f32), // todo: it probably makes sense for this to be the full width instead...
+    /// A quad with a given half-size
+    Quad {
+        /// The half-size of the quad (distance from center to edge)
+        half_size: f32,
+    },
 }
 
 impl Frame {
-    const DEFAULT_QUAD: Self = Self::Quad(1.);
+    const DEFAULT_QUAD: Self = Self::Quad { half_size: 1. };
+
+    /// Create a quad frame from a half-size (distance from center to edge)
+    pub const fn quad_half_size(half_size: f32) -> Self {
+        Self::Quad { half_size }
+    }
+
+    /// Create a quad frame from a full size (total width/height)
+    pub const fn quad_size(size: f32) -> Self {
+        Self::Quad {
+            half_size: size / 2.0,
+        }
+    }
 }
 
 impl Default for Frame {

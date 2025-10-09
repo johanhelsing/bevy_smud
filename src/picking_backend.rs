@@ -190,7 +190,7 @@ pub fn smud_picking(
             } else {
                 // Fall back to frame-based hit testing
                 match shape.frame {
-                    Frame::Quad(half_size) => {
+                    Frame::Quad { half_size } => {
                         local_point.x.abs() <= half_size && local_point.y.abs() <= half_size
                     }
                 }

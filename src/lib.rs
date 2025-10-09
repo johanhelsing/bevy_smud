@@ -559,7 +559,7 @@ fn extract_shapes(
             continue;
         }
 
-        let Frame::Quad(frame) = shape.frame;
+        let Frame::Quad { half_size } = shape.frame;
 
         // TODO: bevy_sprite has some slice stuff here? what is it for?
 
@@ -571,7 +571,7 @@ fn extract_shapes(
             transform: *transform,
             sdf_shader: shape.sdf.clone(),
             fill_shader: shape.fill.clone(),
-            frame,
+            frame: half_size,
             blend_mode: shape.blend_mode,
         });
     }

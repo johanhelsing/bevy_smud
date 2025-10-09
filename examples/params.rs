@@ -74,7 +74,7 @@ fn setup(
             SmudShape {
                 color,
                 sdf: box_sdf.clone(),
-                frame: Frame::Quad(f32::max(size.x, size.y) + padding),
+                frame: Frame::quad_half_size(f32::max(size.x, size.y) + padding),
                 params: Vec4::new(size.x, size.y, 0., 0.),
                 ..default()
             },

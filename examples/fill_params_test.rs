@@ -37,7 +37,7 @@ fn setup(mut commands: Commands, mut shaders: ResMut<Assets<Shader>>) {
         sdf: circle,
         fill: position_test_fill,
         params: Vec4::new(1.0, 0.0, 0.0, 0.0), // Red modulation
-        frame: Frame::Quad(55.),
+        frame: Frame::quad_half_size(55.),
         ..default()
     });
 }

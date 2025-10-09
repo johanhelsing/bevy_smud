@@ -25,7 +25,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
             // You can also specify a custom type of fill
             // The simple fill is just a simple anti-aliased opaque fill
             fill: SIMPLE_FILL_HANDLE,
-            frame: Frame::Quad(295.),
+            frame: Frame::quad_half_size(295.),
             ..default()
         },
     ));
