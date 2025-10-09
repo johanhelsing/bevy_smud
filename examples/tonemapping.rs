@@ -28,7 +28,7 @@ fn setup(mut commands: Commands, mut shaders: ResMut<Assets<Shader>>) {
         SmudShape {
             color: css::TOMATO.into(),
             sdf: circle,
-            frame: Rectangle::from_length(160.),
+            bounds: Rectangle::from_length(160.),
             fill: SIMPLE_FILL_HANDLE,
             ..default()
         },

@@ -32,8 +32,8 @@ pub struct SmudShape {
     ///
     /// The shader needs to have the signature `fn fill(distance: f32, color: vec4<f32>) -> vec4<f32>`.
     pub fill: Handle<Shader>, // todo: wrap in newtypes?
-    /// The outer bounds for the shape, should be bigger than the sdf shape
-    pub frame: Rectangle,
+    /// The bounds for rendering this shape, should be larger than the actual SDF shape to avoid clipping
+    pub bounds: Rectangle,
     /// Parameters to pass to shapes, for things such as width of a box
     // perhaps it would be a better idea to have this as a separate component?
     // keeping it here for now...
@@ -47,7 +47,7 @@ impl Default for SmudShape {
         Self {
             color: css::PINK.into(),
             sdf: default(),
-            frame: default(),
+            bounds: default(),
             params: default(),
             fill: DEFAULT_FILL_HANDLE,
             blend_mode: BlendMode::default(),

@@ -305,7 +305,7 @@ impl SpecializedRenderPipeline for SmudPipeline {
                 offset: 0,
                 shader_location: 1,
             },
-            // Frame
+            // Bounds
             VertexAttribute {
                 format: VertexFormat::Float32x2,
                 offset: (4) * 4,
@@ -529,7 +529,7 @@ struct ExtractedShape {
     render_entity: Entity,
     color: Color,
     params: Vec4,
-    frame: Vec2,
+    bounds: Vec2,
     sdf_shader: Handle<Shader>,
     fill_shader: Handle<Shader>,
     transform: GlobalTransform,
@@ -571,7 +571,7 @@ fn extract_shapes(
             transform: *transform,
             sdf_shader: shape.sdf.clone(),
             fill_shader: shape.fill.clone(),
-            frame: shape.frame.half_size,
+            bounds: shape.bounds.half_size,
             blend_mode: shape.blend_mode,
         });
     }
@@ -877,7 +877,7 @@ fn prepare_shapes(
                 params,
                 rotation,
                 scale,
-                frame: extracted_shape.frame.to_array(),
+                bounds: extracted_shape.bounds.to_array(),
             };
             shape_meta.vertices.push(vertex);
 
@@ -910,7 +910,7 @@ fn prepare_shapes(
 #[derive(Debug, Copy, Clone, Pod, Zeroable)]
 struct ShapeVertex {
     pub color: [f32; 4],
-    pub frame: [f32; 2],
+    pub bounds: [f32; 2],
     pub params: [f32; 4], // for now all shapes have 4 f32 parameters
     pub position: [f32; 3],
     pub rotation: [f32; 2],

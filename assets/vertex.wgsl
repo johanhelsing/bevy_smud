@@ -14,7 +14,7 @@ struct Vertex {
     @location(2) params: vec4<f32>,
     @location(3) rotation: vec2<f32>,
     @location(4) scale: f32,
-    @location(5) frame: vec2<f32>,
+    @location(5) bounds: vec2<f32>,
 };
 
 struct VertexOutput {
@@ -34,8 +34,8 @@ fn vertex(
     let y = select(-1., 1., (i / 2u) % 2u == 0u);
     let c = vertex.rotation.x;
     let s = vertex.rotation.y;
-    // Scale by frame first to get the rectangle shape
-    let corner = vec2<f32>(x, y) * vertex.frame;
+    // Scale by bounds first to get the rectangle shape
+    let corner = vec2<f32>(x, y) * vertex.bounds;
     // Then rotate the rectangle
     let rotated = vec2<f32>(corner.x * c - corner.y * s, corner.x * s + corner.y * c);
     // Then apply scale

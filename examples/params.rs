@@ -76,7 +76,7 @@ fn setup(
                 color,
                 sdf: box_sdf.clone(),
                 // Tight bounding rectangle to minimize overdraw
-                frame: Rectangle::from_size(size + padding * 2.),
+                bounds: Rectangle::from_size(size + padding * 2.),
                 params: Vec4::new(size.x / 2., size.y / 2., 0., 0.),
                 ..default()
             },

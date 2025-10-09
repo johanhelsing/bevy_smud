@@ -31,7 +31,7 @@ fn setup(mut commands: Commands, mut shaders: ResMut<Assets<Shader>>) {
         SmudShape {
             color: css::RED.with_alpha(0.8).into(),
             sdf: circle.clone(),
-            frame: Rectangle::from_length(160.),
+            bounds: Rectangle::from_length(160.),
             blend_mode: BlendMode::Alpha, // Normal alpha blending
             ..default()
         },
@@ -43,7 +43,7 @@ fn setup(mut commands: Commands, mut shaders: ResMut<Assets<Shader>>) {
         SmudShape {
             color: css::GREEN.with_alpha(0.8).into(),
             sdf: circle.clone(),
-            frame: Rectangle::from_length(160.),
+            bounds: Rectangle::from_length(160.),
             blend_mode: BlendMode::Alpha, // Normal alpha blending
             ..default()
         },
@@ -55,7 +55,7 @@ fn setup(mut commands: Commands, mut shaders: ResMut<Assets<Shader>>) {
         SmudShape {
             color: css::BLUE.with_alpha(0.8).into(),
             sdf: circle.clone(),
-            frame: Rectangle::from_length(160.),
+            bounds: Rectangle::from_length(160.),
             blend_mode: BlendMode::Alpha, // Normal alpha blending
             ..default()
         },
@@ -68,7 +68,7 @@ fn setup(mut commands: Commands, mut shaders: ResMut<Assets<Shader>>) {
         SmudShape {
             color: css::RED.with_alpha(0.8).into(),
             sdf: circle.clone(),
-            frame: Rectangle::from_length(160.),
+            bounds: Rectangle::from_length(160.),
             blend_mode: BlendMode::Additive, // Additive blending
             ..default()
         },
@@ -80,7 +80,7 @@ fn setup(mut commands: Commands, mut shaders: ResMut<Assets<Shader>>) {
         SmudShape {
             color: css::GREEN.with_alpha(0.8).into(),
             sdf: circle.clone(),
-            frame: Rectangle::from_length(160.),
+            bounds: Rectangle::from_length(160.),
             blend_mode: BlendMode::Additive, // Additive blending
             ..default()
         },
@@ -92,7 +92,7 @@ fn setup(mut commands: Commands, mut shaders: ResMut<Assets<Shader>>) {
         SmudShape {
             color: css::BLUE.with_alpha(0.8).into(),
             sdf: circle.clone(),
-            frame: Rectangle::from_length(160.),
+            bounds: Rectangle::from_length(160.),
             blend_mode: BlendMode::Additive, // Additive blending
             ..default()
         },

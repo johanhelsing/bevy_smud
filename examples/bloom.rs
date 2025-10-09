@@ -28,9 +28,9 @@ fn setup(mut commands: Commands, mut shaders: ResMut<Assets<Shader>>) {
     commands.spawn(SmudShape {
         color: css::TOMATO.into(),
         sdf: circle,
-        // The frame needs to be bigger than the shape we're drawing
-        // Since the circle has radius 70, we make the frame 160 (with some padding).
-        frame: Rectangle::from_length(160.),
+        // The bounds need to be bigger than the shape we're drawing
+        // Since the circle has radius 70, we make the bounds 160 (with some padding).
+        bounds: Rectangle::from_length(160.),
         fill: SIMPLE_FILL_HANDLE,
         ..default()
     });

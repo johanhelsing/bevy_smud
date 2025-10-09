@@ -23,7 +23,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         SmudShape {
             color: Color::srgb(0.36, 0.41, 0.45),
             sdf: asset_server.load("bevy_on_fire.wgsl"),
-            frame: Rectangle::from_length(800.),
+            bounds: Rectangle::from_length(800.),
             fill: asset_server.load("fills/fire.wgsl"),
             ..default()
         },

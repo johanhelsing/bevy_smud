@@ -20,7 +20,7 @@ fn setup(mut commands: Commands, mut shaders: ResMut<Assets<Shader>>) {
         SmudShape {
             color: css::ORANGE.into(),
             sdf: shaders.add_sdf_expr("smud::sd_circle(p, 100.)"),
-            frame: Rectangle::from_length(300.), // Frame is larger than the circle
+            bounds: Rectangle::from_length(300.), // Bounds are larger than the circle
             ..default()
         },
         Pickable::default(),
@@ -30,13 +30,13 @@ fn setup(mut commands: Commands, mut shaders: ResMut<Assets<Shader>>) {
         }),
     ));
 
-    // Right star: Uses frame-based picking (no SdfPickingShape component)
+    // Right star: Uses bounds-based picking (no SdfPickingShape component)
     commands.spawn((
         Transform::from_translation(Vec3::new(350.0, 0.0, 0.0)),
         SmudShape {
             color: css::ORANGE.into(),
             sdf: shaders.add_sdf_expr("smud::sd_star_5_(p, 60.0, 2.0)"),
-            frame: Rectangle::from_length(300.), // Frame is larger than the star
+            bounds: Rectangle::from_length(300.), // Bounds are larger than the star
             ..default()
         },
         Pickable::default(),
@@ -48,7 +48,7 @@ fn setup(mut commands: Commands, mut shaders: ResMut<Assets<Shader>>) {
         SmudShape {
             color: css::ORANGE.into(),
             sdf: shaders.add_sdf_expr("smud::sd_heart((p / 160.0) - vec2(0.0, -0.5)) * 160.0"),
-            frame: Rectangle::from_length(300.), // Frame is larger than the heart
+            bounds: Rectangle::from_length(300.), // Bounds are larger than the heart
             ..default()
         },
         Pickable::default(),
@@ -60,7 +60,7 @@ fn setup(mut commands: Commands, mut shaders: ResMut<Assets<Shader>>) {
 
     info!("Left circle: Precise SDF-based picking - only responds inside the circle");
     info!("Center heart: Precise SDF-based picking - only responds inside the heart");
-    info!("Right star: Frame-based picking - responds in the entire square frame");
+    info!("Right star: Bounds-based picking - responds in the entire square bounds");
     info!("Hover and click to see the difference!");
 }
 

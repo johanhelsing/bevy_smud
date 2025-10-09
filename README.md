@@ -53,7 +53,7 @@ fn setup(
     commands.spawn(SmudShape {
         color: Color::WHITE,
         sdf: circle,
-        frame: Frame::quad_half_size(55.),
+        bounds: Rectangle::from_length(110.),
         ..default()
     });
 }
@@ -82,7 +82,7 @@ fn main() {
 }
 ```
 
-The picking backend supports both frame-based picking (fast, uses shape bounds) and precise SDF-based picking (accurate, uses Rust distance functions that match the shape geometry). See the [picking example](https://github.com/johanhelsing/bevy_smud/blob/main/examples/picking.rs) for details.
+The picking backend supports both bounds-based picking (fast, uses shape bounds) and precise SDF-based picking (accurate, uses Rust distance functions that match the shape geometry). See the [picking example](https://github.com/johanhelsing/bevy_smud/blob/main/examples/picking.rs) for details.
 
 ## Showcase
 

@@ -113,7 +113,7 @@ fn setup(
                     color,
                     // sdf_shader: shaders[index % shaders.len()].clone(),
                     sdf: shaders.choose(&mut rng).unwrap().clone(),
-                    frame: Rectangle::from_length(100.),
+                    bounds: Rectangle::from_length(100.),
                     fill: fills.choose(&mut rng).unwrap().clone(),
                     ..default()
                 },

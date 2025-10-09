@@ -24,7 +24,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     let shape = SmudShape {
         color: Color::srgb(0.36, 0.41, 0.45),
         sdf: bevy_shape_shader,
-        frame: Rectangle::from_length(590.),
+        bounds: Rectangle::from_length(590.),
         ..default()
     };
 

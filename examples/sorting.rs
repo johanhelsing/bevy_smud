@@ -17,7 +17,7 @@ fn setup(mut commands: Commands, mut shaders: ResMut<Assets<Shader>>) {
         SmudShape {
             color: Color::srgb(0.0, 0.0, 0.0),
             sdf: shaders.add_sdf_body("return smud::sd_circle(input.pos, 70.);"),
-            frame: Rectangle::from_length(160.),
+            bounds: Rectangle::from_length(160.),
             ..default()
         },
     ));
@@ -28,7 +28,7 @@ fn setup(mut commands: Commands, mut shaders: ResMut<Assets<Shader>>) {
         SmudShape {
             color: Color::srgb(0.46, 0.42, 0.80),
             sdf: shaders.add_sdf_body("return smud::sd_circle(input.pos, 150.);"),
-            frame: Rectangle::from_length(400.),
+            bounds: Rectangle::from_length(400.),
             ..default()
         },
     ));
@@ -39,7 +39,7 @@ fn setup(mut commands: Commands, mut shaders: ResMut<Assets<Shader>>) {
         SmudShape {
             color: Color::srgb(0.83, 0.82, 0.80),
             sdf: shaders.add_sdf_body("return smud::sd_vesica(p.yx, 400., 150.);"),
-            frame: Rectangle::from_length(800.),
+            bounds: Rectangle::from_length(800.),
             ..default()
         },
     ));
