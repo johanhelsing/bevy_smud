@@ -20,7 +20,7 @@ fn setup(mut commands: Commands, mut shaders: ResMut<Assets<Shader>>) {
         SmudShape {
             color: css::ORANGE.into(),
             sdf: shaders.add_sdf_expr("smud::sd_circle(p, 100.)"),
-            frame: Frame::quad_half_size(150.), // Frame is larger than the circle
+            frame: Rectangle::from_length(300.), // Frame is larger than the circle
             ..default()
         },
         Pickable::default(),
@@ -36,7 +36,7 @@ fn setup(mut commands: Commands, mut shaders: ResMut<Assets<Shader>>) {
         SmudShape {
             color: css::ORANGE.into(),
             sdf: shaders.add_sdf_expr("smud::sd_star_5_(p, 60.0, 2.0)"),
-            frame: Frame::quad_half_size(150.), // Frame is larger than the star
+            frame: Rectangle::from_length(300.), // Frame is larger than the star
             ..default()
         },
         Pickable::default(),
@@ -48,7 +48,7 @@ fn setup(mut commands: Commands, mut shaders: ResMut<Assets<Shader>>) {
         SmudShape {
             color: css::ORANGE.into(),
             sdf: shaders.add_sdf_expr("smud::sd_heart((p / 160.0) - vec2(0.0, -0.5)) * 160.0"),
-            frame: Frame::quad_half_size(150.), // Frame is larger than the heart
+            frame: Rectangle::from_length(300.), // Frame is larger than the heart
             ..default()
         },
         Pickable::default(),

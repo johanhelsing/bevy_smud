@@ -39,8 +39,8 @@ return smud::sd_circle(p_2 - vec2<f32>(20., 0.), 40.);
         color: css::TOMATO.into(),
         sdf: circle,
         // The frame needs to be bigger than the shape we're drawing
-        // Since the circle has radius 70, we make the half-size of the quad 80.
-        frame: Frame::quad_half_size(80.),
+        // Since the circle has radius 70, we make the frame 160 (with some padding).
+        frame: Rectangle::from_length(160.),
         ..default()
     });
 
@@ -49,7 +49,7 @@ return smud::sd_circle(p_2 - vec2<f32>(20., 0.), 40.);
         SmudShape {
             color: Color::srgb(0.7, 0.6, 0.4),
             sdf: peanut,
-            frame: Frame::quad_half_size(80.),
+            frame: Rectangle::from_length(160.),
             ..default()
         },
     ));
@@ -66,7 +66,7 @@ return smud::sd_circle(p_2 - vec2<f32>(20., 0.), 40.);
             // You can also specify a custom type of fill
             // The simple fill is just a simple anti-aliased opaque fill
             fill: SIMPLE_FILL_HANDLE,
-            frame: Frame::quad_half_size(295.),
+            frame: Rectangle::from_length(590.),
             ..default()
         },
     ));

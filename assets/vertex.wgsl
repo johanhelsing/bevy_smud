@@ -14,7 +14,7 @@ struct Vertex {
     @location(2) params: vec4<f32>,
     @location(3) rotation: vec2<f32>,
     @location(4) scale: f32,
-    @location(5) frame: f32,
+    @location(5) frame: vec2<f32>,
 };
 
 struct VertexOutput {
@@ -34,12 +34,16 @@ fn vertex(
     let y = select(-1., 1., (i / 2u) % 2u == 0u);
     let c = vertex.rotation.x;
     let s = vertex.rotation.y;
-    let rotated = vec2<f32>(x * c - y * s, x * s + y * c);
-    let pos = vertex.position + vec3<f32>(rotated * vertex.scale * vertex.frame, vertex.position.z);
+    // Scale by frame first to get the rectangle shape
+    let corner = vec2<f32>(x, y) * vertex.frame;
+    // Then rotate the rectangle
+    let rotated = vec2<f32>(corner.x * c - corner.y * s, corner.x * s + corner.y * c);
+    // Then apply scale
+    let pos = vertex.position + vec3<f32>(rotated * vertex.scale, 0.);
     // Project the world position of the mesh into screen position
     out.clip_position = view.view_proj * vec4<f32>(pos, 1.);
     out.color = vertex.color;
     out.params = vertex.params;
-    out.pos = vec2<f32>(x, y) * vertex.frame;
+    out.pos = corner;
     return out;
 }

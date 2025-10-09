@@ -29,8 +29,8 @@ fn setup(mut commands: Commands, mut shaders: ResMut<Assets<Shader>>) {
         color: css::TOMATO.into(),
         sdf: circle,
         // The frame needs to be bigger than the shape we're drawing
-        // Since the circle has radius 70, we make the half-size of the quad 80.
-        frame: Frame::quad_half_size(80.),
+        // Since the circle has radius 70, we make the frame 160 (with some padding).
+        frame: Rectangle::from_length(160.),
         fill: SIMPLE_FILL_HANDLE,
         ..default()
     });

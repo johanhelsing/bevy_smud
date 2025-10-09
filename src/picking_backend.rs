@@ -19,7 +19,7 @@
 
 use bevy::{picking::PickingSystems, picking::backend::prelude::*, prelude::*};
 
-use crate::{Frame, SmudShape};
+use crate::SmudShape;
 
 /// An optional component that marks cameras that should be used for SDF shape picking.
 ///
@@ -189,11 +189,8 @@ pub fn smud_picking(
                 distance <= 0.0 // Inside or on the surface
             } else {
                 // Fall back to frame-based hit testing
-                match shape.frame {
-                    Frame::Quad { half_size } => {
-                        local_point.x.abs() <= half_size && local_point.y.abs() <= half_size
-                    }
-                }
+                let half_size = shape.frame.half_size;
+                local_point.x.abs() <= half_size.x && local_point.y.abs() <= half_size.y
             };
 
             if is_hit {

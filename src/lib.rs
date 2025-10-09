@@ -78,9 +78,11 @@ mod util;
 /// ```
 pub mod prelude {
     pub use crate::{
-        BlendMode, DEFAULT_FILL_HANDLE, Frame, SIMPLE_FILL_HANDLE, SmudPlugin, SmudShape,
+        BlendMode, DEFAULT_FILL_HANDLE, SIMPLE_FILL_HANDLE, SmudPlugin, SmudShape,
         sdf_assets::SdfAssets,
     };
+
+    pub use bevy::math::primitives::Rectangle;
 
     #[cfg(feature = "bevy_picking")]
     pub use crate::picking_backend::{
@@ -305,7 +307,7 @@ impl SpecializedRenderPipeline for SmudPipeline {
             },
             // Frame
             VertexAttribute {
-                format: VertexFormat::Float32,
+                format: VertexFormat::Float32x2,
                 offset: (4) * 4,
                 shader_location: 5,
             },
@@ -313,30 +315,30 @@ impl SpecializedRenderPipeline for SmudPipeline {
             // Params
             VertexAttribute {
                 format: VertexFormat::Float32x4,
-                offset: (4 + 1) * 4,
+                offset: (4 + 2) * 4,
                 shader_location: 2,
             },
             // Position
             VertexAttribute {
                 format: VertexFormat::Float32x3,
-                offset: (4 + 1 + 4) * 4,
+                offset: (4 + 2 + 4) * 4,
                 shader_location: 0,
             },
             // Rotation
             VertexAttribute {
                 format: VertexFormat::Float32x2,
-                offset: (4 + 1 + 4 + 3) * 4,
+                offset: (4 + 2 + 4 + 3) * 4,
                 shader_location: 3,
             },
             // Scale
             VertexAttribute {
                 format: VertexFormat::Float32,
-                offset: (4 + 1 + 4 + 3 + 2) * 4,
+                offset: (4 + 2 + 4 + 3 + 2) * 4,
                 shader_location: 4,
             },
         ];
         // This is the sum of the size of the attributes above
-        let vertex_array_stride = (4 + 1 + 4 + 3 + 2 + 1) * 4;
+        let vertex_array_stride = (4 + 2 + 4 + 3 + 2 + 1) * 4;
 
         RenderPipelineDescriptor {
             vertex: VertexState {
@@ -527,7 +529,7 @@ struct ExtractedShape {
     render_entity: Entity,
     color: Color,
     params: Vec4,
-    frame: f32,
+    frame: Vec2,
     sdf_shader: Handle<Shader>,
     fill_shader: Handle<Shader>,
     transform: GlobalTransform,
@@ -559,8 +561,6 @@ fn extract_shapes(
             continue;
         }
 
-        let Frame::Quad { half_size } = shape.frame;
-
         // TODO: bevy_sprite has some slice stuff here? what is it for?
 
         extracted_shapes.shapes.push(ExtractedShape {
@@ -571,7 +571,7 @@ fn extract_shapes(
             transform: *transform,
             sdf_shader: shape.sdf.clone(),
             fill_shader: shape.fill.clone(),
-            frame: half_size,
+            frame: shape.frame.half_size,
             blend_mode: shape.blend_mode,
         });
     }
@@ -877,7 +877,7 @@ fn prepare_shapes(
                 params,
                 rotation,
                 scale,
-                frame: extracted_shape.frame,
+                frame: extracted_shape.frame.to_array(),
             };
             shape_meta.vertices.push(vertex);
 
@@ -910,7 +910,7 @@ fn prepare_shapes(
 #[derive(Debug, Copy, Clone, Pod, Zeroable)]
 struct ShapeVertex {
     pub color: [f32; 4],
-    pub frame: f32,
+    pub frame: [f32; 2],
     pub params: [f32; 4], // for now all shapes have 4 f32 parameters
     pub position: [f32; 3],
     pub rotation: [f32; 2],
