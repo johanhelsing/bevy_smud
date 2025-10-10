@@ -108,13 +108,8 @@ pub enum ShapeSystem {
 impl Plugin for SmudPlugin {
     fn build(&self, app: &mut App) {
         // All the messy boiler-plate for loading a bunch of shaders
-        app.add_plugins(ShaderLoadingPlugin);
+        app.add_plugins((ShaderLoadingPlugin, bevy_primitives::BevyPrimitivesPlugin));
         // app.add_plugins(UiShapePlugin);
-
-        // Load primitive shape shaders and register observers
-        bevy_primitives::load_primitive_shaders(app);
-        #[cfg(feature = "bevy_picking")]
-        bevy_primitives::register_primitive_observers(app);
 
         app.register_type::<SmudShape>();
         // TODO: calculate bounds?

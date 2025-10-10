@@ -15,20 +15,30 @@ use crate::{sdf, SmudShape, DEFAULT_FILL_HANDLE};
 /// Parametrized rectangle shape SDF
 pub const RECTANGLE_SDF_HANDLE: Handle<Shader> = uuid_handle!("2289ee84-18da-4e35-87b2-e256fd88c092");
 
-/// Load all primitive shape shaders as internal assets
-pub(crate) fn load_primitive_shaders(app: &mut App) {
-    load_internal_asset!(
-        app,
-        RECTANGLE_SDF_HANDLE,
-        "../assets/shapes/rectangle.wgsl",
-        Shader::from_wgsl
-    );
-}
+/// Plugin that adds support for Bevy primitive shapes.
+///
+/// This plugin:
+/// - Loads shader assets for primitive shapes (Rectangle, Circle, etc.)
+/// - Registers observers for auto-adding picking support (when `bevy_picking` feature is enabled)
+///
+/// This plugin is automatically added by `SmudPlugin`, so you don't need to add it manually.
+#[derive(Default)]
+pub struct BevyPrimitivesPlugin;
 
-/// Register observers for auto-adding picking shapes
-#[cfg(feature = "bevy_picking")]
-pub(crate) fn register_primitive_observers(app: &mut App) {
-    app.add_observer(auto_add_picking_shape);
+impl Plugin for BevyPrimitivesPlugin {
+    fn build(&self, app: &mut App) {
+        // Load all primitive shape shaders
+        load_internal_asset!(
+            app,
+            RECTANGLE_SDF_HANDLE,
+            "../assets/shapes/rectangle.wgsl",
+            Shader::from_wgsl
+        );
+
+        // Register observers for auto-adding picking shapes
+        #[cfg(feature = "bevy_picking")]
+        app.add_observer(auto_add_picking_shape);
+    }
 }
 
 // ============================================================================
