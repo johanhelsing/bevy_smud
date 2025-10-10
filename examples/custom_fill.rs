@@ -23,7 +23,7 @@ fn setup(
         color: css::TEAL.into(),
         sdf: asset_server.load("bevy.wgsl"),
         fill: sin_fill,
-        frame: Frame::Quad(295.),
+        bounds: Rectangle::from_length(590.),
         ..default()
     });
 
@@ -33,7 +33,7 @@ fn setup(
             color: css::BLUE.into(),
             sdf: asset_server.load("bevy.wgsl"),
             fill: SIMPLE_FILL_HANDLE,
-            frame: Frame::Quad(295.),
+            bounds: Rectangle::from_length(590.),
             ..default()
         },
     ));
@@ -51,7 +51,7 @@ return vec4<f32>(color.rgb, a * color.a);
             ",
             ),
 
-            frame: Frame::Quad(295.),
+            bounds: Rectangle::from_length(590.),
             ..default()
         },
     ));

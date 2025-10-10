@@ -1,5 +1,6 @@
 use bevy::camera::visibility::{VisibilityClass, add_visibility_class};
 use bevy::color::palettes::css;
+use bevy::math::primitives::Rectangle;
 use bevy::prelude::*;
 use bevy::render::sync_world::SyncToRenderWorld;
 
@@ -31,8 +32,8 @@ pub struct SmudShape {
     ///
     /// The shader needs to have the signature `fn fill(distance: f32, color: vec4<f32>) -> vec4<f32>`.
     pub fill: Handle<Shader>, // todo: wrap in newtypes?
-    /// The outer bounds for the shape, should be bigger than the sdf shape
-    pub frame: Frame,
+    /// The bounds for rendering this shape, should be larger than the actual SDF shape to avoid clipping
+    pub bounds: Rectangle,
     /// Parameters to pass to shapes, for things such as width of a box
     // perhaps it would be a better idea to have this as a separate component?
     // keeping it here for now...
@@ -46,27 +47,10 @@ impl Default for SmudShape {
         Self {
             color: css::PINK.into(),
             sdf: default(),
-            frame: default(),
+            bounds: default(),
             params: default(),
             fill: DEFAULT_FILL_HANDLE,
             blend_mode: BlendMode::default(),
         }
-    }
-}
-
-/// Bounds for describing how far the fragment shader of a shape will reach, should be bigger than the shape unless you want to clip it
-#[derive(Reflect, Debug, Clone, Copy)]
-pub enum Frame {
-    /// A quad with a given half-size (!)
-    Quad(f32), // todo: it probably makes sense for this to be the full width instead...
-}
-
-impl Frame {
-    const DEFAULT_QUAD: Self = Self::Quad(1.);
-}
-
-impl Default for Frame {
-    fn default() -> Self {
-        Self::DEFAULT_QUAD
     }
 }

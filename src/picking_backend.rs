@@ -1,8 +1,8 @@
 //! A picking backend for bevy_smud SDF shapes.
 //!
 //! This backend allows clicking and hovering over SDF shapes rendered by bevy_smud.
-//! It uses a simple frame-based approach where shapes are considered "hit" if the pointer
-//! is within their frame bounds.
+//! It uses a simple bounds-based approach where shapes are considered "hit" if the pointer
+//! is within their bounding box.
 //!
 //! ## Usage
 //!
@@ -12,14 +12,14 @@
 //!
 //! ## Implementation Notes
 //!
-//! - The backend considers a shape picked if the pointer is within the shape's frame bounds
+//! - The backend considers a shape picked if the pointer is within the shape's bounding box
 //! - The `position` reported in `HitData` is in world space
 //! - The `normal` points away from the shape using the transform's back vector
 //! - Depth is calculated based on the shape's Z position in camera space
 
 use bevy::{picking::PickingSystems, picking::backend::prelude::*, prelude::*};
 
-use crate::{Frame, SmudShape};
+use crate::SmudShape;
 
 /// An optional component that marks cameras that should be used for SDF shape picking.
 ///
@@ -31,7 +31,7 @@ pub struct SmudPickingCamera;
 
 /// An optional component that provides a custom distance function for precise hit testing.
 ///
-/// When present, this will be used instead of simple frame-based picking to determine
+/// When present, this will be used instead of simple bounds-based picking to determine
 /// if a point is inside or outside the shape. The function takes a local position
 /// (Vec2) and returns the signed distance to the shape surface.
 #[derive(Component)]
@@ -181,19 +181,16 @@ pub fn smud_picking(
             let world_to_shape = shape_transform.affine().inverse();
             let local_point = world_to_shape.transform_point3(intersection_point);
 
-            // Check if the point is within the shape using SDF or frame bounds
+            // Check if the point is within the shape using SDF or bounding box
             let is_hit = if let Some(sdf_shape) = sdf_picking {
                 // Use the custom SDF function for precise hit testing
                 let local_2d = Vec2::new(local_point.x, local_point.y);
                 let distance = (sdf_shape.distance_fn)(local_2d);
                 distance <= 0.0 // Inside or on the surface
             } else {
-                // Fall back to frame-based hit testing
-                match shape.frame {
-                    Frame::Quad(half_size) => {
-                        local_point.x.abs() <= half_size && local_point.y.abs() <= half_size
-                    }
-                }
+                // Fall back to bounds-based hit testing
+                let half_size = shape.bounds.half_size;
+                local_point.x.abs() <= half_size.x && local_point.y.abs() <= half_size.y
             };
 
             if is_hit {

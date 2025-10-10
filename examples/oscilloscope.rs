@@ -45,7 +45,7 @@ fn aces_approx(v_: vec3<f32>) -> vec3<f32> {
     return saturate((v * (a * v + b)) / (v * (c * v + d) + e));
 ",
         ),
-        frame: Frame::Quad(295.),
+        bounds: Rectangle::from_length(590.),
         ..default()
     });
 

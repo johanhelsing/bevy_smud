@@ -84,7 +84,7 @@ fn setup(
                 SmudShape {
                     color,
                     sdf: bevy_shape_shader.clone(),
-                    frame: Frame::Quad(295.),
+                    bounds: Rectangle::from_length(590.),
                     ..default()
                 },
                 Index(i + j * w),

@@ -101,7 +101,7 @@ fn extract_ui_shapes(
         }
 
         let size = node.size().x; // TODO: Also pass on the height value
-        let frame = size / 2.;
+        let bounds = size / 2.;
 
         extracted_shapes.0.alloc().init(ExtractedShape {
             main_entity: entity,
@@ -110,7 +110,7 @@ fn extract_ui_shapes(
             transform: *transform,
             sdf_shader: shape.sdf.clone_weak(),
             fill_shader: shape.fill.clone_weak(),
-            frame,
+            bounds,
             params: shape.params,
             blend_mode: shape.blend_mode,
         });
@@ -220,7 +220,7 @@ fn prepare_ui_shapes(
             params,
             rotation,
             scale,
-            frame: extracted_shape.frame,
+            bounds: extracted_shape.bounds,
         };
         debug!("{vertex:?}");
         shape_meta.ui_vertices.push(vertex);

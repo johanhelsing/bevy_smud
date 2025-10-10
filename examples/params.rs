@@ -42,6 +42,7 @@ fn setup(
     assets: Res<AssetHandles>,
     palettes: Res<Assets<bevy_lospec::Palette>>,
 ) {
+    // sd_box takes a second parameter for the half-extents of the box
     let box_sdf = shaders.add_sdf_expr("smud::sd_box(p, params.xy)");
     let padding = 5.; // need some padding for the outline/falloff
     let spacing = 70.;
@@ -74,8 +75,9 @@ fn setup(
             SmudShape {
                 color,
                 sdf: box_sdf.clone(),
-                frame: Frame::Quad(f32::max(size.x, size.y) + padding),
-                params: Vec4::new(size.x, size.y, 0., 0.),
+                // Tight bounding rectangle to minimize overdraw
+                bounds: Rectangle::from_size(size + padding * 2.),
+                params: Vec4::new(size.x / 2., size.y / 2., 0., 0.),
                 ..default()
             },
         ));
