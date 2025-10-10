@@ -328,12 +328,10 @@ impl SmudPrimitive for Rhombus {
 impl<T: SmudPrimitive> From<T> for SmudShape {
     fn from(primitive: T) -> Self {
         Self {
-            color: css::WHITE.into(),
             sdf: T::sdf_shader(),
-            fill: DEFAULT_FILL_HANDLE,
             bounds: primitive.bounds(),
             params: primitive.params(),
-            blend_mode: Default::default(),
+            ..default()
         }
     }
 }
