@@ -57,7 +57,7 @@ use shader_loading::*;
 // use ui::UiShapePlugin;
 
 pub use components::*;
-pub use shader_loading::{DEFAULT_FILL_HANDLE, SIMPLE_FILL_HANDLE};
+pub use shader_loading::{DEFAULT_FILL_HANDLE, RECTANGLE_SDF_HANDLE, SIMPLE_FILL_HANDLE};
 
 use crate::util::generate_shader_id;
 
@@ -78,8 +78,8 @@ mod util;
 /// ```
 pub mod prelude {
     pub use crate::{
-        BlendMode, DEFAULT_FILL_HANDLE, SIMPLE_FILL_HANDLE, SmudPlugin, SmudShape,
-        sdf_assets::SdfAssets,
+        BlendMode, DEFAULT_FILL_HANDLE, RECTANGLE_SDF_HANDLE, SIMPLE_FILL_HANDLE, SmudPlugin,
+        SmudShape, sdf_assets::SdfAssets,
     };
 
     pub use bevy::math::primitives::Rectangle;

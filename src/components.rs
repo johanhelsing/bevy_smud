@@ -4,7 +4,7 @@ use bevy::math::primitives::Rectangle;
 use bevy::prelude::*;
 use bevy::render::sync_world::SyncToRenderWorld;
 
-use crate::DEFAULT_FILL_HANDLE;
+use crate::{DEFAULT_FILL_HANDLE, shader_loading::RECTANGLE_SDF_HANDLE};
 
 /// Blend mode for shapes
 #[derive(Reflect, Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -50,6 +50,68 @@ impl Default for SmudShape {
             bounds: default(),
             params: default(),
             fill: DEFAULT_FILL_HANDLE,
+            blend_mode: BlendMode::default(),
+        }
+    }
+}
+
+impl SmudShape {
+    /// Set the color for this shape (builder pattern)
+    pub fn with_color(mut self, color: impl Into<Color>) -> Self {
+        self.color = color.into();
+        self
+    }
+
+    /// Set the fill shader for this shape (builder pattern)
+    pub fn with_fill(mut self, fill: Handle<Shader>) -> Self {
+        self.fill = fill;
+        self
+    }
+
+    /// Set the blend mode for this shape (builder pattern)
+    pub fn with_blend_mode(mut self, blend_mode: BlendMode) -> Self {
+        self.blend_mode = blend_mode;
+        self
+    }
+}
+
+impl From<Rectangle> for SmudShape {
+    /// Create a SmudShape from a Bevy Rectangle primitive.
+    ///
+    /// This creates a parametrized rectangle SDF with the rectangle's half-size
+    /// stored in params.xy. The bounds are automatically set with some padding
+    /// to prevent clipping.
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use bevy::prelude::*;
+    /// # use bevy_smud::prelude::*;
+    /// # let mut commands: Commands = panic!();
+    /// commands.spawn((
+    ///     Transform::from_translation(Vec3::new(100., 0., 0.)),
+    ///     SmudShape::from(Rectangle::new(100., 50.))
+    ///         .with_color(Color::srgb(0.8, 0.2, 0.2))
+    /// ));
+    /// ```
+    fn from(rect: Rectangle) -> Self {
+        // Use the pre-loaded rectangle SDF shader
+        let sdf = RECTANGLE_SDF_HANDLE;
+
+        // Rectangle bounds with padding (2px on each side for anti-aliasing)
+        let padding = 2.0;
+        let bounds = Rectangle {
+            half_size: rect.half_size + Vec2::splat(padding),
+        };
+
+        // Store the half-size in params.xy for the shader
+        let params = Vec4::new(rect.half_size.x, rect.half_size.y, 0.0, 0.0);
+
+        Self {
+            color: css::WHITE.into(),
+            sdf,
+            fill: DEFAULT_FILL_HANDLE,
+            bounds,
+            params,
             blend_mode: BlendMode::default(),
         }
     }
