@@ -74,6 +74,9 @@ trait SmudPrimitive: Sized + Bounded2d {
     /// Extract shader parameters (stored in SmudShape.params)
     fn params(&self) -> Vec4;
 
+    /// Try to reconstruct a primitive from a SmudShape's shader handle and params
+    fn try_from_shape(sdf: &Handle<Shader>, params: Vec4) -> Option<Self>;
+
     #[cfg(feature = "bevy_picking")]
     /// Create a picking closure for this primitive
     fn picking_fn(&self) -> Box<dyn Fn(Vec2) -> f32 + Send + Sync>;
@@ -145,6 +148,16 @@ impl SmudPrimitive for Rectangle {
         Vec4::new(self.half_size.x, self.half_size.y, 0.0, 0.0)
     }
 
+    fn try_from_shape(sdf: &Handle<Shader>, params: Vec4) -> Option<Self> {
+        if sdf.id() == RECTANGLE_SDF_HANDLE.id() {
+            Some(Rectangle {
+                half_size: Vec2::new(params.x, params.y),
+            })
+        } else {
+            None
+        }
+    }
+
     #[cfg(feature = "bevy_picking")]
     fn picking_fn(&self) -> Box<dyn Fn(Vec2) -> f32 + Send + Sync> {
         let half_size = self.half_size;
@@ -161,6 +174,14 @@ impl SmudPrimitive for Circle {
         Vec4::new(self.radius, 0.0, 0.0, 0.0)
     }
 
+    fn try_from_shape(sdf: &Handle<Shader>, params: Vec4) -> Option<Self> {
+        if sdf.id() == CIRCLE_SDF_HANDLE.id() {
+            Some(Circle { radius: params.x })
+        } else {
+            None
+        }
+    }
+
     #[cfg(feature = "bevy_picking")]
     fn picking_fn(&self) -> Box<dyn Fn(Vec2) -> f32 + Send + Sync> {
         let radius = self.radius;
@@ -175,6 +196,16 @@ impl SmudPrimitive for Ellipse {
 
     fn params(&self) -> Vec4 {
         Vec4::new(self.half_size.x, self.half_size.y, 0.0, 0.0)
+    }
+
+    fn try_from_shape(sdf: &Handle<Shader>, params: Vec4) -> Option<Self> {
+        if sdf.id() == ELLIPSE_SDF_HANDLE.id() {
+            Some(Ellipse {
+                half_size: Vec2::new(params.x, params.y),
+            })
+        } else {
+            None
+        }
     }
 
     #[cfg(feature = "bevy_picking")]
@@ -199,6 +230,14 @@ impl SmudPrimitive for Annulus {
 
     fn params(&self) -> Vec4 {
         Vec4::new(self.outer_circle.radius, self.inner_circle.radius, 0.0, 0.0)
+    }
+
+    fn try_from_shape(sdf: &Handle<Shader>, params: Vec4) -> Option<Self> {
+        if sdf.id() == ANNULUS_SDF_HANDLE.id() {
+            Some(Annulus::new(params.y, params.x))
+        } else {
+            None
+        }
     }
 
     #[cfg(feature = "bevy_picking")]
@@ -240,30 +279,15 @@ fn auto_add_picking_shape(
 
     let entity = trigger.entity;
     if let Ok(shape) = query.get(entity) {
-        let picking_shape = if shape.sdf.id() == RECTANGLE_SDF_HANDLE.id() {
-            // Rectangle: Extract half-size from params.xy
-            let half_size = Vec2::new(shape.params.x, shape.params.y);
-            Some(SmudPickingShape::new(move |p| sdf::sd_box(p, half_size)))
-        } else if shape.sdf.id() == CIRCLE_SDF_HANDLE.id() {
-            // Circle: Extract radius from params.x
-            let radius = shape.params.x;
-            Some(SmudPickingShape::new(move |p| sdf::circle(p, radius)))
-        } else if shape.sdf.id() == ELLIPSE_SDF_HANDLE.id() {
-            // Ellipse: Extract semi-axes from params.xy
-            // Handles the circle case internally when radii are equal
-            let a = shape.params.x;
-            let b = shape.params.y;
-            Some(SmudPickingShape::new(move |p| {
-                const EPSILON: f32 = 1e-6;
-                if (a - b).abs() < EPSILON {
-                    sdf::circle(p, a)
-                } else {
-                    sdf::ellipse(p, a, b)
-                }
-            }))
-        } else {
-            None
-        };
+        // Try to reconstruct the primitive and use its picking function
+        let picking_shape = Rectangle::try_from_shape(&shape.sdf, shape.params)
+            .map(|p| SmudPickingShape::from(p))
+            .or_else(|| Circle::try_from_shape(&shape.sdf, shape.params)
+                .map(|p| SmudPickingShape::from(p)))
+            .or_else(|| Ellipse::try_from_shape(&shape.sdf, shape.params)
+                .map(|p| SmudPickingShape::from(p)))
+            .or_else(|| Annulus::try_from_shape(&shape.sdf, shape.params)
+                .map(|p| SmudPickingShape::from(p)));
 
         if let Some(picking_shape) = picking_shape {
             commands.entity(entity).insert(picking_shape);
