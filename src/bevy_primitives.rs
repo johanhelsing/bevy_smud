@@ -84,8 +84,7 @@ trait SmudPrimitive: Sized + Bounded2d {
     #[cfg(feature = "bevy_picking")]
     /// Try to create a picking shape by reconstructing this primitive from a SmudShape
     fn picking_from_shape(shape: &SmudShape) -> Option<crate::picking_backend::SmudPickingShape> {
-        Self::try_from_shape(shape)
-            .map(|p| crate::picking_backend::SmudPickingShape::from(p))
+        Self::try_from_shape(shape).map(|p| crate::picking_backend::SmudPickingShape::from(p))
     }
 }
 
@@ -201,7 +200,9 @@ impl SmudPrimitive for Circle {
 
     fn try_from_shape(shape: &SmudShape) -> Option<Self> {
         if shape.sdf.id() == CIRCLE_SDF_HANDLE.id() {
-            Some(Circle { radius: shape.params.x })
+            Some(Circle {
+                radius: shape.params.x,
+            })
         } else {
             None
         }
