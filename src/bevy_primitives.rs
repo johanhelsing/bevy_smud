@@ -43,7 +43,7 @@
 use bevy::asset::{load_internal_asset, uuid_handle};
 use bevy::color::palettes::css;
 use bevy::math::bounding::{Bounded2d, BoundingVolume};
-use bevy::math::primitives::{Annulus, Capsule2d, Circle, Ellipse, Rectangle};
+use bevy::math::primitives::{Annulus, Capsule2d, Circle, Ellipse, Rectangle, Rhombus};
 use bevy::prelude::*;
 
 use crate::{DEFAULT_FILL_HANDLE, SmudShape};
@@ -105,6 +105,9 @@ pub const ANNULUS_SDF_HANDLE: Handle<Shader> = uuid_handle!("a4e4cc45-0af7-4918-
 /// Parametrized capsule (pill) shape SDF
 pub const CAPSULE_SDF_HANDLE: Handle<Shader> = uuid_handle!("3f8b7c1d-9e5a-4b2c-8d6f-1a9c4e7b2d5a");
 
+/// Parametrized rhombus shape SDF
+pub const RHOMBUS_SDF_HANDLE: Handle<Shader> = uuid_handle!("b41cabff-98bb-417c-92e6-b4889a9290ad");
+
 /// Plugin that adds support for Bevy primitive shapes.
 ///
 /// This plugin:
@@ -146,6 +149,12 @@ impl Plugin for BevyPrimitivesPlugin {
             app,
             CAPSULE_SDF_HANDLE,
             "../assets/shapes/capsule.wgsl",
+            Shader::from_wgsl
+        );
+        load_internal_asset!(
+            app,
+            RHOMBUS_SDF_HANDLE,
+            "../assets/shapes/rhombus.wgsl",
             Shader::from_wgsl
         );
 
@@ -289,6 +298,32 @@ impl SmudPrimitive for Capsule2d {
     }
 }
 
+impl SmudPrimitive for Rhombus {
+    fn sdf_shader() -> Handle<Shader> {
+        RHOMBUS_SDF_HANDLE
+    }
+
+    fn params(&self) -> Vec4 {
+        Vec4::new(self.half_diagonals.x, self.half_diagonals.y, 0.0, 0.0)
+    }
+
+    fn try_from_shape(shape: &SmudShape) -> Option<Self> {
+        if shape.sdf.id() == RHOMBUS_SDF_HANDLE.id() {
+            Some(Rhombus {
+                half_diagonals: Vec2::new(shape.params.x, shape.params.y),
+            })
+        } else {
+            None
+        }
+    }
+
+    #[cfg(feature = "bevy_picking")]
+    fn picking_fn(&self) -> Box<dyn Fn(Vec2) -> f32 + Send + Sync> {
+        let half_diagonals = self.half_diagonals;
+        Box::new(move |p| sdf::rhombus(p, half_diagonals))
+    }
+}
+
 impl<T: SmudPrimitive> From<T> for SmudShape {
     fn from(primitive: T) -> Self {
         Self {
@@ -323,7 +358,8 @@ fn auto_add_picking_shape(
             .or_else(|| Circle::picking_from_shape(shape))
             .or_else(|| Ellipse::picking_from_shape(shape))
             .or_else(|| Annulus::picking_from_shape(shape))
-            .or_else(|| Capsule2d::picking_from_shape(shape));
+            .or_else(|| Capsule2d::picking_from_shape(shape))
+            .or_else(|| Rhombus::picking_from_shape(shape));
 
         if let Some(picking_shape) = picking_shape {
             commands.entity(entity).insert(picking_shape);

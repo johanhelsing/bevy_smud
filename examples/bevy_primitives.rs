@@ -85,12 +85,11 @@ fn setup(mut commands: Commands) {
         OriginalColor(css::LIME.into()),
     ));
 
-    // Rotated capsule
+    // Rhombus (diamond)
     commands.spawn((
-        Transform::from_translation(Vec3::new(350., 0., 0.))
-            .with_rotation(Quat::from_rotation_z(1.2)),
-        SmudShape::from(Capsule2d::new(20., 50.)).with_color(css::AQUA),
-        OriginalColor(css::AQUA.into()),
+        Transform::from_translation(Vec3::new(350., 0., 0.)),
+        SmudShape::from(Rhombus::new(50., 30.)).with_color(css::GOLD),
+        OriginalColor(css::GOLD.into()),
     ));
 }
 
