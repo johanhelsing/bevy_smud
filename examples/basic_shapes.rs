@@ -1,12 +1,12 @@
-use bevy::color::palettes::css;
-use bevy::prelude::*;
+use bevy::{color::palettes::css, picking::hover::PickingInteraction, prelude::*};
 // The prelude contains the basic things needed to create shapes
 use bevy_smud::prelude::*;
 
 fn main() {
     App::new()
-        .add_plugins((DefaultPlugins, SmudPlugin))
+        .add_plugins((DefaultPlugins, SmudPlugin, SmudPickingPlugin))
         .add_systems(Startup, setup)
+        .add_systems(Update, update_colors_on_hover)
         .run();
 }
 
@@ -15,17 +15,22 @@ fn setup(mut commands: Commands) {
     commands.spawn((Camera2d, Msaa::Off));
 
     // Using the ergonomic From<Rectangle> API with builder methods
+    // This rectangle has precise picking enabled
+    let rect1 = Rectangle::new(100., 50.);
     commands.spawn((
         Transform::from_translation(Vec3::new(-200., 100., 0.)),
-        SmudShape::from(Rectangle::new(100., 50.))
-            .with_color(css::TOMATO)
+        SmudShape::from(rect1).with_color(css::TOMATO),
+        SmudPickingShape::from(rect1),
+        OriginalColor(css::TOMATO.into()),
     ));
 
     // Another rectangle with different size and color
+    let rect2 = Rectangle::new(80., 80.);
     commands.spawn((
         Transform::from_translation(Vec3::new(100., 100., 0.)),
-        SmudShape::from(Rectangle::new(80., 80.))
-            .with_color(css::CORNFLOWER_BLUE)
+        SmudShape::from(rect2).with_color(css::CORNFLOWER_BLUE),
+        SmudPickingShape::from(rect2),
+        OriginalColor(css::CORNFLOWER_BLUE.into()),
     ));
 
     // Using struct initialization with spread operator
@@ -34,30 +39,62 @@ fn setup(mut commands: Commands) {
         SmudShape {
             color: css::LIMEGREEN.into(),
             ..SmudShape::from(Rectangle::new(120., 40.))
-        }
+        },
     ));
 
     // Rotated rectangle
     commands.spawn((
         Transform::from_translation(Vec3::new(100., -100., 0.))
             .with_rotation(Quat::from_rotation_z(0.5)),
-        SmudShape::from(Rectangle::new(100., 50.))
-            .with_color(css::ORANGE)
+        SmudShape::from(Rectangle::new(100., 50.)).with_color(css::ORANGE),
     ));
 
     // Scaled rectangle
     commands.spawn((
-        Transform::from_translation(Vec3::new(0., 0., 0.))
-            .with_scale(Vec3::splat(1.5)),
-        SmudShape::from(Rectangle::new(60., 60.))
-            .with_color(css::HOT_PINK)
+        Transform::from_translation(Vec3::new(0., 0., 0.)).with_scale(Vec3::splat(1.5)),
+        SmudShape::from(Rectangle::new(60., 60.)).with_color(css::HOT_PINK),
     ));
 
-    // Rectangle with simple fill
+    // Rectangle with simple fill and precise picking
+    let rect6 = Rectangle::new(50., 100.);
     commands.spawn((
         Transform::from_translation(Vec3::new(250., 0., 0.)),
-        SmudShape::from(Rectangle::new(50., 100.))
+        SmudShape::from(rect6)
             .with_color(css::YELLOW)
-            .with_fill(SIMPLE_FILL_HANDLE)
+            .with_fill(SIMPLE_FILL_HANDLE),
+        SmudPickingShape::from(rect6),
+        OriginalColor(css::YELLOW.into()),
     ));
+}
+
+// Component to store the original color for restoring after hover
+#[derive(Component)]
+struct OriginalColor(Color);
+
+// System to change colors on hover
+fn update_colors_on_hover(
+    mut shapes: Query<(&mut SmudShape, &OriginalColor, &PickingInteraction)>,
+) {
+    for (mut shape, original, interaction) in &mut shapes {
+        match *interaction {
+            PickingInteraction::Pressed => {
+                // Brighten significantly when pressed
+                shape.color = Color::WHITE;
+            }
+            PickingInteraction::Hovered => {
+                // Brighten slightly when hovered
+                let linear: LinearRgba = original.0.into();
+                shape.color = Color::LinearRgba(LinearRgba {
+                    red: (linear.red * 1.3).min(1.0),
+                    green: (linear.green * 1.3).min(1.0),
+                    blue: (linear.blue * 1.3).min(1.0),
+                    alpha: linear.alpha,
+                });
+            }
+            PickingInteraction::None => {
+                // Restore original color
+                shape.color = original.0;
+            }
+        }
+    }
 }

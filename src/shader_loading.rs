@@ -19,7 +19,8 @@ pub const DEFAULT_FILL_HANDLE: Handle<Shader> =
 pub const SIMPLE_FILL_HANDLE: Handle<Shader> = uuid_handle!("cef2d2c2-1a68-4418-a815-5a8ac361f140");
 
 /// Parametrized rectangle shape SDF
-pub const RECTANGLE_SDF_HANDLE: Handle<Shader> = uuid_handle!("2289ee84-18da-4e35-87b2-e256fd88c092");
+pub const RECTANGLE_SDF_HANDLE: Handle<Shader> =
+    uuid_handle!("2289ee84-18da-4e35-87b2-e256fd88c092");
 
 pub struct ShaderLoadingPlugin;
 

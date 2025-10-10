@@ -17,9 +17,11 @@
 //! - The `normal` points away from the shape using the transform's back vector
 //! - Depth is calculated based on the shape's Z position in camera space
 
-use bevy::{picking::PickingSystems, picking::backend::prelude::*, prelude::*};
+use bevy::{
+    math::primitives::Rectangle, picking::PickingSystems, picking::backend::prelude::*, prelude::*,
+};
 
-use crate::SmudShape;
+use crate::{SmudShape, sdf};
 
 /// An optional component that marks cameras that should be used for SDF shape picking.
 ///
@@ -63,6 +65,31 @@ impl SmudPickingShape {
             let d = Vec2::new(p.x.abs() - half_width, p.y.abs() - half_height);
             Vec2::new(d.x.max(0.0), d.y.max(0.0)).length() + d.x.max(d.y).min(0.0)
         })
+    }
+}
+
+impl From<Rectangle> for SmudPickingShape {
+    /// Create a `SmudPickingShape` from a Bevy `Rectangle` primitive.
+    ///
+    /// This provides precise hit-testing for rectangle shapes by using the CPU-side
+    /// SDF function. The picking shape will exactly match the visual shape created
+    /// by `SmudShape::from(Rectangle)`.
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use bevy::prelude::*;
+    /// # use bevy_smud::prelude::*;
+    /// # let mut commands: Commands = panic!();
+    /// let rect = Rectangle::new(100., 50.);
+    /// commands.spawn((
+    ///     Transform::from_translation(Vec3::new(100., 0., 0.)),
+    ///     SmudShape::from(rect).with_color(Color::srgb(0.8, 0.2, 0.2)),
+    ///     SmudPickingShape::from(rect), // Precise picking
+    /// ));
+    /// ```
+    fn from(rect: Rectangle) -> Self {
+        let half_size = rect.half_size;
+        Self::new(move |p| sdf::sd_box(p, half_size))
     }
 }
 
