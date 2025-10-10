@@ -74,12 +74,19 @@ trait SmudPrimitive: Sized + Bounded2d {
     /// Extract shader parameters (stored in SmudShape.params)
     fn params(&self) -> Vec4;
 
-    /// Try to reconstruct a primitive from a SmudShape's shader handle and params
-    fn try_from_shape(sdf: &Handle<Shader>, params: Vec4) -> Option<Self>;
+    /// Try to reconstruct a primitive from a SmudShape
+    fn try_from_shape(shape: &SmudShape) -> Option<Self>;
 
     #[cfg(feature = "bevy_picking")]
     /// Create a picking closure for this primitive
     fn picking_fn(&self) -> Box<dyn Fn(Vec2) -> f32 + Send + Sync>;
+
+    #[cfg(feature = "bevy_picking")]
+    /// Try to create a picking shape by reconstructing this primitive from a SmudShape
+    fn picking_from_shape(shape: &SmudShape) -> Option<crate::picking_backend::SmudPickingShape> {
+        Self::try_from_shape(shape)
+            .map(|p| crate::picking_backend::SmudPickingShape::from(p))
+    }
 }
 
 /// Parametrized rectangle shape SDF
@@ -148,10 +155,10 @@ impl SmudPrimitive for Rectangle {
         Vec4::new(self.half_size.x, self.half_size.y, 0.0, 0.0)
     }
 
-    fn try_from_shape(sdf: &Handle<Shader>, params: Vec4) -> Option<Self> {
-        if sdf.id() == RECTANGLE_SDF_HANDLE.id() {
+    fn try_from_shape(shape: &SmudShape) -> Option<Self> {
+        if shape.sdf.id() == RECTANGLE_SDF_HANDLE.id() {
             Some(Rectangle {
-                half_size: Vec2::new(params.x, params.y),
+                half_size: Vec2::new(shape.params.x, shape.params.y),
             })
         } else {
             None
@@ -174,9 +181,9 @@ impl SmudPrimitive for Circle {
         Vec4::new(self.radius, 0.0, 0.0, 0.0)
     }
 
-    fn try_from_shape(sdf: &Handle<Shader>, params: Vec4) -> Option<Self> {
-        if sdf.id() == CIRCLE_SDF_HANDLE.id() {
-            Some(Circle { radius: params.x })
+    fn try_from_shape(shape: &SmudShape) -> Option<Self> {
+        if shape.sdf.id() == CIRCLE_SDF_HANDLE.id() {
+            Some(Circle { radius: shape.params.x })
         } else {
             None
         }
@@ -198,10 +205,10 @@ impl SmudPrimitive for Ellipse {
         Vec4::new(self.half_size.x, self.half_size.y, 0.0, 0.0)
     }
 
-    fn try_from_shape(sdf: &Handle<Shader>, params: Vec4) -> Option<Self> {
-        if sdf.id() == ELLIPSE_SDF_HANDLE.id() {
+    fn try_from_shape(shape: &SmudShape) -> Option<Self> {
+        if shape.sdf.id() == ELLIPSE_SDF_HANDLE.id() {
             Some(Ellipse {
-                half_size: Vec2::new(params.x, params.y),
+                half_size: Vec2::new(shape.params.x, shape.params.y),
             })
         } else {
             None
@@ -232,9 +239,9 @@ impl SmudPrimitive for Annulus {
         Vec4::new(self.outer_circle.radius, self.inner_circle.radius, 0.0, 0.0)
     }
 
-    fn try_from_shape(sdf: &Handle<Shader>, params: Vec4) -> Option<Self> {
-        if sdf.id() == ANNULUS_SDF_HANDLE.id() {
-            Some(Annulus::new(params.y, params.x))
+    fn try_from_shape(shape: &SmudShape) -> Option<Self> {
+        if shape.sdf.id() == ANNULUS_SDF_HANDLE.id() {
+            Some(Annulus::new(shape.params.y, shape.params.x))
         } else {
             None
         }
@@ -275,19 +282,13 @@ fn auto_add_picking_shape(
     query: Query<&SmudShape>,
     mut commands: Commands,
 ) {
-    use crate::picking_backend::SmudPickingShape;
-
     let entity = trigger.entity;
     if let Ok(shape) = query.get(entity) {
         // Try to reconstruct the primitive and use its picking function
-        let picking_shape = Rectangle::try_from_shape(&shape.sdf, shape.params)
-            .map(|p| SmudPickingShape::from(p))
-            .or_else(|| Circle::try_from_shape(&shape.sdf, shape.params)
-                .map(|p| SmudPickingShape::from(p)))
-            .or_else(|| Ellipse::try_from_shape(&shape.sdf, shape.params)
-                .map(|p| SmudPickingShape::from(p)))
-            .or_else(|| Annulus::try_from_shape(&shape.sdf, shape.params)
-                .map(|p| SmudPickingShape::from(p)));
+        let picking_shape = Rectangle::picking_from_shape(shape)
+            .or_else(|| Circle::picking_from_shape(shape))
+            .or_else(|| Ellipse::picking_from_shape(shape))
+            .or_else(|| Annulus::picking_from_shape(shape));
 
         if let Some(picking_shape) = picking_shape {
             commands.entity(entity).insert(picking_shape);
