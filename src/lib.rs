@@ -85,7 +85,7 @@ pub mod prelude {
     };
 
     #[cfg(feature = "bevy_primitives")]
-    pub use bevy::math::primitives::{Circle, Ellipse, Rectangle};
+    pub use bevy::math::primitives::{Annulus, Circle, Ellipse, Rectangle};
 
     #[cfg(feature = "bevy_picking")]
     pub use crate::picking_backend::{

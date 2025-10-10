@@ -2,7 +2,7 @@
 //!
 //! This module provides `From` trait implementations that allow you to create
 //! `SmudShape` components directly from Bevy's 2D primitive shapes like [`Rectangle`],
-//! [`Circle`], and [`Ellipse`].
+//! [`Circle`], [`Ellipse`], and [`Annulus`].
 //!
 //! # Example
 //!
@@ -27,6 +27,12 @@
 //!     SmudShape::from(Ellipse::new(80., 40.))
 //!         .with_color(Color::srgb(0.8, 0.8, 0.2)),
 //! ));
+//!
+//! commands.spawn((
+//!     Transform::from_translation(Vec3::new(200., 0., 0.)),
+//!     SmudShape::from(Annulus::new(20., 40.))
+//!         .with_color(Color::srgb(0.2, 0.8, 0.8)),
+//! ));
 //! ```
 //!
 //! # Picking Support
@@ -37,7 +43,7 @@
 use bevy::asset::{load_internal_asset, uuid_handle};
 use bevy::color::palettes::css;
 use bevy::math::bounding::{Bounded2d, BoundingVolume};
-use bevy::math::primitives::{Circle, Ellipse, Rectangle};
+use bevy::math::primitives::{Annulus, Circle, Ellipse, Rectangle};
 use bevy::prelude::*;
 
 use crate::{DEFAULT_FILL_HANDLE, SmudShape};
@@ -83,6 +89,9 @@ pub const CIRCLE_SDF_HANDLE: Handle<Shader> = uuid_handle!("abb54e5e-62f3-4ea2-9
 /// Parametrized ellipse shape SDF
 pub const ELLIPSE_SDF_HANDLE: Handle<Shader> = uuid_handle!("2c02adad-84fb-46d7-8ef8-f4b6d86d6149");
 
+/// Parametrized annulus (ring) shape SDF
+pub const ANNULUS_SDF_HANDLE: Handle<Shader> = uuid_handle!("a4e4cc45-0af7-4918-b082-69ba5236c4d0");
+
 /// Plugin that adds support for Bevy primitive shapes.
 ///
 /// This plugin:
@@ -112,6 +121,12 @@ impl Plugin for BevyPrimitivesPlugin {
             app,
             ELLIPSE_SDF_HANDLE,
             "../assets/shapes/ellipse.wgsl",
+            Shader::from_wgsl
+        );
+        load_internal_asset!(
+            app,
+            ANNULUS_SDF_HANDLE,
+            "../assets/shapes/annulus.wgsl",
             Shader::from_wgsl
         );
 
@@ -174,6 +189,23 @@ impl SmudPrimitive for Ellipse {
                 sdf::ellipse(p, a, b)
             }
         })
+    }
+}
+
+impl SmudPrimitive for Annulus {
+    fn sdf_shader() -> Handle<Shader> {
+        ANNULUS_SDF_HANDLE
+    }
+
+    fn params(&self) -> Vec4 {
+        Vec4::new(self.outer_circle.radius, self.inner_circle.radius, 0.0, 0.0)
+    }
+
+    #[cfg(feature = "bevy_picking")]
+    fn picking_fn(&self) -> Box<dyn Fn(Vec2) -> f32 + Send + Sync> {
+        let outer_radius = self.outer_circle.radius;
+        let inner_radius = self.inner_circle.radius;
+        Box::new(move |p| sdf::annulus(p, outer_radius, inner_radius))
     }
 }
 

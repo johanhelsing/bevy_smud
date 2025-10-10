@@ -70,6 +70,13 @@ fn setup(mut commands: Commands) {
         SmudShape::from(Ellipse::new(80., 30.)).with_color(css::TURQUOISE),
         OriginalColor(css::TURQUOISE.into()),
     ));
+
+    // Annulus (ring)
+    commands.spawn((
+        Transform::from_translation(Vec3::new(0., -150., 0.)),
+        SmudShape::from(Annulus::new(20., 50.)).with_color(css::MAGENTA),
+        OriginalColor(css::MAGENTA.into()),
+    ));
 }
 
 // Component to store the original color for restoring after hover

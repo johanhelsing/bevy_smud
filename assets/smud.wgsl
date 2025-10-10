@@ -21,6 +21,12 @@ fn sd_circle(p: vec2<f32>, r: f32) -> f32 {
     return length(p) - r;
 }
 
+fn sd_annulus(p: vec2<f32>, outer_radius: f32, inner_radius: f32) -> f32 {
+    let middle_radius = (outer_radius + inner_radius) * 0.5;
+    let thickness = (outer_radius - inner_radius) * 0.5;
+    return abs(sd_circle(p, middle_radius)) - thickness;
+}
+
 fn sd_rounded_box(p: vec2<f32>, b: vec2<f32>, r: vec4<f32>) -> f32 {
     var r_2 = r;
     // swizzle assignment isn't supported yet
