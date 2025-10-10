@@ -176,7 +176,7 @@ impl SmudPrimitive for Rectangle {
     fn try_from_shape(shape: &SmudShape) -> Option<Self> {
         if shape.sdf.id() == RECTANGLE_SDF_HANDLE.id() {
             Some(Rectangle {
-                half_size: Vec2::new(shape.params.x, shape.params.y),
+                half_size: shape.params.xy(),
             })
         } else {
             None
@@ -226,7 +226,7 @@ impl SmudPrimitive for Ellipse {
     fn try_from_shape(shape: &SmudShape) -> Option<Self> {
         if shape.sdf.id() == ELLIPSE_SDF_HANDLE.id() {
             Some(Ellipse {
-                half_size: Vec2::new(shape.params.x, shape.params.y),
+                half_size: shape.params.xy(),
             })
         } else {
             None
@@ -310,7 +310,7 @@ impl SmudPrimitive for Rhombus {
     fn try_from_shape(shape: &SmudShape) -> Option<Self> {
         if shape.sdf.id() == RHOMBUS_SDF_HANDLE.id() {
             Some(Rhombus {
-                half_diagonals: Vec2::new(shape.params.x, shape.params.y),
+                half_diagonals: shape.params.xy(),
             })
         } else {
             None
