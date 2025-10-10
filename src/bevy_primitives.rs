@@ -53,10 +53,6 @@ impl Plugin for BevyPrimitivesPlugin {
     }
 }
 
-// ============================================================================
-// SmudShape conversions
-// ============================================================================
-
 impl From<Rectangle> for SmudShape {
     /// Create a SmudShape from a Bevy Rectangle primitive.
     ///
@@ -148,10 +144,6 @@ impl From<Circle> for SmudShape {
     }
 }
 
-// ============================================================================
-// SmudPickingShape conversions (when bevy_picking feature is enabled)
-// ============================================================================
-
 #[cfg(feature = "bevy_picking")]
 impl From<Rectangle> for crate::picking_backend::SmudPickingShape {
     /// Create a `SmudPickingShape` from a Bevy `Rectangle` primitive.
@@ -210,10 +202,6 @@ impl From<Circle> for crate::picking_backend::SmudPickingShape {
         Self::new(move |p| sdf::circle(p, radius))
     }
 }
-
-// ============================================================================
-// Observer for auto-adding picking shapes
-// ============================================================================
 
 /// Observer that automatically adds SmudPickingShape for shapes created from primitives
 #[cfg(feature = "bevy_picking")]
