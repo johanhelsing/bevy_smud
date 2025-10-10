@@ -1,9 +1,32 @@
 //! Convenience conversions from Bevy's math primitives to bevy_smud shapes.
 //!
 //! This module provides `From` trait implementations that allow you to create
-//! `SmudShape` components directly from Bevy's 2D primitive shapes like `Rectangle`,
-//! `Circle`, etc. When the `bevy_picking` feature is enabled, it also automatically
-//! adds precise picking support via an observer.
+//! `SmudShape` components directly from Bevy's 2D primitive shapes like [`Rectangle`]
+//! and [`Circle`].
+//!
+//! # Example
+//!
+//! ```no_run
+//! # use bevy::prelude::*;
+//! # use bevy_smud::prelude::*;
+//! # let mut commands: Commands = panic!();
+//! commands.spawn((
+//!     Transform::from_translation(Vec3::new(100., 0., 0.)),
+//!     SmudShape::from(Rectangle::new(100., 50.))
+//!         .with_color(Color::srgb(0.8, 0.2, 0.2)),
+//! ));
+//!
+//! commands.spawn((
+//!     Transform::from_translation(Vec3::new(-100., 0., 0.)),
+//!     SmudShape::from(Circle::new(50.))
+//!         .with_color(Color::srgb(0.2, 0.8, 0.2)),
+//! ));
+//! ```
+//!
+//! # Picking Support
+//!
+//! When the `bevy_picking` feature is enabled, `SmudPickingShape` is automatically
+//! added to entities with primitive-based shapes for precise hit-testing.
 
 use bevy::asset::{load_internal_asset, uuid_handle};
 use bevy::color::palettes::css;
@@ -54,28 +77,9 @@ impl Plugin for BevyPrimitivesPlugin {
 }
 
 impl From<Rectangle> for SmudShape {
-    /// Create a SmudShape from a Bevy Rectangle primitive.
+    /// Creates a [`SmudShape`] from a Bevy [`Rectangle`] primitive.
     ///
-    /// This creates a parametrized rectangle SDF with the rectangle's half-size
-    /// stored in params.xy. The bounds are automatically set with some padding
-    /// to prevent clipping.
-    ///
-    /// When the `bevy_picking` feature is enabled, a `SmudPickingShape` component
-    /// will be automatically added to the entity for precise hit-testing. This happens
-    /// via an observer, so you don't need to manually add the picking component!
-    ///
-    /// # Example
-    /// ```no_run
-    /// # use bevy::prelude::*;
-    /// # use bevy_smud::prelude::*;
-    /// # let mut commands: Commands = panic!();
-    /// // SmudPickingShape is automatically added when bevy_picking is enabled!
-    /// commands.spawn((
-    ///     Transform::from_translation(Vec3::new(100., 0., 0.)),
-    ///     SmudShape::from(Rectangle::new(100., 50.))
-    ///         .with_color(Color::srgb(0.8, 0.2, 0.2))
-    /// ));
-    /// ```
+    /// See the [module documentation](self) for more information and examples.
     fn from(rect: Rectangle) -> Self {
         // Use the pre-loaded rectangle SDF shader
         let sdf = RECTANGLE_SDF_HANDLE;
@@ -101,26 +105,9 @@ impl From<Rectangle> for SmudShape {
 }
 
 impl From<Circle> for SmudShape {
-    /// Create a SmudShape from a Bevy Circle primitive.
+    /// Creates a [`SmudShape`] from a Bevy [`Circle`] primitive.
     ///
-    /// This creates a parametrized circle SDF with the circle's radius
-    /// stored in params.x. The bounds are automatically set with some padding
-    /// to prevent clipping.
-    ///
-    /// When the `bevy_picking` feature is enabled, a `SmudPickingShape` component
-    /// will be automatically added to the entity for precise hit-testing.
-    ///
-    /// # Example
-    /// ```no_run
-    /// # use bevy::prelude::*;
-    /// # use bevy_smud::prelude::*;
-    /// # let mut commands: Commands = panic!();
-    /// commands.spawn((
-    ///     Transform::from_translation(Vec3::new(100., 0., 0.)),
-    ///     SmudShape::from(Circle::new(50.))
-    ///         .with_color(Color::srgb(0.2, 0.8, 0.2))
-    /// ));
-    /// ```
+    /// See the [module documentation](self) for more information and examples.
     fn from(circle: Circle) -> Self {
         // Use the pre-loaded circle SDF shader
         let sdf = CIRCLE_SDF_HANDLE;
@@ -146,28 +133,10 @@ impl From<Circle> for SmudShape {
 
 #[cfg(feature = "bevy_picking")]
 impl From<Rectangle> for crate::picking_backend::SmudPickingShape {
-    /// Create a `SmudPickingShape` from a Bevy `Rectangle` primitive.
+    /// Creates a [`SmudPickingShape`](crate::picking_backend::SmudPickingShape) from a Bevy [`Rectangle`] primitive.
     ///
-    /// This provides precise hit-testing for rectangle shapes by using the CPU-side
-    /// SDF function. The picking shape will exactly match the visual shape created
-    /// by `SmudShape::from(Rectangle)`.
-    ///
-    /// Note: When using `SmudShape::from(Rectangle)`, the picking shape is automatically
-    /// added via an observer. You only need to use this manually if you're not using
-    /// the `From` trait or want explicit control.
-    ///
-    /// # Example
-    /// ```no_run
-    /// # use bevy::prelude::*;
-    /// # use bevy_smud::prelude::*;
-    /// # let mut commands: Commands = panic!();
-    /// let rect = Rectangle::new(100., 50.);
-    /// commands.spawn((
-    ///     Transform::from_translation(Vec3::new(100., 0., 0.)),
-    ///     SmudShape::from(rect).with_color(Color::srgb(0.8, 0.2, 0.2)),
-    ///     SmudPickingShape::from(rect), // Explicit picking (usually not needed)
-    /// ));
-    /// ```
+    /// Note: This is typically not needed as picking shapes are added automatically.
+    /// See the [module documentation](self) for more information.
     fn from(rect: Rectangle) -> Self {
         let half_size = rect.half_size;
         Self::new(move |p| sdf::sd_box(p, half_size))
@@ -176,27 +145,10 @@ impl From<Rectangle> for crate::picking_backend::SmudPickingShape {
 
 #[cfg(feature = "bevy_picking")]
 impl From<Circle> for crate::picking_backend::SmudPickingShape {
-    /// Create a `SmudPickingShape` from a Bevy `Circle` primitive.
+    /// Creates a [`SmudPickingShape`](crate::picking_backend::SmudPickingShape) from a Bevy [`Circle`] primitive.
     ///
-    /// This provides precise hit-testing for circle shapes by using the CPU-side
-    /// SDF function. The picking shape will exactly match the visual shape created
-    /// by `SmudShape::from(Circle)`.
-    ///
-    /// Note: When using `SmudShape::from(Circle)`, the picking shape is automatically
-    /// added via an observer.
-    ///
-    /// # Example
-    /// ```no_run
-    /// # use bevy::prelude::*;
-    /// # use bevy_smud::prelude::*;
-    /// # let mut commands: Commands = panic!();
-    /// let circle = Circle::new(50.);
-    /// commands.spawn((
-    ///     Transform::from_translation(Vec3::new(100., 0., 0.)),
-    ///     SmudShape::from(circle).with_color(Color::srgb(0.2, 0.8, 0.2)),
-    ///     SmudPickingShape::from(circle), // Explicit picking (usually not needed)
-    /// ));
-    /// ```
+    /// Note: This is typically not needed as picking shapes are added automatically.
+    /// See the [module documentation](self) for more information.
     fn from(circle: Circle) -> Self {
         let radius = circle.radius;
         Self::new(move |p| sdf::circle(p, radius))
