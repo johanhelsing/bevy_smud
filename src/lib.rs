@@ -57,10 +57,11 @@ use shader_loading::*;
 // use ui::UiShapePlugin;
 
 pub use components::*;
-pub use shader_loading::{DEFAULT_FILL_HANDLE, RECTANGLE_SDF_HANDLE, SIMPLE_FILL_HANDLE};
+pub use shader_loading::{DEFAULT_FILL_HANDLE, SIMPLE_FILL_HANDLE};
 
 use crate::util::generate_shader_id;
 
+pub mod bevy_primitives;
 mod components;
 #[cfg(feature = "bevy_picking")]
 mod picking_backend;
@@ -78,8 +79,8 @@ mod util;
 /// ```
 pub mod prelude {
     pub use crate::{
-        BlendMode, DEFAULT_FILL_HANDLE, RECTANGLE_SDF_HANDLE, SIMPLE_FILL_HANDLE, SmudPlugin,
-        SmudShape, sdf_assets::SdfAssets,
+        BlendMode, DEFAULT_FILL_HANDLE, SIMPLE_FILL_HANDLE, SmudPlugin, SmudShape,
+        bevy_primitives::RECTANGLE_SDF_HANDLE, sdf_assets::SdfAssets,
     };
 
     pub use bevy::math::primitives::Rectangle;
@@ -110,12 +111,13 @@ impl Plugin for SmudPlugin {
         app.add_plugins(ShaderLoadingPlugin);
         // app.add_plugins(UiShapePlugin);
 
+        // Load primitive shape shaders and register observers
+        bevy_primitives::load_primitive_shaders(app);
+        #[cfg(feature = "bevy_picking")]
+        bevy_primitives::register_primitive_observers(app);
+
         app.register_type::<SmudShape>();
         // TODO: calculate bounds?
-
-        // Add observer to auto-add picking shapes when bevy_picking feature is enabled
-        #[cfg(feature = "bevy_picking")]
-        app.add_observer(auto_add_picking_shape);
 
         // TODO: picking
         if let Some(render_app) = app.get_sub_app_mut(RenderApp) {
@@ -946,29 +948,4 @@ struct ShapeBatches(HashMap<(RetainedViewEntity, MainEntity), ShapeBatch>);
 struct ShapeBatch {
     shader: (AssetId<Shader>, AssetId<Shader>),
     range: Range<u32>,
-}
-
-/// Observer that automatically adds SmudPickingShape for shapes created from primitives
-#[cfg(feature = "bevy_picking")]
-fn auto_add_picking_shape(
-    trigger: On<Add, SmudShape>,
-    query: Query<&SmudShape>,
-    mut commands: Commands,
-) {
-    use crate::picking_backend::SmudPickingShape;
-
-    let entity = trigger.entity;
-    if let Ok(shape) = query.get(entity) {
-        // Check if this is a rectangle shape (from Rectangle::new)
-        if shape.sdf.id() == RECTANGLE_SDF_HANDLE.id() {
-            // Extract half-size from params
-            let half_size = Vec2::new(shape.params.x, shape.params.y);
-
-            // Create the picking shape using the sdf module
-            let picking_shape = SmudPickingShape::new(move |p| sdf::sd_box(p, half_size));
-
-            // Insert it into the entity
-            commands.entity(entity).insert(picking_shape);
-        }
-    }
 }

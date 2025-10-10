@@ -1,0 +1,146 @@
+//! Convenience conversions from Bevy's math primitives to bevy_smud shapes.
+//!
+//! This module provides `From` trait implementations that allow you to create
+//! `SmudShape` components directly from Bevy's 2D primitive shapes like `Rectangle`,
+//! `Circle`, etc. When the `bevy_picking` feature is enabled, it also automatically
+//! adds precise picking support via an observer.
+
+use bevy::asset::{load_internal_asset, uuid_handle};
+use bevy::color::palettes::css;
+use bevy::math::primitives::Rectangle;
+use bevy::prelude::*;
+
+use crate::{sdf, SmudShape, DEFAULT_FILL_HANDLE};
+
+/// Parametrized rectangle shape SDF
+pub const RECTANGLE_SDF_HANDLE: Handle<Shader> = uuid_handle!("2289ee84-18da-4e35-87b2-e256fd88c092");
+
+/// Load all primitive shape shaders as internal assets
+pub(crate) fn load_primitive_shaders(app: &mut App) {
+    load_internal_asset!(
+        app,
+        RECTANGLE_SDF_HANDLE,
+        "../assets/shapes/rectangle.wgsl",
+        Shader::from_wgsl
+    );
+}
+
+/// Register observers for auto-adding picking shapes
+#[cfg(feature = "bevy_picking")]
+pub(crate) fn register_primitive_observers(app: &mut App) {
+    app.add_observer(auto_add_picking_shape);
+}
+
+// ============================================================================
+// SmudShape conversions
+// ============================================================================
+
+impl From<Rectangle> for SmudShape {
+    /// Create a SmudShape from a Bevy Rectangle primitive.
+    ///
+    /// This creates a parametrized rectangle SDF with the rectangle's half-size
+    /// stored in params.xy. The bounds are automatically set with some padding
+    /// to prevent clipping.
+    ///
+    /// When the `bevy_picking` feature is enabled, a `SmudPickingShape` component
+    /// will be automatically added to the entity for precise hit-testing. This happens
+    /// via an observer, so you don't need to manually add the picking component!
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use bevy::prelude::*;
+    /// # use bevy_smud::prelude::*;
+    /// # let mut commands: Commands = panic!();
+    /// // SmudPickingShape is automatically added when bevy_picking is enabled!
+    /// commands.spawn((
+    ///     Transform::from_translation(Vec3::new(100., 0., 0.)),
+    ///     SmudShape::from(Rectangle::new(100., 50.))
+    ///         .with_color(Color::srgb(0.8, 0.2, 0.2))
+    /// ));
+    /// ```
+    fn from(rect: Rectangle) -> Self {
+        // Use the pre-loaded rectangle SDF shader
+        let sdf = RECTANGLE_SDF_HANDLE;
+
+        // Rectangle bounds with padding (2px on each side for anti-aliasing)
+        let padding = 2.0;
+        let bounds = Rectangle {
+            half_size: rect.half_size + Vec2::splat(padding),
+        };
+
+        // Store the half-size in params.xy for the shader
+        let params = Vec4::new(rect.half_size.x, rect.half_size.y, 0.0, 0.0);
+
+        Self {
+            color: css::WHITE.into(),
+            sdf,
+            fill: DEFAULT_FILL_HANDLE,
+            bounds,
+            params,
+            blend_mode: Default::default(),
+        }
+    }
+}
+
+// ============================================================================
+// SmudPickingShape conversions (when bevy_picking feature is enabled)
+// ============================================================================
+
+#[cfg(feature = "bevy_picking")]
+impl From<Rectangle> for crate::picking_backend::SmudPickingShape {
+    /// Create a `SmudPickingShape` from a Bevy `Rectangle` primitive.
+    ///
+    /// This provides precise hit-testing for rectangle shapes by using the CPU-side
+    /// SDF function. The picking shape will exactly match the visual shape created
+    /// by `SmudShape::from(Rectangle)`.
+    ///
+    /// Note: When using `SmudShape::from(Rectangle)`, the picking shape is automatically
+    /// added via an observer. You only need to use this manually if you're not using
+    /// the `From` trait or want explicit control.
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use bevy::prelude::*;
+    /// # use bevy_smud::prelude::*;
+    /// # let mut commands: Commands = panic!();
+    /// let rect = Rectangle::new(100., 50.);
+    /// commands.spawn((
+    ///     Transform::from_translation(Vec3::new(100., 0., 0.)),
+    ///     SmudShape::from(rect).with_color(Color::srgb(0.8, 0.2, 0.2)),
+    ///     SmudPickingShape::from(rect), // Explicit picking (usually not needed)
+    /// ));
+    /// ```
+    fn from(rect: Rectangle) -> Self {
+        let half_size = rect.half_size;
+        Self::new(move |p| sdf::sd_box(p, half_size))
+    }
+}
+
+// ============================================================================
+// Observer for auto-adding picking shapes
+// ============================================================================
+
+/// Observer that automatically adds SmudPickingShape for shapes created from primitives
+#[cfg(feature = "bevy_picking")]
+fn auto_add_picking_shape(
+    trigger: On<Add, SmudShape>,
+    query: Query<&SmudShape>,
+    mut commands: Commands,
+) {
+    use crate::picking_backend::SmudPickingShape;
+
+    let entity = trigger.entity;
+    if let Ok(shape) = query.get(entity) {
+        // Check if this is a rectangle shape (from Rectangle primitive)
+        if shape.sdf.id() == RECTANGLE_SDF_HANDLE.id() {
+            // Extract half-size from params
+            let half_size = Vec2::new(shape.params.x, shape.params.y);
+
+            // Create the picking shape using the sdf module
+            let picking_shape = SmudPickingShape::new(move |p| sdf::sd_box(p, half_size));
+
+            // Insert it into the entity
+            commands.entity(entity).insert(picking_shape);
+        }
+    }
+}
