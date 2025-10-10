@@ -91,6 +91,13 @@ fn setup(mut commands: Commands) {
         SmudShape::from(Rhombus::new(50., 30.)).with_color(css::GOLD),
         OriginalColor(css::GOLD.into()),
     ));
+
+    // Circular sector (pie slice) - 90 degrees
+    commands.spawn((
+        Transform::from_translation(Vec3::new(0., 200., 0.)),
+        SmudShape::from(CircularSector::new(60., std::f32::consts::FRAC_PI_4)).with_color(css::ORANGE_RED),
+        OriginalColor(css::ORANGE_RED.into()),
+    ));
 }
 
 // Component to store the original color for restoring after hover

@@ -41,12 +41,13 @@
 //! added to entities with primitive-based shapes for precise hit-testing.
 
 use bevy::asset::{load_internal_asset, uuid_handle};
-use bevy::color::palettes::css;
 use bevy::math::bounding::{Bounded2d, BoundingVolume};
-use bevy::math::primitives::{Annulus, Capsule2d, Circle, Ellipse, Rectangle, Rhombus};
+use bevy::math::primitives::{
+    Annulus, Capsule2d, Circle, CircularSector, Ellipse, Rectangle, Rhombus,
+};
 use bevy::prelude::*;
 
-use crate::{DEFAULT_FILL_HANDLE, SmudShape};
+use crate::SmudShape;
 
 #[cfg(feature = "bevy_picking")]
 use crate::sdf;
@@ -107,6 +108,10 @@ pub const CAPSULE_SDF_HANDLE: Handle<Shader> = uuid_handle!("3f8b7c1d-9e5a-4b2c-
 /// Parametrized rhombus shape SDF
 pub const RHOMBUS_SDF_HANDLE: Handle<Shader> = uuid_handle!("b41cabff-98bb-417c-92e6-b4889a9290ad");
 
+/// Parametrized circular sector (pie slice) shape SDF
+pub const CIRCULAR_SECTOR_SDF_HANDLE: Handle<Shader> =
+    uuid_handle!("8c5373ba-2cdc-4e8f-987c-cf5dfd6d84d5");
+
 /// Plugin that adds support for Bevy primitive shapes.
 ///
 /// This plugin:
@@ -154,6 +159,12 @@ impl Plugin for BevyPrimitivesPlugin {
             app,
             RHOMBUS_SDF_HANDLE,
             "../assets/shapes/rhombus.wgsl",
+            Shader::from_wgsl
+        );
+        load_internal_asset!(
+            app,
+            CIRCULAR_SECTOR_SDF_HANDLE,
+            "../assets/shapes/circular_sector.wgsl",
             Shader::from_wgsl
         );
 
@@ -325,6 +336,35 @@ impl SmudPrimitive for Rhombus {
     }
 }
 
+impl SmudPrimitive for CircularSector {
+    fn sdf_shader() -> Handle<Shader> {
+        CIRCULAR_SECTOR_SDF_HANDLE
+    }
+
+    fn params(&self) -> Vec4 {
+        let (sin, cos) = self.arc.half_angle.sin_cos();
+        Vec4::new(self.arc.radius, sin, cos, 0.0)
+    }
+
+    fn try_from_shape(shape: &SmudShape) -> Option<Self> {
+        if shape.sdf.id() == CIRCULAR_SECTOR_SDF_HANDLE.id() {
+            let radius = shape.params.x;
+            let half_angle = shape.params.y.atan2(shape.params.z);
+            Some(CircularSector::new(radius, half_angle))
+        } else {
+            None
+        }
+    }
+
+    #[cfg(feature = "bevy_picking")]
+    fn picking_fn(&self) -> Box<dyn Fn(Vec2) -> f32 + Send + Sync> {
+        let (sin, cos) = self.arc.half_angle.sin_cos();
+        let c = Vec2::new(sin, cos);
+        let radius = self.arc.radius;
+        Box::new(move |p| sdf::pie(p, c, radius))
+    }
+}
+
 impl<T: SmudPrimitive> From<T> for SmudShape {
     fn from(primitive: T) -> Self {
         Self {
@@ -358,7 +398,8 @@ fn auto_add_picking_shape(
             .or_else(|| Ellipse::picking_from_shape(shape))
             .or_else(|| Annulus::picking_from_shape(shape))
             .or_else(|| Capsule2d::picking_from_shape(shape))
-            .or_else(|| Rhombus::picking_from_shape(shape));
+            .or_else(|| Rhombus::picking_from_shape(shape))
+            .or_else(|| CircularSector::picking_from_shape(shape));
 
         if let Some(picking_shape) = picking_shape {
             commands.entity(entity).insert(picking_shape);
