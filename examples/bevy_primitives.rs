@@ -55,6 +55,21 @@ fn setup(mut commands: Commands) {
             .with_fill(SIMPLE_FILL_HANDLE),
         OriginalColor(css::YELLOW.into()),
     ));
+
+    // Ellipse
+    commands.spawn((
+        Transform::from_translation(Vec3::new(-250., 0., 0.)),
+        SmudShape::from(Ellipse::new(70., 40.)).with_color(css::VIOLET),
+        OriginalColor(css::VIOLET.into()),
+    ));
+
+    // Rotated ellipse
+    commands.spawn((
+        Transform::from_translation(Vec3::new(0., 150., 0.))
+            .with_rotation(Quat::from_rotation_z(0.8)),
+        SmudShape::from(Ellipse::new(80., 30.)).with_color(css::TURQUOISE),
+        OriginalColor(css::TURQUOISE.into()),
+    ));
 }
 
 // Component to store the original color for restoring after hover
