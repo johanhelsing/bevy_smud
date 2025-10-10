@@ -10,7 +10,10 @@ use bevy::color::palettes::css;
 use bevy::math::primitives::{Circle, Rectangle};
 use bevy::prelude::*;
 
-use crate::{sdf, SmudShape, DEFAULT_FILL_HANDLE};
+use crate::{SmudShape, DEFAULT_FILL_HANDLE};
+
+#[cfg(feature = "bevy_picking")]
+use crate::sdf;
 
 /// Parametrized rectangle shape SDF
 pub const RECTANGLE_SDF_HANDLE: Handle<Shader> = uuid_handle!("2289ee84-18da-4e35-87b2-e256fd88c092");
