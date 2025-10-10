@@ -82,11 +82,16 @@ impl From<Rectangle> for SmudShape {
     /// stored in params.xy. The bounds are automatically set with some padding
     /// to prevent clipping.
     ///
+    /// When the `bevy_picking` feature is enabled, a `SmudPickingShape` component
+    /// will be automatically added to the entity for precise hit-testing. This happens
+    /// via an observer, so you don't need to manually add the picking component!
+    ///
     /// # Example
     /// ```no_run
     /// # use bevy::prelude::*;
     /// # use bevy_smud::prelude::*;
     /// # let mut commands: Commands = panic!();
+    /// // SmudPickingShape is automatically added when bevy_picking is enabled!
     /// commands.spawn((
     ///     Transform::from_translation(Vec3::new(100., 0., 0.)),
     ///     SmudShape::from(Rectangle::new(100., 50.))

@@ -14,22 +14,15 @@ fn setup(mut commands: Commands) {
     // Spawn a camera
     commands.spawn((Camera2d, Msaa::Off));
 
-    // Using the ergonomic From<Rectangle> API with builder methods
-    // This rectangle has precise picking enabled
-    let rect1 = Rectangle::new(100., 50.);
     commands.spawn((
         Transform::from_translation(Vec3::new(-200., 100., 0.)),
-        SmudShape::from(rect1).with_color(css::TOMATO),
-        SmudPickingShape::from(rect1),
+        SmudShape::from(Rectangle::new(100., 50.)).with_color(css::TOMATO),
         OriginalColor(css::TOMATO.into()),
     ));
 
-    // Another rectangle with different size and color
-    let rect2 = Rectangle::new(80., 80.);
     commands.spawn((
         Transform::from_translation(Vec3::new(100., 100., 0.)),
-        SmudShape::from(rect2).with_color(css::CORNFLOWER_BLUE),
-        SmudPickingShape::from(rect2),
+        SmudShape::from(Rectangle::new(80., 80.)).with_color(css::CORNFLOWER_BLUE),
         OriginalColor(css::CORNFLOWER_BLUE.into()),
     ));
 
@@ -55,14 +48,11 @@ fn setup(mut commands: Commands) {
         SmudShape::from(Rectangle::new(60., 60.)).with_color(css::HOT_PINK),
     ));
 
-    // Rectangle with simple fill and precise picking
-    let rect6 = Rectangle::new(50., 100.);
     commands.spawn((
         Transform::from_translation(Vec3::new(250., 0., 0.)),
-        SmudShape::from(rect6)
+        SmudShape::from(Rectangle::new(50., 100.))
             .with_color(css::YELLOW)
             .with_fill(SIMPLE_FILL_HANDLE),
-        SmudPickingShape::from(rect6),
         OriginalColor(css::YELLOW.into()),
     ));
 }
