@@ -80,10 +80,10 @@ mod util;
 pub mod prelude {
     pub use crate::{
         BlendMode, DEFAULT_FILL_HANDLE, SIMPLE_FILL_HANDLE, SmudPlugin, SmudShape,
-        bevy_primitives::RECTANGLE_SDF_HANDLE, sdf_assets::SdfAssets,
+        sdf_assets::SdfAssets,
     };
 
-    pub use bevy::math::primitives::Rectangle;
+    pub use bevy::math::primitives::{Circle, Rectangle};
 
     #[cfg(feature = "bevy_picking")]
     pub use crate::picking_backend::{

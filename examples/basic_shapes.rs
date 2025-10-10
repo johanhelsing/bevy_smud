@@ -22,7 +22,7 @@ fn setup(mut commands: Commands) {
 
     commands.spawn((
         Transform::from_translation(Vec3::new(100., 100., 0.)),
-        SmudShape::from(Rectangle::new(80., 80.)).with_color(css::CORNFLOWER_BLUE),
+        SmudShape::from(Circle::new(40.)).with_color(css::CORNFLOWER_BLUE),
         OriginalColor(css::CORNFLOWER_BLUE.into()),
     ));
 

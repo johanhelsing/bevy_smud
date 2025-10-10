@@ -7,13 +7,16 @@
 
 use bevy::asset::{load_internal_asset, uuid_handle};
 use bevy::color::palettes::css;
-use bevy::math::primitives::Rectangle;
+use bevy::math::primitives::{Circle, Rectangle};
 use bevy::prelude::*;
 
 use crate::{sdf, SmudShape, DEFAULT_FILL_HANDLE};
 
 /// Parametrized rectangle shape SDF
 pub const RECTANGLE_SDF_HANDLE: Handle<Shader> = uuid_handle!("2289ee84-18da-4e35-87b2-e256fd88c092");
+
+/// Parametrized circle shape SDF
+pub const CIRCLE_SDF_HANDLE: Handle<Shader> = uuid_handle!("abb54e5e-62f3-4ea2-9604-84368bb6ae6d");
 
 /// Plugin that adds support for Bevy primitive shapes.
 ///
@@ -32,6 +35,12 @@ impl Plugin for BevyPrimitivesPlugin {
             app,
             RECTANGLE_SDF_HANDLE,
             "../assets/shapes/rectangle.wgsl",
+            Shader::from_wgsl
+        );
+        load_internal_asset!(
+            app,
+            CIRCLE_SDF_HANDLE,
+            "../assets/shapes/circle.wgsl",
             Shader::from_wgsl
         );
 
@@ -92,6 +101,50 @@ impl From<Rectangle> for SmudShape {
     }
 }
 
+impl From<Circle> for SmudShape {
+    /// Create a SmudShape from a Bevy Circle primitive.
+    ///
+    /// This creates a parametrized circle SDF with the circle's radius
+    /// stored in params.x. The bounds are automatically set with some padding
+    /// to prevent clipping.
+    ///
+    /// When the `bevy_picking` feature is enabled, a `SmudPickingShape` component
+    /// will be automatically added to the entity for precise hit-testing.
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use bevy::prelude::*;
+    /// # use bevy_smud::prelude::*;
+    /// # let mut commands: Commands = panic!();
+    /// commands.spawn((
+    ///     Transform::from_translation(Vec3::new(100., 0., 0.)),
+    ///     SmudShape::from(Circle::new(50.))
+    ///         .with_color(Color::srgb(0.2, 0.8, 0.2))
+    /// ));
+    /// ```
+    fn from(circle: Circle) -> Self {
+        // Use the pre-loaded circle SDF shader
+        let sdf = CIRCLE_SDF_HANDLE;
+
+        // Circle bounds with padding (2px on each side for anti-aliasing)
+        let padding = 2.0;
+        let size = circle.radius * 2.0 + padding * 2.0;
+        let bounds = Rectangle::new(size, size);
+
+        // Store the radius in params.x for the shader
+        let params = Vec4::new(circle.radius, 0.0, 0.0, 0.0);
+
+        Self {
+            color: css::WHITE.into(),
+            sdf,
+            fill: DEFAULT_FILL_HANDLE,
+            bounds,
+            params,
+            blend_mode: Default::default(),
+        }
+    }
+}
+
 // ============================================================================
 // SmudPickingShape conversions (when bevy_picking feature is enabled)
 // ============================================================================
@@ -126,6 +179,35 @@ impl From<Rectangle> for crate::picking_backend::SmudPickingShape {
     }
 }
 
+#[cfg(feature = "bevy_picking")]
+impl From<Circle> for crate::picking_backend::SmudPickingShape {
+    /// Create a `SmudPickingShape` from a Bevy `Circle` primitive.
+    ///
+    /// This provides precise hit-testing for circle shapes by using the CPU-side
+    /// SDF function. The picking shape will exactly match the visual shape created
+    /// by `SmudShape::from(Circle)`.
+    ///
+    /// Note: When using `SmudShape::from(Circle)`, the picking shape is automatically
+    /// added via an observer.
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use bevy::prelude::*;
+    /// # use bevy_smud::prelude::*;
+    /// # let mut commands: Commands = panic!();
+    /// let circle = Circle::new(50.);
+    /// commands.spawn((
+    ///     Transform::from_translation(Vec3::new(100., 0., 0.)),
+    ///     SmudShape::from(circle).with_color(Color::srgb(0.2, 0.8, 0.2)),
+    ///     SmudPickingShape::from(circle), // Explicit picking (usually not needed)
+    /// ));
+    /// ```
+    fn from(circle: Circle) -> Self {
+        let radius = circle.radius;
+        Self::new(move |p| sdf::circle(p, radius))
+    }
+}
+
 // ============================================================================
 // Observer for auto-adding picking shapes
 // ============================================================================
@@ -141,15 +223,19 @@ fn auto_add_picking_shape(
 
     let entity = trigger.entity;
     if let Ok(shape) = query.get(entity) {
-        // Check if this is a rectangle shape (from Rectangle primitive)
-        if shape.sdf.id() == RECTANGLE_SDF_HANDLE.id() {
-            // Extract half-size from params
+        let picking_shape = if shape.sdf.id() == RECTANGLE_SDF_HANDLE.id() {
+            // Rectangle: Extract half-size from params.xy
             let half_size = Vec2::new(shape.params.x, shape.params.y);
+            Some(SmudPickingShape::new(move |p| sdf::sd_box(p, half_size)))
+        } else if shape.sdf.id() == CIRCLE_SDF_HANDLE.id() {
+            // Circle: Extract radius from params.x
+            let radius = shape.params.x;
+            Some(SmudPickingShape::new(move |p| sdf::circle(p, radius)))
+        } else {
+            None
+        };
 
-            // Create the picking shape using the sdf module
-            let picking_shape = SmudPickingShape::new(move |p| sdf::sd_box(p, half_size));
-
-            // Insert it into the entity
+        if let Some(picking_shape) = picking_shape {
             commands.entity(entity).insert(picking_shape);
         }
     }
