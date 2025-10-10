@@ -36,6 +36,7 @@
 
 use bevy::asset::{load_internal_asset, uuid_handle};
 use bevy::color::palettes::css;
+use bevy::math::bounding::{Bounded2d, BoundingVolume};
 use bevy::math::primitives::{Circle, Ellipse, Rectangle};
 use bevy::prelude::*;
 
@@ -48,12 +49,21 @@ use crate::sdf;
 ///
 /// This trait encapsulates the varying parts of primitive-to-shape conversion:
 /// shader handles, parameter extraction, bounds calculation, and picking functions.
-trait SmudPrimitive: Sized {
+trait SmudPrimitive: Sized + Bounded2d {
     /// The shader handle for this primitive's SDF
     fn sdf_shader() -> Handle<Shader>;
 
     /// Extract bounds for rendering (including padding for anti-aliasing)
-    fn bounds(&self) -> Rectangle;
+    ///
+    /// Default implementation uses the `Bounded2d` trait to compute an AABB
+    /// and adds padding for anti-aliasing.
+    fn bounds(&self) -> Rectangle {
+        const PADDING: f32 = 2.0;
+        let aabb = Bounded2d::aabb_2d(self, Vec2::ZERO);
+        Rectangle {
+            half_size: aabb.half_size() + Vec2::splat(PADDING),
+        }
+    }
 
     /// Extract shader parameters (stored in SmudShape.params)
     fn params(&self) -> Vec4;
@@ -111,17 +121,9 @@ impl Plugin for BevyPrimitivesPlugin {
     }
 }
 
-const PADDING: f32 = 2.0;
-
 impl SmudPrimitive for Rectangle {
     fn sdf_shader() -> Handle<Shader> {
         RECTANGLE_SDF_HANDLE
-    }
-
-    fn bounds(&self) -> Rectangle {
-        Rectangle {
-            half_size: self.half_size + Vec2::splat(PADDING),
-        }
     }
 
     fn params(&self) -> Vec4 {
@@ -140,11 +142,6 @@ impl SmudPrimitive for Circle {
         CIRCLE_SDF_HANDLE
     }
 
-    fn bounds(&self) -> Rectangle {
-        let size = self.radius * 2.0 + PADDING * 2.0;
-        Rectangle::new(size, size)
-    }
-
     fn params(&self) -> Vec4 {
         Vec4::new(self.radius, 0.0, 0.0, 0.0)
     }
@@ -159,12 +156,6 @@ impl SmudPrimitive for Circle {
 impl SmudPrimitive for Ellipse {
     fn sdf_shader() -> Handle<Shader> {
         ELLIPSE_SDF_HANDLE
-    }
-
-    fn bounds(&self) -> Rectangle {
-        Rectangle {
-            half_size: self.half_size + Vec2::splat(PADDING),
-        }
     }
 
     fn params(&self) -> Vec4 {
