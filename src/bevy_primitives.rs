@@ -41,7 +41,7 @@
 //! added to entities with primitive-based shapes for precise hit-testing.
 
 use bevy::asset::{load_internal_asset, uuid_handle};
-use bevy::math::bounding::{Bounded2d, BoundingVolume};
+use bevy::math::bounding::Bounded2d;
 use bevy::math::primitives::{
     Annulus, Capsule2d, Circle, CircularSector, Ellipse, Rectangle, Rhombus,
 };
@@ -67,8 +67,12 @@ trait SmudPrimitive: Sized + Bounded2d {
     fn bounds(&self) -> Rectangle {
         const PADDING: f32 = 2.0;
         let aabb = Bounded2d::aabb_2d(self, Vec2::ZERO);
+
+        // For asymmetric shapes, we need the maximum extent from origin in each direction
+        let half_size = aabb.min.abs().max(aabb.max.abs());
+
         Rectangle {
-            half_size: aabb.half_size() + Vec2::splat(PADDING),
+            half_size: half_size + Vec2::splat(PADDING),
         }
     }
 
@@ -339,29 +343,6 @@ impl SmudPrimitive for Rhombus {
 impl SmudPrimitive for CircularSector {
     fn sdf_shader() -> Handle<Shader> {
         CIRCULAR_SECTOR_SDF_HANDLE
-    }
-
-    fn bounds(&self) -> Rectangle {
-        // For a pie slice centered at origin extending from -half_angle to +half_angle around Vec2::Y
-        // The sector goes from (0,0) up to radius in the +Y direction
-        // X extent: ±radius * sin(half_angle)
-        // Y extent: 0 to radius (but we need half_size centered at origin)
-        const PADDING: f32 = 2.0;
-        let r = self.arc.radius;
-        let (sin, _cos) = self.arc.half_angle.sin_cos();
-
-        // The bounds need to be centered at origin, but the shape extends from 0 to +Y
-        // So half_size.y should be radius/2 to center it properly
-        // Actually, looking at the shape, it goes from origin to the arc, so:
-        // X: -r*sin to +r*sin -> half_size.x = r*sin
-        // Y: 0 to r -> but we want the center, so half_size.y = r/2 with offset...
-        // Wait, no - bounds are in local space centered at origin for the shape
-        // The shape IS centered at origin, it's just asymmetric
-        let half_size = Vec2::new(r * sin.abs(), r);
-
-        Rectangle {
-            half_size: half_size + Vec2::splat(PADDING),
-        }
     }
 
     fn params(&self) -> Vec4 {

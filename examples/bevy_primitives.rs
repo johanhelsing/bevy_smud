@@ -92,10 +92,10 @@ fn setup(mut commands: Commands) {
         OriginalColor(css::GOLD.into()),
     ));
 
-    // Circular sector (pie slice) - 90 degrees
+    // Circular sector (pie slice) - 90 degrees (quarter turn)
     commands.spawn((
         Transform::from_translation(Vec3::new(0., 200., 0.)),
-        SmudShape::from(CircularSector::new(60., std::f32::consts::FRAC_PI_4)).with_color(css::ORANGE_RED),
+        SmudShape::from(CircularSector::from_turns(60., 0.25)).with_color(css::ORANGE_RED),
         OriginalColor(css::ORANGE_RED.into()),
     ));
 }
