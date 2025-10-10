@@ -51,6 +51,13 @@ pub fn annulus(p: Vec2, outer_radius: f32, inner_radius: f32) -> f32 {
     circle(p, middle_radius).abs() - thickness
 }
 
+/// Signed distance to a capsule (pill shape)
+pub fn capsule(p: Vec2, radius: f32, half_length: f32) -> f32 {
+    let a = Vec2::new(0.0, -half_length);
+    let b = Vec2::new(0.0, half_length);
+    segment(p, a, b) - radius
+}
+
 /// Signed distance to a rounded box
 pub fn rounded_box(p: Vec2, b: Vec2, r: f32) -> f32 {
     let q = p.abs() - b;

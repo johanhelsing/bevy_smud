@@ -43,7 +43,7 @@
 use bevy::asset::{load_internal_asset, uuid_handle};
 use bevy::color::palettes::css;
 use bevy::math::bounding::{Bounded2d, BoundingVolume};
-use bevy::math::primitives::{Annulus, Circle, Ellipse, Rectangle};
+use bevy::math::primitives::{Annulus, Capsule2d, Circle, Ellipse, Rectangle};
 use bevy::prelude::*;
 
 use crate::{DEFAULT_FILL_HANDLE, SmudShape};
@@ -102,6 +102,9 @@ pub const ELLIPSE_SDF_HANDLE: Handle<Shader> = uuid_handle!("2c02adad-84fb-46d7-
 /// Parametrized annulus (ring) shape SDF
 pub const ANNULUS_SDF_HANDLE: Handle<Shader> = uuid_handle!("a4e4cc45-0af7-4918-b082-69ba5236c4d0");
 
+/// Parametrized capsule (pill) shape SDF
+pub const CAPSULE_SDF_HANDLE: Handle<Shader> = uuid_handle!("3f8b7c1d-9e5a-4b2c-8d6f-1a9c4e7b2d5a");
+
 /// Plugin that adds support for Bevy primitive shapes.
 ///
 /// This plugin:
@@ -137,6 +140,12 @@ impl Plugin for BevyPrimitivesPlugin {
             app,
             ANNULUS_SDF_HANDLE,
             "../assets/shapes/annulus.wgsl",
+            Shader::from_wgsl
+        );
+        load_internal_asset!(
+            app,
+            CAPSULE_SDF_HANDLE,
+            "../assets/shapes/capsule.wgsl",
             Shader::from_wgsl
         );
 
@@ -255,6 +264,31 @@ impl SmudPrimitive for Annulus {
     }
 }
 
+impl SmudPrimitive for Capsule2d {
+    fn sdf_shader() -> Handle<Shader> {
+        CAPSULE_SDF_HANDLE
+    }
+
+    fn params(&self) -> Vec4 {
+        Vec4::new(self.radius, self.half_length, 0.0, 0.0)
+    }
+
+    fn try_from_shape(shape: &SmudShape) -> Option<Self> {
+        if shape.sdf.id() == CAPSULE_SDF_HANDLE.id() {
+            Some(Capsule2d::new(shape.params.x, shape.params.y))
+        } else {
+            None
+        }
+    }
+
+    #[cfg(feature = "bevy_picking")]
+    fn picking_fn(&self) -> Box<dyn Fn(Vec2) -> f32 + Send + Sync> {
+        let radius = self.radius;
+        let half_length = self.half_length;
+        Box::new(move |p| sdf::capsule(p, radius, half_length))
+    }
+}
+
 impl<T: SmudPrimitive> From<T> for SmudShape {
     fn from(primitive: T) -> Self {
         Self {
@@ -288,7 +322,8 @@ fn auto_add_picking_shape(
         let picking_shape = Rectangle::picking_from_shape(shape)
             .or_else(|| Circle::picking_from_shape(shape))
             .or_else(|| Ellipse::picking_from_shape(shape))
-            .or_else(|| Annulus::picking_from_shape(shape));
+            .or_else(|| Annulus::picking_from_shape(shape))
+            .or_else(|| Capsule2d::picking_from_shape(shape));
 
         if let Some(picking_shape) = picking_shape {
             commands.entity(entity).insert(picking_shape);

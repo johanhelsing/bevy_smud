@@ -77,6 +77,21 @@ fn setup(mut commands: Commands) {
         SmudShape::from(Annulus::new(20., 50.)).with_color(css::MAGENTA),
         OriginalColor(css::MAGENTA.into()),
     ));
+
+    // Capsule (pill shape)
+    commands.spawn((
+        Transform::from_translation(Vec3::new(-350., 0., 0.)),
+        SmudShape::from(Capsule2d::new(15., 40.)).with_color(css::LIME),
+        OriginalColor(css::LIME.into()),
+    ));
+
+    // Rotated capsule
+    commands.spawn((
+        Transform::from_translation(Vec3::new(350., 0., 0.))
+            .with_rotation(Quat::from_rotation_z(1.2)),
+        SmudShape::from(Capsule2d::new(20., 50.)).with_color(css::AQUA),
+        OriginalColor(css::AQUA.into()),
+    ));
 }
 
 // Component to store the original color for restoring after hover
