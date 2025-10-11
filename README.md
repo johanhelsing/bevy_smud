@@ -84,6 +84,10 @@ fn main() {
 
 The picking backend supports both bounds-based picking (fast, uses shape bounds) and precise SDF-based picking (accurate, uses Rust distance functions that match the shape geometry). See the [picking example](https://github.com/johanhelsing/bevy_smud/blob/main/examples/picking.rs) for details.
 
+## Bevy Primitives
+
+For convenience, bevy_smud provides `From` implementations for some of Bevy's built-in 2D primitive shapes (`Circle`, `Rectangle`, `Ellipse`, etc.), allowing you to quickly create SDF shapes without writing shader code. See the [bevy_primitives example](https://github.com/johanhelsing/bevy_smud/blob/main/examples/bevy_primitives.rs) for usage.
+
 ## Showcase
 
 Send me a PR if you want your project featured here:
