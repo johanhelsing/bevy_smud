@@ -21,6 +21,18 @@ fn sd_circle(p: vec2<f32>, r: f32) -> f32 {
     return length(p) - r;
 }
 
+fn sd_annulus(p: vec2<f32>, outer_radius: f32, inner_radius: f32) -> f32 {
+    let middle_radius = (outer_radius + inner_radius) * 0.5;
+    let thickness = (outer_radius - inner_radius) * 0.5;
+    return abs(sd_circle(p, middle_radius)) - thickness;
+}
+
+fn sd_capsule(p: vec2<f32>, radius: f32, half_length: f32) -> f32 {
+    let a = vec2<f32>(0., -half_length);
+    let b = vec2<f32>(0., half_length);
+    return sd_segment(p, a, b) - radius;
+}
+
 fn sd_rounded_box(p: vec2<f32>, b: vec2<f32>, r: vec4<f32>) -> f32 {
     var r_2 = r;
     // swizzle assignment isn't supported yet
@@ -211,6 +223,55 @@ fn sd_star_5_(p_in: vec2<f32>, r: f32, rf: f32) -> f32 {
 // see: https://github.com/gpuweb/gpuweb/issues/3987
 fn modulo(x: f32, y: f32) -> f32 {
     return x - y * floor(x / y);
+}
+
+// https://medium.com/@ohbonsai/2d-sdf-derivation-4-regular-polygon-9d3cfc2ec6f5
+fn sd_regular_polygon(p: vec2<f32>, radius: f32, sides: i32) -> f32 {
+    // Get polar angle
+    var angle = atan2(p.y, p.x);
+    // Add PI/2 to match Bevy's convention (vertex at top instead of right)
+    angle = angle + PI / 2.;
+    // Make angle to range [0, 2*PI]
+    if (angle < 0.) {
+        angle = angle + PI * 2.;
+    }
+
+    // Get each piece angle
+    let delta = 2. * PI / f32(sides);
+    // How many pieces?
+    let area_number = floor(angle / delta);
+
+    // Start angle of current piece
+    let theta1 = delta * area_number;
+    // End angle of current piece
+    let theta2 = delta * (area_number + 1.);
+
+    // Start point on current piece
+    let point_a = vec2<f32>(radius * cos(theta1), radius * sin(theta1));
+    // End point on current piece
+    let point_a_prime = vec2<f32>(radius * cos(theta2), radius * sin(theta2));
+    // The middle of start and end point
+    let point_d = (point_a + point_a_prime) / 2.;
+
+    // Area 1: near start vertex
+    let vector1 = p - point_a;
+    let axis1 = point_a;
+    let a1 = acos(dot(normalize(axis1), normalize(vector1)));
+    if (a1 < (delta / 2.)) {
+        return length(vector1);
+    }
+
+    // Area 2: near end vertex
+    let vector2 = p - point_a_prime;
+    let axis2 = point_a_prime;
+    let a2 = acos(dot(normalize(axis2), normalize(vector2)));
+    if ((PI * 2. - a2) < (delta / 2.)) {
+        return length(vector2);
+    }
+
+    // Area 3: distance to edge
+    let theta = modulo(angle, delta) - delta / 2.;
+    return length(p) * cos(theta) - length(point_d);
 }
 
 fn sd_star(p_in: vec2<f32>, r: f32, n: i32, m: f32) -> f32 {

@@ -44,6 +44,20 @@ pub fn circle(p: Vec2, radius: f32) -> f32 {
     p.length() - radius
 }
 
+/// Signed distance to an annulus (ring)
+pub fn annulus(p: Vec2, outer_radius: f32, inner_radius: f32) -> f32 {
+    let middle_radius = (outer_radius + inner_radius) * 0.5;
+    let thickness = (outer_radius - inner_radius) * 0.5;
+    circle(p, middle_radius).abs() - thickness
+}
+
+/// Signed distance to a capsule (pill shape)
+pub fn capsule(p: Vec2, radius: f32, half_length: f32) -> f32 {
+    let a = Vec2::new(0.0, -half_length);
+    let b = Vec2::new(0.0, half_length);
+    segment(p, a, b) - radius
+}
+
 /// Signed distance to a rounded box
 pub fn rounded_box(p: Vec2, b: Vec2, r: f32) -> f32 {
     let q = p.abs() - b;
@@ -238,6 +252,55 @@ pub fn star_5(p: Vec2, r: f32, rf: f32) -> f32 {
     let ba = Vec2::new(rf * (-k1.y), rf * k1.x - 1.0);
     let h = clamp(p.dot(ba) / ba.dot(ba), 0.0, r);
     (p - ba * h).length() * sign(p.y * ba.x - p.x * ba.y)
+}
+
+/// Signed distance to a regular polygon
+pub fn regular_polygon(p: Vec2, radius: f32, sides: i32) -> f32 {
+    // Get polar angle
+    let mut angle = p.y.atan2(p.x);
+    // Add PI/2 to match Bevy's convention (vertex at top instead of right)
+    angle += std::f32::consts::FRAC_PI_2;
+    // Make angle to range [0, 2*PI]
+    if angle < 0.0 {
+        angle += std::f32::consts::TAU;
+    }
+
+    // Get each piece angle
+    let delta = std::f32::consts::TAU / sides as f32;
+    // How many pieces?
+    let area_number = (angle / delta).floor();
+
+    // Start angle of current piece
+    let theta1 = delta * area_number;
+    // End angle of current piece
+    let theta2 = delta * (area_number + 1.0);
+
+    // Start point on current piece
+    let point_a = Vec2::new(radius * theta1.cos(), radius * theta1.sin());
+    // End point on current piece
+    let point_a_prime = Vec2::new(radius * theta2.cos(), radius * theta2.sin());
+    // The middle of start and end point
+    let point_d = (point_a + point_a_prime) / 2.0;
+
+    // Area 1: near start vertex
+    let vector1 = p - point_a;
+    let axis1 = point_a;
+    let a1 = (axis1.normalize().dot(vector1.normalize())).acos();
+    if a1 < (delta / 2.0) {
+        return vector1.length();
+    }
+
+    // Area 2: near end vertex
+    let vector2 = p - point_a_prime;
+    let axis2 = point_a_prime;
+    let a2 = (axis2.normalize().dot(vector2.normalize())).acos();
+    if (std::f32::consts::TAU - a2) < (delta / 2.0) {
+        return vector2.length();
+    }
+
+    // Area 3: distance to edge
+    let theta = modulo(angle, delta) - delta / 2.0;
+    p.length() * theta.cos() - point_d.length()
 }
 
 /// Signed distance to a star with n points

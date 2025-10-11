@@ -61,6 +61,8 @@ pub use shader_loading::{DEFAULT_FILL_HANDLE, SIMPLE_FILL_HANDLE};
 
 use crate::util::generate_shader_id;
 
+#[cfg(feature = "bevy_primitives")]
+pub mod bevy_primitives;
 mod components;
 #[cfg(feature = "bevy_picking")]
 mod picking_backend;
@@ -82,7 +84,8 @@ pub mod prelude {
         sdf_assets::SdfAssets,
     };
 
-    pub use bevy::math::primitives::Rectangle;
+    #[cfg(feature = "bevy_primitives")]
+    pub use bevy::math::primitives::{Annulus, Circle, Ellipse, Rectangle};
 
     #[cfg(feature = "bevy_picking")]
     pub use crate::picking_backend::{
@@ -108,6 +111,10 @@ impl Plugin for SmudPlugin {
     fn build(&self, app: &mut App) {
         // All the messy boiler-plate for loading a bunch of shaders
         app.add_plugins(ShaderLoadingPlugin);
+
+        #[cfg(feature = "bevy_primitives")]
+        app.add_plugins(bevy_primitives::BevyPrimitivesPlugin);
+
         // app.add_plugins(UiShapePlugin);
 
         app.register_type::<SmudShape>();

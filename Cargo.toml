@@ -10,8 +10,9 @@ repository = "https://github.com/johanhelsing/bevy_smud"
 version = "0.12.0"
 
 [features]
-default = ["bevy_picking"]
+default = ["bevy_picking", "bevy_primitives"]
 bevy_picking = ["bevy/bevy_picking"]
+bevy_primitives = []
 
 [dependencies]
 bevy = { version = "0.17", default-features = false, features = [

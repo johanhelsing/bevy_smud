@@ -1,0 +1,450 @@
+//! Convenience conversions from Bevy's math primitives to bevy_smud shapes.
+//!
+//! This module provides `From` trait implementations that allow you to create
+//! `SmudShape` components directly from Bevy's 2D primitive shapes like [`Rectangle`],
+//! [`Circle`], [`Ellipse`], and [`Annulus`].
+//!
+//! # Example
+//!
+//! ```no_run
+//! # use bevy::prelude::*;
+//! # use bevy_smud::prelude::*;
+//! # let mut commands: Commands = panic!();
+//! commands.spawn((
+//!     Transform::from_translation(Vec3::new(100., 0., 0.)),
+//!     SmudShape::from(Rectangle::new(100., 50.))
+//!         .with_color(Color::srgb(0.8, 0.2, 0.2)),
+//! ));
+//!
+//! commands.spawn((
+//!     Transform::from_translation(Vec3::new(-100., 0., 0.)),
+//!     SmudShape::from(Circle::new(50.))
+//!         .with_color(Color::srgb(0.2, 0.8, 0.2)),
+//! ));
+//!
+//! commands.spawn((
+//!     Transform::from_translation(Vec3::new(0., -100., 0.)),
+//!     SmudShape::from(Ellipse::new(80., 40.))
+//!         .with_color(Color::srgb(0.8, 0.8, 0.2)),
+//! ));
+//!
+//! commands.spawn((
+//!     Transform::from_translation(Vec3::new(200., 0., 0.)),
+//!     SmudShape::from(Annulus::new(20., 40.))
+//!         .with_color(Color::srgb(0.2, 0.8, 0.8)),
+//! ));
+//! ```
+//!
+//! # Picking Support
+//!
+//! When the `bevy_picking` feature is enabled, `SmudPickingShape` is automatically
+//! added to entities with primitive-based shapes for precise hit-testing.
+
+use bevy::asset::{load_internal_asset, uuid_handle};
+use bevy::math::bounding::Bounded2d;
+use bevy::math::primitives::{
+    Annulus, Capsule2d, Circle, CircularSector, Ellipse, Rectangle, RegularPolygon, Rhombus,
+};
+use bevy::prelude::*;
+
+use crate::SmudShape;
+
+#[cfg(feature = "bevy_picking")]
+use crate::sdf;
+
+/// Trait for primitives that can be converted to SmudShape.
+///
+/// This trait encapsulates the varying parts of primitive-to-shape conversion:
+/// shader handles, parameter extraction, bounds calculation, and picking functions.
+trait SmudPrimitive: Sized + Bounded2d {
+    /// The shader handle for this primitive's SDF
+    fn sdf_shader() -> Handle<Shader>;
+
+    /// Extract bounds for rendering (including padding for anti-aliasing)
+    ///
+    /// Default implementation uses the `Bounded2d` trait to compute an AABB
+    /// and adds padding for anti-aliasing.
+    fn bounds(&self) -> Rectangle {
+        const PADDING: f32 = 4.0;
+        let aabb = Bounded2d::aabb_2d(self, Vec2::ZERO);
+
+        // For asymmetric shapes, we need the maximum extent from origin in each direction
+        let half_size = aabb.min.abs().max(aabb.max.abs());
+
+        Rectangle {
+            half_size: half_size + Vec2::splat(PADDING),
+        }
+    }
+
+    /// Extract shader parameters (stored in SmudShape.params)
+    fn params(&self) -> Vec4;
+
+    /// Try to reconstruct a primitive from a SmudShape
+    fn try_from_shape(shape: &SmudShape) -> Option<Self>;
+
+    #[cfg(feature = "bevy_picking")]
+    /// Create a picking closure for this primitive
+    fn picking_fn(&self) -> Box<dyn Fn(Vec2) -> f32 + Send + Sync>;
+
+    #[cfg(feature = "bevy_picking")]
+    /// Try to create a picking shape by reconstructing this primitive from a SmudShape
+    fn picking_from_shape(shape: &SmudShape) -> Option<crate::picking_backend::SmudPickingShape> {
+        Self::try_from_shape(shape).map(|p| crate::picking_backend::SmudPickingShape::from(p))
+    }
+}
+
+/// Parametrized rectangle shape SDF
+pub const RECTANGLE_SDF_HANDLE: Handle<Shader> =
+    uuid_handle!("2289ee84-18da-4e35-87b2-e256fd88c092");
+
+/// Parametrized circle shape SDF
+pub const CIRCLE_SDF_HANDLE: Handle<Shader> = uuid_handle!("abb54e5e-62f3-4ea2-9604-84368bb6ae6d");
+
+/// Parametrized ellipse shape SDF
+pub const ELLIPSE_SDF_HANDLE: Handle<Shader> = uuid_handle!("2c02adad-84fb-46d7-8ef8-f4b6d86d6149");
+
+/// Parametrized annulus (ring) shape SDF
+pub const ANNULUS_SDF_HANDLE: Handle<Shader> = uuid_handle!("a4e4cc45-0af7-4918-b082-69ba5236c4d0");
+
+/// Parametrized capsule (pill) shape SDF
+pub const CAPSULE_SDF_HANDLE: Handle<Shader> = uuid_handle!("3f8b7c1d-9e5a-4b2c-8d6f-1a9c4e7b2d5a");
+
+/// Parametrized rhombus shape SDF
+pub const RHOMBUS_SDF_HANDLE: Handle<Shader> = uuid_handle!("b41cabff-98bb-417c-92e6-b4889a9290ad");
+
+/// Parametrized circular sector (pie slice) shape SDF
+pub const CIRCULAR_SECTOR_SDF_HANDLE: Handle<Shader> =
+    uuid_handle!("8c5373ba-2cdc-4e8f-987c-cf5dfd6d84d5");
+
+/// Parametrized regular polygon shape SDF
+pub const REGULAR_POLYGON_SDF_HANDLE: Handle<Shader> =
+    uuid_handle!("38dc4249-e998-4a6f-ace5-c619ae875929");
+
+/// Plugin that adds support for Bevy primitive shapes.
+///
+/// This plugin:
+/// - Loads shader assets for primitive shapes (Rectangle, Circle, etc.)
+/// - Registers observers for auto-adding picking support (when `bevy_picking` feature is enabled)
+///
+/// This plugin is automatically added by `SmudPlugin`, so you don't need to add it manually.
+#[derive(Default)]
+pub struct BevyPrimitivesPlugin;
+
+impl Plugin for BevyPrimitivesPlugin {
+    fn build(&self, app: &mut App) {
+        // Load all primitive shape shaders
+        load_internal_asset!(
+            app,
+            RECTANGLE_SDF_HANDLE,
+            "../assets/shapes/rectangle.wgsl",
+            Shader::from_wgsl
+        );
+        load_internal_asset!(
+            app,
+            CIRCLE_SDF_HANDLE,
+            "../assets/shapes/circle.wgsl",
+            Shader::from_wgsl
+        );
+        load_internal_asset!(
+            app,
+            ELLIPSE_SDF_HANDLE,
+            "../assets/shapes/ellipse.wgsl",
+            Shader::from_wgsl
+        );
+        load_internal_asset!(
+            app,
+            ANNULUS_SDF_HANDLE,
+            "../assets/shapes/annulus.wgsl",
+            Shader::from_wgsl
+        );
+        load_internal_asset!(
+            app,
+            CAPSULE_SDF_HANDLE,
+            "../assets/shapes/capsule.wgsl",
+            Shader::from_wgsl
+        );
+        load_internal_asset!(
+            app,
+            RHOMBUS_SDF_HANDLE,
+            "../assets/shapes/rhombus.wgsl",
+            Shader::from_wgsl
+        );
+        load_internal_asset!(
+            app,
+            CIRCULAR_SECTOR_SDF_HANDLE,
+            "../assets/shapes/circular_sector.wgsl",
+            Shader::from_wgsl
+        );
+        load_internal_asset!(
+            app,
+            REGULAR_POLYGON_SDF_HANDLE,
+            "../assets/shapes/regular_polygon.wgsl",
+            Shader::from_wgsl
+        );
+
+        // Register observers for auto-adding picking shapes
+        #[cfg(feature = "bevy_picking")]
+        app.add_observer(auto_add_picking_shape);
+    }
+}
+
+impl SmudPrimitive for Rectangle {
+    fn sdf_shader() -> Handle<Shader> {
+        RECTANGLE_SDF_HANDLE
+    }
+
+    fn params(&self) -> Vec4 {
+        Vec4::new(self.half_size.x, self.half_size.y, 0.0, 0.0)
+    }
+
+    fn try_from_shape(shape: &SmudShape) -> Option<Self> {
+        if shape.sdf.id() == RECTANGLE_SDF_HANDLE.id() {
+            Some(Rectangle {
+                half_size: shape.params.xy(),
+            })
+        } else {
+            None
+        }
+    }
+
+    #[cfg(feature = "bevy_picking")]
+    fn picking_fn(&self) -> Box<dyn Fn(Vec2) -> f32 + Send + Sync> {
+        let half_size = self.half_size;
+        Box::new(move |p| sdf::sd_box(p, half_size))
+    }
+}
+
+impl SmudPrimitive for Circle {
+    fn sdf_shader() -> Handle<Shader> {
+        CIRCLE_SDF_HANDLE
+    }
+
+    fn params(&self) -> Vec4 {
+        Vec4::new(self.radius, 0.0, 0.0, 0.0)
+    }
+
+    fn try_from_shape(shape: &SmudShape) -> Option<Self> {
+        if shape.sdf.id() == CIRCLE_SDF_HANDLE.id() {
+            Some(Circle {
+                radius: shape.params.x,
+            })
+        } else {
+            None
+        }
+    }
+
+    #[cfg(feature = "bevy_picking")]
+    fn picking_fn(&self) -> Box<dyn Fn(Vec2) -> f32 + Send + Sync> {
+        let radius = self.radius;
+        Box::new(move |p| sdf::circle(p, radius))
+    }
+}
+
+impl SmudPrimitive for Ellipse {
+    fn sdf_shader() -> Handle<Shader> {
+        ELLIPSE_SDF_HANDLE
+    }
+
+    fn params(&self) -> Vec4 {
+        Vec4::new(self.half_size.x, self.half_size.y, 0.0, 0.0)
+    }
+
+    fn try_from_shape(shape: &SmudShape) -> Option<Self> {
+        if shape.sdf.id() == ELLIPSE_SDF_HANDLE.id() {
+            Some(Ellipse {
+                half_size: shape.params.xy(),
+            })
+        } else {
+            None
+        }
+    }
+
+    #[cfg(feature = "bevy_picking")]
+    fn picking_fn(&self) -> Box<dyn Fn(Vec2) -> f32 + Send + Sync> {
+        let a = self.half_size.x;
+        let b = self.half_size.y;
+        Box::new(move |p| {
+            const EPSILON: f32 = 1e-6;
+            if (a - b).abs() < EPSILON {
+                sdf::circle(p, a)
+            } else {
+                sdf::ellipse(p, a, b)
+            }
+        })
+    }
+}
+
+impl SmudPrimitive for Annulus {
+    fn sdf_shader() -> Handle<Shader> {
+        ANNULUS_SDF_HANDLE
+    }
+
+    fn params(&self) -> Vec4 {
+        Vec4::new(self.outer_circle.radius, self.inner_circle.radius, 0.0, 0.0)
+    }
+
+    fn try_from_shape(shape: &SmudShape) -> Option<Self> {
+        if shape.sdf.id() == ANNULUS_SDF_HANDLE.id() {
+            Some(Annulus::new(shape.params.y, shape.params.x))
+        } else {
+            None
+        }
+    }
+
+    #[cfg(feature = "bevy_picking")]
+    fn picking_fn(&self) -> Box<dyn Fn(Vec2) -> f32 + Send + Sync> {
+        let outer_radius = self.outer_circle.radius;
+        let inner_radius = self.inner_circle.radius;
+        Box::new(move |p| sdf::annulus(p, outer_radius, inner_radius))
+    }
+}
+
+impl SmudPrimitive for Capsule2d {
+    fn sdf_shader() -> Handle<Shader> {
+        CAPSULE_SDF_HANDLE
+    }
+
+    fn params(&self) -> Vec4 {
+        Vec4::new(self.radius, self.half_length, 0.0, 0.0)
+    }
+
+    fn try_from_shape(shape: &SmudShape) -> Option<Self> {
+        if shape.sdf.id() == CAPSULE_SDF_HANDLE.id() {
+            Some(Capsule2d::new(shape.params.x, shape.params.y))
+        } else {
+            None
+        }
+    }
+
+    #[cfg(feature = "bevy_picking")]
+    fn picking_fn(&self) -> Box<dyn Fn(Vec2) -> f32 + Send + Sync> {
+        let radius = self.radius;
+        let half_length = self.half_length;
+        Box::new(move |p| sdf::capsule(p, radius, half_length))
+    }
+}
+
+impl SmudPrimitive for Rhombus {
+    fn sdf_shader() -> Handle<Shader> {
+        RHOMBUS_SDF_HANDLE
+    }
+
+    fn params(&self) -> Vec4 {
+        Vec4::new(self.half_diagonals.x, self.half_diagonals.y, 0.0, 0.0)
+    }
+
+    fn try_from_shape(shape: &SmudShape) -> Option<Self> {
+        if shape.sdf.id() == RHOMBUS_SDF_HANDLE.id() {
+            Some(Rhombus {
+                half_diagonals: shape.params.xy(),
+            })
+        } else {
+            None
+        }
+    }
+
+    #[cfg(feature = "bevy_picking")]
+    fn picking_fn(&self) -> Box<dyn Fn(Vec2) -> f32 + Send + Sync> {
+        let half_diagonals = self.half_diagonals;
+        Box::new(move |p| sdf::rhombus(p, half_diagonals))
+    }
+}
+
+impl SmudPrimitive for CircularSector {
+    fn sdf_shader() -> Handle<Shader> {
+        CIRCULAR_SECTOR_SDF_HANDLE
+    }
+
+    fn params(&self) -> Vec4 {
+        let (sin, cos) = self.arc.half_angle.sin_cos();
+        Vec4::new(self.arc.radius, sin, cos, 0.0)
+    }
+
+    fn try_from_shape(shape: &SmudShape) -> Option<Self> {
+        if shape.sdf.id() == CIRCULAR_SECTOR_SDF_HANDLE.id() {
+            let radius = shape.params.x;
+            let half_angle = shape.params.y.atan2(shape.params.z);
+            Some(CircularSector::new(radius, half_angle))
+        } else {
+            None
+        }
+    }
+
+    #[cfg(feature = "bevy_picking")]
+    fn picking_fn(&self) -> Box<dyn Fn(Vec2) -> f32 + Send + Sync> {
+        let (sin, cos) = self.arc.half_angle.sin_cos();
+        let c = Vec2::new(sin, cos);
+        let radius = self.arc.radius;
+        Box::new(move |p| sdf::pie(p, c, radius))
+    }
+}
+
+impl SmudPrimitive for RegularPolygon {
+    fn sdf_shader() -> Handle<Shader> {
+        REGULAR_POLYGON_SDF_HANDLE
+    }
+
+    fn params(&self) -> Vec4 {
+        Vec4::new(self.circumcircle.radius, self.sides as f32, 0.0, 0.0)
+    }
+
+    fn try_from_shape(shape: &SmudShape) -> Option<Self> {
+        if shape.sdf.id() == REGULAR_POLYGON_SDF_HANDLE.id() {
+            let radius = shape.params.x;
+            let sides = shape.params.y as u32;
+            Some(RegularPolygon::new(radius, sides))
+        } else {
+            None
+        }
+    }
+
+    #[cfg(feature = "bevy_picking")]
+    fn picking_fn(&self) -> Box<dyn Fn(Vec2) -> f32 + Send + Sync> {
+        let radius = self.circumcircle.radius;
+        let sides = self.sides as i32;
+        Box::new(move |p| sdf::regular_polygon(p, radius, sides))
+    }
+}
+
+impl<T: SmudPrimitive> From<T> for SmudShape {
+    fn from(primitive: T) -> Self {
+        Self {
+            sdf: T::sdf_shader(),
+            bounds: primitive.bounds(),
+            params: primitive.params(),
+            ..default()
+        }
+    }
+}
+
+#[cfg(feature = "bevy_picking")]
+impl<T: SmudPrimitive> From<T> for crate::picking_backend::SmudPickingShape {
+    fn from(primitive: T) -> Self {
+        Self::new(primitive.picking_fn())
+    }
+}
+
+/// Observer that automatically adds SmudPickingShape for shapes created from primitives
+#[cfg(feature = "bevy_picking")]
+fn auto_add_picking_shape(
+    trigger: On<Add, SmudShape>,
+    query: Query<&SmudShape>,
+    mut commands: Commands,
+) {
+    let entity = trigger.entity;
+    if let Ok(shape) = query.get(entity) {
+        // Try to reconstruct the primitive and use its picking function
+        let picking_shape = Rectangle::picking_from_shape(shape)
+            .or_else(|| Circle::picking_from_shape(shape))
+            .or_else(|| Ellipse::picking_from_shape(shape))
+            .or_else(|| Annulus::picking_from_shape(shape))
+            .or_else(|| Capsule2d::picking_from_shape(shape))
+            .or_else(|| Rhombus::picking_from_shape(shape))
+            .or_else(|| CircularSector::picking_from_shape(shape))
+            .or_else(|| RegularPolygon::picking_from_shape(shape));
+
+        if let Some(picking_shape) = picking_shape {
+            commands.entity(entity).insert(picking_shape);
+        }
+    }
+}

@@ -54,3 +54,23 @@ impl Default for SmudShape {
         }
     }
 }
+
+impl SmudShape {
+    /// Set the color for this shape (builder pattern)
+    pub fn with_color(mut self, color: impl Into<Color>) -> Self {
+        self.color = color.into();
+        self
+    }
+
+    /// Set the fill shader for this shape (builder pattern)
+    pub fn with_fill(mut self, fill: Handle<Shader>) -> Self {
+        self.fill = fill;
+        self
+    }
+
+    /// Set the blend mode for this shape (builder pattern)
+    pub fn with_blend_mode(mut self, blend_mode: BlendMode) -> Self {
+        self.blend_mode = blend_mode;
+        self
+    }
+}
