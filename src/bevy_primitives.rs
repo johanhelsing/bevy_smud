@@ -65,7 +65,7 @@ trait SmudPrimitive: Sized + Bounded2d {
     /// Default implementation uses the `Bounded2d` trait to compute an AABB
     /// and adds padding for anti-aliasing.
     fn bounds(&self) -> Rectangle {
-        const PADDING: f32 = 2.0;
+        const PADDING: f32 = 4.0;
         let aabb = Bounded2d::aabb_2d(self, Vec2::ZERO);
 
         // For asymmetric shapes, we need the maximum extent from origin in each direction
