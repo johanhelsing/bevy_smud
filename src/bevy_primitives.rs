@@ -43,7 +43,7 @@
 use bevy::asset::{load_internal_asset, uuid_handle};
 use bevy::math::bounding::Bounded2d;
 use bevy::math::primitives::{
-    Annulus, Capsule2d, Circle, CircularSector, Ellipse, Rectangle, Rhombus,
+    Annulus, Capsule2d, Circle, CircularSector, Ellipse, Rectangle, RegularPolygon, Rhombus,
 };
 use bevy::prelude::*;
 
@@ -116,6 +116,10 @@ pub const RHOMBUS_SDF_HANDLE: Handle<Shader> = uuid_handle!("b41cabff-98bb-417c-
 pub const CIRCULAR_SECTOR_SDF_HANDLE: Handle<Shader> =
     uuid_handle!("8c5373ba-2cdc-4e8f-987c-cf5dfd6d84d5");
 
+/// Parametrized regular polygon shape SDF
+pub const REGULAR_POLYGON_SDF_HANDLE: Handle<Shader> =
+    uuid_handle!("38dc4249-e998-4a6f-ace5-c619ae875929");
+
 /// Plugin that adds support for Bevy primitive shapes.
 ///
 /// This plugin:
@@ -169,6 +173,12 @@ impl Plugin for BevyPrimitivesPlugin {
             app,
             CIRCULAR_SECTOR_SDF_HANDLE,
             "../assets/shapes/circular_sector.wgsl",
+            Shader::from_wgsl
+        );
+        load_internal_asset!(
+            app,
+            REGULAR_POLYGON_SDF_HANDLE,
+            "../assets/shapes/regular_polygon.wgsl",
             Shader::from_wgsl
         );
 
@@ -369,6 +379,33 @@ impl SmudPrimitive for CircularSector {
     }
 }
 
+impl SmudPrimitive for RegularPolygon {
+    fn sdf_shader() -> Handle<Shader> {
+        REGULAR_POLYGON_SDF_HANDLE
+    }
+
+    fn params(&self) -> Vec4 {
+        Vec4::new(self.circumcircle.radius, self.sides as f32, 0.0, 0.0)
+    }
+
+    fn try_from_shape(shape: &SmudShape) -> Option<Self> {
+        if shape.sdf.id() == REGULAR_POLYGON_SDF_HANDLE.id() {
+            let radius = shape.params.x;
+            let sides = shape.params.y as u32;
+            Some(RegularPolygon::new(radius, sides))
+        } else {
+            None
+        }
+    }
+
+    #[cfg(feature = "bevy_picking")]
+    fn picking_fn(&self) -> Box<dyn Fn(Vec2) -> f32 + Send + Sync> {
+        let radius = self.circumcircle.radius;
+        let sides = self.sides as i32;
+        Box::new(move |p| sdf::regular_polygon(p, radius, sides))
+    }
+}
+
 impl<T: SmudPrimitive> From<T> for SmudShape {
     fn from(primitive: T) -> Self {
         Self {
@@ -403,7 +440,8 @@ fn auto_add_picking_shape(
             .or_else(|| Annulus::picking_from_shape(shape))
             .or_else(|| Capsule2d::picking_from_shape(shape))
             .or_else(|| Rhombus::picking_from_shape(shape))
-            .or_else(|| CircularSector::picking_from_shape(shape));
+            .or_else(|| CircularSector::picking_from_shape(shape))
+            .or_else(|| RegularPolygon::picking_from_shape(shape));
 
         if let Some(picking_shape) = picking_shape {
             commands.entity(entity).insert(picking_shape);

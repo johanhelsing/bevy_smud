@@ -98,6 +98,13 @@ fn setup(mut commands: Commands) {
         SmudShape::from(CircularSector::from_turns(60., 0.25)).with_color(css::ORANGE_RED),
         OriginalColor(css::ORANGE_RED.into()),
     ));
+
+    // Regular polygon - hexagon (6 sides)
+    commands.spawn((
+        Transform::from_translation(Vec3::new(250., -150., 0.)),
+        SmudShape::from(RegularPolygon::new(50., 6)).with_color(css::AQUA),
+        OriginalColor(css::AQUA.into()),
+    ));
 }
 
 // Component to store the original color for restoring after hover
