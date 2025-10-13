@@ -41,6 +41,7 @@ struct ShapeParams {
     id: u32,
     translation: [f32; 3],
     rotation: f32,
+    scale: f32,
     color: egui::Color32,
     sdf_code: String,
     fill_code: String,
@@ -191,6 +192,14 @@ fn editor(
                         );
                         ui.end_row();
 
+                        ui.label("Scale:");
+                        ui.add(
+                            egui::DragValue::new(&mut params.scale)
+                                .min_decimals(1)
+                                .speed(1.0 / 5.0),
+                        );
+                        ui.end_row();
+
                         ui.label("Color:");
                         ui.color_edit_button_srgba(&mut params.color);
                         ui.end_row();
@@ -286,6 +295,7 @@ fn add_shape(commands: &mut Commands, state: &mut EditorState, shaders: &mut Ass
         id: state.next_shape(),
         translation: [0.0; 3],
         rotation: 0.0,
+        scale: 1.0,
         bounds_length: 200.0,
         color: egui::Color32::from_rgb(200, 100, 100),
         sdf_code: r#"#import smud
@@ -345,7 +355,8 @@ fn update_shape(
     update_shader: bool,
 ) {
     *transform = Transform::from_translation(Vec3::from_array(params.translation))
-        .with_rotation(Quat::from_rotation_z(params.rotation));
+        .with_rotation(Quat::from_rotation_z(params.rotation))
+        .with_scale(Vec3::splat(params.scale));
 
     let [r, g, b, a] = params.color.to_array();
     shape.color = Color::srgba_u8(r, g, b, a);
