@@ -8,7 +8,7 @@ publish = false
 bevy = { version = "0.17", default-features = false, features = [
   "x11", # github actions runners don't have libxkbcommon installed, so can't use wayland
 ] }
-bevy_egui = "0.37"
+bevy_egui = "0.38"
 bevy_smud = { path = ".." }
 
 [profile.dev]
