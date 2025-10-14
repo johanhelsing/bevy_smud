@@ -6,8 +6,13 @@ use bevy_egui::{
     egui::{self, Widget},
 };
 use bevy_smud::prelude::*;
+use include_dir::include_dir;
 
 const SIDE_PANEL_WIDTH: f32 = 550.0;
+const DEFAULT_SDF_TEMPLATE: &str = "circle";
+const DEFAULT_FILL_TEMPLATE: &str = "simple";
+static SDF_TEMPLATE_DIR: include_dir::Dir = include_dir!("$CARGO_MANIFEST_DIR/templates/sdf");
+static FILL_TEMPLATE_DIR: include_dir::Dir = include_dir!("$CARGO_MANIFEST_DIR/templates/fill");
 
 type ShaderId = u32;
 type ShapeId = u32;
@@ -70,7 +75,7 @@ struct ShapeState {
     rotation: f32,
     scale: f32,
     color: egui::Color32,
-    selected_shader: SelectedShader,
+    selected_shader: ShaderKind,
     sdf_code: String,
     fill_code: String,
     bounds_length: f32,
@@ -79,22 +84,83 @@ struct ShapeState {
 }
 
 #[derive(Clone, Copy, PartialEq)]
-enum SelectedShader {
+enum ShaderKind {
     Sdf,
     Fill,
 }
 
-impl Display for SelectedShader {
+impl Display for ShaderKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            SelectedShader::Sdf => write!(f, "sdf"),
-            SelectedShader::Fill => write!(f, "fill"),
+            ShaderKind::Sdf => write!(f, "sdf"),
+            ShaderKind::Fill => write!(f, "fill"),
         }
     }
 }
 
 #[derive(Component)]
 struct ShapeCamera;
+
+#[derive(Resource)]
+struct Templates {
+    sdf: Vec<Template>,
+    fill: Vec<Template>,
+    default_sdf: Option<usize>,
+    default_fill: Option<usize>,
+}
+
+impl Default for Templates {
+    fn default() -> Self {
+        let sdf: Vec<_> = SDF_TEMPLATE_DIR.files().map(Template::new).collect();
+        let fill: Vec<_> = FILL_TEMPLATE_DIR.files().map(Template::new).collect();
+        let default_sdf = sdf.iter().position(|t| t.name == DEFAULT_SDF_TEMPLATE);
+        let default_fill = fill.iter().position(|t| t.name == DEFAULT_FILL_TEMPLATE);
+        Self {
+            sdf,
+            fill,
+            default_sdf,
+            default_fill,
+        }
+    }
+}
+
+impl Templates {
+    fn all_templates(&self, shader: ShaderKind) -> &[Template] {
+        match shader {
+            ShaderKind::Sdf => &self.sdf,
+            ShaderKind::Fill => &self.fill,
+        }
+    }
+
+    fn default_template(&self, shader: ShaderKind) -> Option<&Template> {
+        let (all, index) = match shader {
+            ShaderKind::Sdf => (&self.sdf, self.default_sdf),
+            ShaderKind::Fill => (&self.fill, self.default_fill),
+        };
+        index.and_then(|i| all.get(i))
+    }
+}
+
+struct Template {
+    name: String,
+    code: String,
+}
+
+impl Template {
+    fn new(file: &include_dir::File) -> Self {
+        let name = file
+            .path()
+            .file_stem()
+            .expect("Template must be a .wgsl file")
+            .to_string_lossy()
+            .into_owned();
+        let code = file
+            .contents_utf8()
+            .expect("Template must contain valid utf-8")
+            .to_owned();
+        Self { name, code }
+    }
+}
 
 fn main() {
     App::new()
@@ -108,6 +174,7 @@ fn main() {
         .add_plugins(SmudPlugin)
         .add_plugins(SmudPickingPlugin)
         .add_plugins(EguiPlugin::default())
+        .insert_resource(Templates::default())
         .insert_resource(EditorState::default())
         .add_systems(Startup, setup)
         .add_systems(Update, pick)
@@ -119,6 +186,7 @@ fn main() {
 
 fn setup(
     mut commands: Commands,
+    templates: Res<Templates>,
     mut editor_state: ResMut<EditorState>,
     mut clear_color: ResMut<ClearColor>,
     mut shaders: ResMut<Assets<Shader>>,
@@ -132,7 +200,7 @@ fn setup(
         Transform::from_translation(editor_state.camera_position.extend(0.0)),
     ));
 
-    add_shape(&mut commands, &mut editor_state, &mut shaders);
+    add_shape(&mut commands, &templates, &mut editor_state, &mut shaders);
 }
 
 fn pick(
@@ -161,6 +229,7 @@ fn background(editor_state: Res<EditorState>, mut clear_color: ResMut<ClearColor
 fn editor(
     mut commands: Commands,
     mut contexts: EguiContexts,
+    templates: Res<Templates>,
     mut editor_state: ResMut<EditorState>,
     mut shaders: ResMut<Assets<Shader>>,
     mut shape_query: Query<(Entity, &mut Transform, &mut SmudShape, &mut ShapeState)>,
@@ -184,7 +253,7 @@ fn editor(
                 ui.separator();
 
                 if ui.button("Add").clicked() {
-                    add_shape(&mut commands, &mut editor_state, &mut shaders);
+                    add_shape(&mut commands, &templates, &mut editor_state, &mut shaders);
                 }
 
                 let shapes: BTreeSet<_> = shape_query
@@ -369,7 +438,7 @@ fn editor(
                         let mut compile_shader = false;
 
                         ui.horizontal(|ui| {
-                            for shader in [SelectedShader::Sdf, SelectedShader::Fill] {
+                            for shader in [ShaderKind::Sdf, ShaderKind::Fill] {
                                 ui.selectable_value(
                                     &mut shape_state.selected_shader,
                                     shader,
@@ -391,6 +460,40 @@ fn editor(
                             if ui.input_mut(|i| i.consume_shortcut(&ctrl_return)) {
                                 compile_shader = true;
                             }
+
+                            ui.separator();
+
+                            let template_button = ui.button("Template");
+                            egui::Popup::menu(&template_button)
+                                .id(egui::Id::new(format!(
+                                    "template_menu_{}",
+                                    shape_state.selected_shader
+                                ))) // Each popup should have its own state
+                                .align(egui::RectAlign::BOTTOM_START)
+                                .gap(padding)
+                                .close_behavior(egui::PopupCloseBehavior::CloseOnClick)
+                                .show(|ui| {
+                                    egui::ScrollArea::vertical()
+                                        .max_height(300.0)
+                                        .show(ui, |ui| {
+                                            for template in
+                                                templates.all_templates(shape_state.selected_shader)
+                                            {
+                                                if ui.button(&template.name).clicked() {
+                                                    let code = match shape_state.selected_shader {
+                                                        ShaderKind::Sdf => {
+                                                            &mut shape_state.sdf_code
+                                                        }
+                                                        ShaderKind::Fill => {
+                                                            &mut shape_state.fill_code
+                                                        }
+                                                    };
+                                                    code.clear();
+                                                    code.push_str(&template.code);
+                                                }
+                                            }
+                                        })
+                                });
                         });
 
                         let theme = egui_extras::syntax_highlighting::CodeTheme::from_memory(
@@ -412,8 +515,8 @@ fn editor(
                             };
 
                         let code = match shape_state.selected_shader {
-                            SelectedShader::Sdf => &mut shape_state.sdf_code,
-                            SelectedShader::Fill => &mut shape_state.fill_code,
+                            ShaderKind::Sdf => &mut shape_state.sdf_code,
+                            ShaderKind::Fill => &mut shape_state.fill_code,
                         };
                         egui::Frame::new()
                             .inner_margin(egui::vec2(0.0, padding))
@@ -451,7 +554,12 @@ fn editor(
     Ok(())
 }
 
-fn add_shape(commands: &mut Commands, state: &mut EditorState, shaders: &mut Assets<Shader>) {
+fn add_shape(
+    commands: &mut Commands,
+    templates: &Templates,
+    state: &mut EditorState,
+    shaders: &mut Assets<Shader>,
+) {
     let mut transform = Transform::default();
     let mut shape = SmudShape::default();
 
@@ -460,35 +568,17 @@ fn add_shape(commands: &mut Commands, state: &mut EditorState, shaders: &mut Ass
         position: Vec3::ZERO,
         rotation: 0.0,
         scale: 1.0,
-        bounds_length: 200.0,
+        bounds_length: 500.0,
         color: egui::Color32::from_rgb(200, 100, 100),
-        selected_shader: SelectedShader::Sdf,
-        sdf_code: r#"#import smud
-
-fn sdf(input: smud::SdfInput) -> f32 {
-    let p = input.pos;
-    let params = input.params;
-    
-    let p_2 = vec2<f32>(abs(p.x), p.y);
-    return smud::sd_circle(p_2 - vec2(20., 0.), 40.);
-}"#
-        .to_string(),
-        fill_code: r#"#import smud
-
-fn fill(input: smud::FillInput) -> vec4<f32> {
-    let p = input.pos;
-    let params = input.params;
-    let distance = input.distance;
-    let color = input.color;
-
-    let d2 = 1. - (distance * 0.13);
-    let alpha = clamp(d2 * d2 * d2, 0., 1.) * color.a;
-    let shadow_color = 0.2 * color.rgb;
-    let aaf = 0.7 / fwidth(distance);
-    let c = mix(color.rgb, shadow_color, clamp(distance * aaf, 0., 1.));
-    return vec4(c, alpha);
-}"#
-        .to_string(),
+        selected_shader: ShaderKind::Sdf,
+        sdf_code: templates
+            .default_template(ShaderKind::Sdf)
+            .map(|t| t.code.clone())
+            .unwrap_or_default(),
+        fill_code: templates
+            .default_template(ShaderKind::Fill)
+            .map(|t| t.code.clone())
+            .unwrap_or_default(),
         params: Vec4::ZERO,
         blend_mode: BlendMode::default(),
     };
@@ -519,7 +609,7 @@ fn clone_shape(
 }
 
 fn update_shape(
-    state: &mut EditorState,
+    editor_state: &mut EditorState,
     shaders: &mut Assets<Shader>,
     transform: &mut Transform,
     shape: &mut SmudShape,
@@ -536,15 +626,11 @@ fn update_shape(
     shape.blend_mode = shape_state.blend_mode;
 
     if compile_shader {
-        let mut sdf_shader_code =
-            format!("#define_import_path smud::sdf_{}\n", state.create_shader());
-        sdf_shader_code.push_str(&shape_state.sdf_code);
+        let sdf_shader_code = add_unique_shader_import_path(&shape_state.sdf_code, editor_state);
         let sdf_shader = Shader::from_wgsl(sdf_shader_code, file!());
         shape.sdf = shaders.add(sdf_shader);
 
-        let mut fill_shader_code =
-            format!("#define_import_path smud::fill_{}\n", state.create_shader());
-        fill_shader_code.push_str(&shape_state.fill_code);
+        let fill_shader_code = add_unique_shader_import_path(&shape_state.fill_code, editor_state);
         let fill_shader = Shader::from_wgsl(fill_shader_code, file!());
         shape.fill = shaders.add(fill_shader);
     }
@@ -553,4 +639,18 @@ fn update_shape(
 fn convert_color(color: egui::Color32) -> Color {
     let [r, g, b, a] = color.to_array();
     Color::srgba_u8(r, g, b, a)
+}
+
+fn add_unique_shader_import_path(code: &str, editor_state: &mut EditorState) -> String {
+    let id = editor_state.create_shader();
+    let import_path_directive = "#define_import_path ";
+    let unique_shader_import_path = format!("{import_path_directive}smud_editor::shader_{id}\n");
+    let mut result = unique_shader_import_path;
+    for line in code.lines() {
+        if !line.contains("#define_import_path") {
+            result.push_str(line);
+            result.push_str("\n");
+        }
+    }
+    result
 }

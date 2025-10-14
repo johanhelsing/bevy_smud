@@ -11,6 +11,7 @@ bevy = { version = "0.17", default-features = false, features = [
 bevy_egui = "0.38"
 bevy_smud = { path = ".." }
 egui_extras = { version = "0.33.0", features = ["syntect"] }
+include_dir = "0.7.4"
 
 [profile.dev]
 opt-level = 1
