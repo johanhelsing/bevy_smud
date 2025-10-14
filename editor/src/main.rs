@@ -315,7 +315,7 @@ fn editor(
                             let selector = ui.selectable_value(
                                 &mut editor_state.selected_tab,
                                 SelectedTab::Shape(id),
-                                format!("Shape#{id}"),
+                                format!("shape_{id}"),
                             );
                             if editor_state.scroll_to == Some(id) {
                                 editor_state.scroll_to = None;
