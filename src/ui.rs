@@ -50,13 +50,17 @@ pub struct SmudNode {
     /// The color of the shape
     pub color: Color,
 
-    /// SDF shader handle
+    /// Shader containing a wgsl function for a signed distance field
+    ///
+    /// The shader needs to have the signature `fn sdf(input: smud::SdfInput) -> f32`.
     pub sdf: Handle<Shader>,
 
-    /// Fill shader handle
+    /// Shader containing a wgsl function for the fill of the shape
+    ///
+    /// The shader needs to have the signature `fn fill(input: smud::FillInput) -> vec4<f32>`.
     pub fill: Handle<Shader>,
 
-    /// Parameters passed to SDF shader (e.g., radius, corner radius, etc.)
+    /// Parameters to pass to shapes, for things such as width of a box
     pub params: Vec4,
 }
 
@@ -71,22 +75,14 @@ impl Default for SmudNode {
     }
 }
 
-/// Vertex data for instanced UI rendering
-/// Matches the regular Vertex structure from vertex.wgsl
 #[repr(C)]
 #[derive(Copy, Clone, Pod, Zeroable)]
 struct SmudUiVertex {
-    /// World position (center of the UI node)
     position: [f32; 3],
-    /// Color
     color: [f32; 4],
-    /// Parameters passed to SDF shader
     params: [f32; 4],
-    /// Rotation (cos, sin)
     rotation: [f32; 2],
-    /// Scale
     scale: f32,
-    /// Bounds (width, height)
     bounds: [f32; 2],
 }
 
@@ -95,7 +91,6 @@ struct SmudUiBatch {
     range: Range<u32>,
 }
 
-/// Resource holding vertex buffers for UI shapes
 #[derive(Resource)]
 struct SmudUiMeta {
     vertices: RawBufferVec<SmudUiVertex>,
@@ -111,25 +106,16 @@ impl Default for SmudUiMeta {
     }
 }
 
-/// Extracted SmudNode data in render world
 struct ExtractedSmudNode {
-    /// Main world entity
     main_entity: MainEntity,
-    /// Render world entity
     render_entity: Entity,
-    /// Stack index for z-ordering
     stack_index: u32,
-    /// Transform to world space
     transform: Affine2,
     /// Node bounds in local space
     rect: Rect,
-    /// Color
     color: Color,
-    /// SDF params
     params: Vec4,
-    /// SDF shader handle
     sdf_shader: Handle<Shader>,
-    /// Fill shader handle
     fill_shader: Handle<Shader>,
     /// Pipeline key for batching
     pipeline_key: SmudUiPipelineKey,
