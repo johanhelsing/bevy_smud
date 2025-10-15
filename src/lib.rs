@@ -54,7 +54,6 @@ use bevy::{
 use bytemuck::{Pod, Zeroable};
 use fixedbitset::FixedBitSet;
 use shader_loading::*;
-// use ui::UiShapePlugin;
 
 pub use components::*;
 pub use shader_loading::{DEFAULT_FILL_HANDLE, SIMPLE_FILL_HANDLE};
@@ -70,7 +69,6 @@ pub mod sdf;
 mod sdf_assets;
 mod shader_loading;
 mod util;
-// mod ui;
 
 /// Re-export of the essentials needed for rendering shapes
 ///
@@ -104,7 +102,6 @@ pub struct SmudPlugin;
 pub enum ShapeSystem {
     /// Extract shapes
     ExtractShapes,
-    // ComputeSlices,
 }
 
 impl Plugin for SmudPlugin {
