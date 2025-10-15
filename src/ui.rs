@@ -358,16 +358,17 @@ fn prepare_smud_ui(
             if should_start_new_batch {
                 // Finalize previous batch if it exists
                 if let Some(_) = batch_pipeline_key
-                    && batch_start_instance < instance_index {
-                        // Add the batch for the previous group
-                        let batch_entity = ui_phase.items[batch_start_item_index].entity();
-                        batches.push((
-                            batch_entity,
-                            SmudUiBatch {
-                                range: batch_start_instance..instance_index,
-                            },
-                        ));
-                    }
+                    && batch_start_instance < instance_index
+                {
+                    // Add the batch for the previous group
+                    let batch_entity = ui_phase.items[batch_start_item_index].entity();
+                    batches.push((
+                        batch_entity,
+                        SmudUiBatch {
+                            range: batch_start_instance..instance_index,
+                        },
+                    ));
+                }
 
                 // Start new batch
                 batch_start_instance = instance_index;
@@ -417,15 +418,17 @@ fn prepare_smud_ui(
         }
 
         // Finalize the last batch if it exists
-        if batch_pipeline_key.is_some() && batch_start_instance < instance_index
-            && let Some(last_item) = ui_phase.items.last() {
-                batches.push((
-                    last_item.entity(),
-                    SmudUiBatch {
-                        range: batch_start_instance..instance_index,
-                    },
-                ));
-            }
+        if batch_pipeline_key.is_some()
+            && batch_start_instance < instance_index
+            && let Some(last_item) = ui_phase.items.last()
+        {
+            batches.push((
+                last_item.entity(),
+                SmudUiBatch {
+                    range: batch_start_instance..instance_index,
+                },
+            ));
+        }
     }
 
     smud_ui_meta
