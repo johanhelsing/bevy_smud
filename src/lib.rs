@@ -248,8 +248,6 @@ struct SmudPipelineKey {
     mesh: PipelineKey,
     shader: (AssetId<Shader>, AssetId<Shader>),
     hdr: bool,
-    /// Whether to use depth-stencil testing (UI doesn't use depth)
-    use_depth: bool,
 }
 
 impl SpecializedRenderPipeline for SmudPipeline {
@@ -408,26 +406,22 @@ impl SpecializedRenderPipeline for SmudPipeline {
                 topology: key.mesh.primitive_topology(),
                 strip_index_format: None, // TODO: what does this do?
             },
-            depth_stencil: if key.use_depth {
-                Some(DepthStencilState {
-                    format: CORE_2D_DEPTH_FORMAT,
-                    depth_write_enabled: false,
-                    depth_compare: CompareFunction::GreaterEqual,
-                    stencil: StencilState {
-                        front: StencilFaceState::IGNORE,
-                        back: StencilFaceState::IGNORE,
-                        read_mask: 0,
-                        write_mask: 0,
-                    },
-                    bias: DepthBiasState {
-                        constant: 0,
-                        slope_scale: 0.0,
-                        clamp: 0.0,
-                    },
-                })
-            } else {
-                None
-            },
+            depth_stencil: Some(DepthStencilState {
+                format: CORE_2D_DEPTH_FORMAT,
+                depth_write_enabled: false,
+                depth_compare: CompareFunction::GreaterEqual,
+                stencil: StencilState {
+                    front: StencilFaceState::IGNORE,
+                    back: StencilFaceState::IGNORE,
+                    read_mask: 0,
+                    write_mask: 0,
+                },
+                bias: DepthBiasState {
+                    constant: 0,
+                    slope_scale: 0.0,
+                    clamp: 0.0,
+                },
+            }),
             multisample: MultisampleState {
                 count: key.mesh.msaa_samples(),
                 mask: !0,                         // what does the mask do?
@@ -767,7 +761,6 @@ fn queue_shapes(
                     mesh: shape_key,
                     shader,
                     hdr: view.hdr,
-                    use_depth: true,
                 };
                 pipeline = pipelines.specialize(&pipeline_cache, &smud_pipeline, specialize_key);
             }
