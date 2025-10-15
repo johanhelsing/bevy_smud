@@ -1,7 +1,6 @@
 //! Provides `SmudNode` component for rendering SDF shapes in Bevy's UI
 
 use bevy::{
-    asset::uuid_handle,
     ecs::system::{
         lifetimeless::{Read, SRes},
         SystemParamItem,
@@ -37,8 +36,6 @@ use crate::{
     shader_loading::VERTEX_SHADER_HANDLE, FloatOrd, GeneratedShaders, SmudPipeline,
     VertexBufferLayout, DEFAULT_FILL_HANDLE,
 };
-
-const TEST_UI_SHADER_HANDLE: Handle<Shader> = uuid_handle!("f1e2d3c4-b5a6-9788-0011-223344556677");
 
 /// Component for rendering SMUD shapes in UI.
 ///
@@ -211,15 +208,13 @@ impl SpecializedRenderPipeline for SmudUiPipeline {
     type Key = SmudUiPipelineKey;
 
     fn specialize(&self, key: Self::Key) -> RenderPipelineDescriptor {
-        // Get the composed shader for this SDF+fill combination
-        // If not found, fall back to the test shader (shouldn't happen in practice)
-        let shader = self.shaders.0.get(&key.shader).cloned().unwrap_or_else(|| {
-            bevy::log::warn!(
-                "UI shader not found for key {:?}, using fallback",
-                key.shader
-            );
-            TEST_UI_SHADER_HANDLE
-        });
+        // Get the generated shader for this sdf+fill combination
+        let shader = self
+            .shaders
+            .0
+            .get(&key.shader)
+            .cloned()
+            .expect("failed to get generated shader for smud ui node");
 
         RenderPipelineDescriptor {
             label: Some("smud_ui_pipeline".into()),
