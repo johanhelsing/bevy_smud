@@ -25,6 +25,7 @@ use bevy::{
     ui_render::{stack_z_offsets, TransparentUi},
 };
 use bytemuck::{Pod, Zeroable};
+use std::ops::Range;
 
 use crate::{
     shader_loading::VERTEX_SHADER_HANDLE, FloatOrd, GeneratedShaders, SmudPipeline,
@@ -83,6 +84,11 @@ struct SmudUiVertex {
     bounds: [f32; 2],
 }
 
+#[derive(Component)]
+struct SmudUiBatch {
+    range: Range<u32>,
+}
+
 /// Resource holding vertex buffers for UI shapes
 #[derive(Resource)]
 struct SmudUiMeta {
@@ -119,6 +125,8 @@ struct ExtractedSmudNode {
     sdf_shader: Handle<Shader>,
     /// Fill shader handle
     fill_shader: Handle<Shader>,
+    /// Pipeline key for batching
+    pipeline_key: SmudUiPipelineKey,
 }
 
 /// Resource holding all extracted SmudNodes for the current frame
@@ -151,6 +159,10 @@ fn extract_smud_nodes(
     for (entity, smud_node, computed_node, transform) in smud_nodes.iter() {
         let render_entity = commands.spawn(TemporaryRenderEntity).id();
 
+        let pipeline_key = SmudUiPipelineKey {
+            shader: (smud_node.sdf.id(), smud_node.fill.id()),
+        };
+
         extracted_nodes.nodes.push(ExtractedSmudNode {
             main_entity: entity.into(),
             render_entity,
@@ -164,6 +176,7 @@ fn extract_smud_nodes(
             params: smud_node.params,
             sdf_shader: smud_node.sdf.clone(),
             fill_shader: smud_node.fill.clone(),
+            pipeline_key,
         });
     }
 }
@@ -306,14 +319,17 @@ impl SpecializedRenderPipeline for SmudUiPipeline {
     }
 }
 
-/// Prepare vertex buffers - generates vertices for each extracted node
+/// Prepare vertex buffers - generates vertices for each extracted node and creates batches
 fn prepare_smud_ui(
+    mut commands: Commands,
     mut smud_ui_meta: ResMut<SmudUiMeta>,
     render_device: Res<RenderDevice>,
     render_queue: Res<bevy::render::renderer::RenderQueue>,
     extracted_nodes: Res<ExtractedSmudNodes>,
     view_uniforms: Res<bevy::render::view::ViewUniforms>,
     pipeline: Res<SmudUiPipeline>,
+    mut phases: ResMut<ViewSortedRenderPhases<TransparentUi>>,
+    mut previous_len: Local<usize>,
 ) {
     // Create view bind group
     if let Some(view_binding) = view_uniforms.uniforms.binding() {
@@ -324,49 +340,118 @@ fn prepare_smud_ui(
         ));
     }
 
+    let mut batches: Vec<(Entity, SmudUiBatch)> = Vec::with_capacity(*previous_len);
+
     smud_ui_meta.vertices.clear();
 
-    // Generate one instance per node - vertex shader will use vertex_index to determine corners
-    for node in &extracted_nodes.nodes {
-        let rect_size = node.rect.size();
+    // Track the current instance index
+    let mut instance_index = 0u32;
 
-        // Extract transform components from Affine2
-        // Affine2 has matrix2 (rotation/scale) and translation
-        let position = node.transform.translation;
+    // Process all UI phases
+    for ui_phase in phases.values_mut() {
+        let mut batch_start_instance = instance_index;
+        let mut batch_pipeline_key: Option<SmudUiPipelineKey> = None;
+        let mut batch_start_item_index = 0;
 
-        // Extract rotation and scale from the matrix
-        // The matrix columns are [x_axis, y_axis] where each is a scaled+rotated unit vector
-        let x_axis = node.transform.matrix2.x_axis;
-        let y_axis = node.transform.matrix2.y_axis;
+        for item_index in 0..ui_phase.items.len() {
+            let item = &ui_phase.items[item_index];
 
-        // Scale is the length of the axis vectors
-        let scale_x = x_axis.length();
-        let scale_y = y_axis.length();
-        let scale = (scale_x + scale_y) / 2.0; // Average scale (assuming uniform)
+            // Find the corresponding extracted node
+            let Some(node) = extracted_nodes
+                .nodes
+                .get(item.index)
+                .filter(|n| item.entity() == n.render_entity)
+            else {
+                // Reset batch if we can't find the node
+                batch_pipeline_key = None;
+                continue;
+            };
 
-        // Rotation is the direction of the x-axis (normalized)
-        // For a 2D rotation matrix: [cos -sin; sin cos]
-        // So x_axis when normalized gives us [cos, sin]
-        let rotation = if scale_x > 0.0 {
-            let normalized = x_axis / scale_x;
-            [normalized.x, normalized.y] // [cos, sin]
-        } else {
-            [1.0, 0.0] // No rotation
-        };
+            // Check if we need to start a new batch
+            let should_start_new_batch = match batch_pipeline_key {
+                None => true,
+                Some(current_key) => current_key != node.pipeline_key,
+            };
 
-        smud_ui_meta.vertices.push(SmudUiVertex {
-            position: [position.x, position.y, 0.0],
-            color: node.color.to_linear().to_f32_array(),
-            params: node.params.to_array(),
-            rotation,
-            scale,
-            bounds: [rect_size.x / 2.0, rect_size.y / 2.0],
-        });
+            if should_start_new_batch {
+                // Finalize previous batch if it exists
+                if let Some(_) = batch_pipeline_key
+                    && batch_start_instance < instance_index {
+                        // Add the batch for the previous group
+                        let batch_entity = ui_phase.items[batch_start_item_index].entity();
+                        batches.push((
+                            batch_entity,
+                            SmudUiBatch {
+                                range: batch_start_instance..instance_index,
+                            },
+                        ));
+                    }
+
+                // Start new batch
+                batch_start_instance = instance_index;
+                batch_start_item_index = item_index;
+                batch_pipeline_key = Some(node.pipeline_key);
+            }
+
+            // Generate vertex data for this node
+            let rect_size = node.rect.size();
+
+            // Extract transform components from Affine2
+            let position = node.transform.translation;
+
+            // Extract rotation and scale from the matrix
+            let x_axis = node.transform.matrix2.x_axis;
+            let y_axis = node.transform.matrix2.y_axis;
+
+            // Scale is the length of the axis vectors
+            let scale_x = x_axis.length();
+            let scale_y = y_axis.length();
+            let scale = (scale_x + scale_y) / 2.0; // Average scale (assuming uniform)
+
+            // Rotation is the direction of the x-axis (normalized)
+            let rotation = if scale_x > 0.0 {
+                let normalized = x_axis / scale_x;
+                [normalized.x, normalized.y] // [cos, sin]
+            } else {
+                [1.0, 0.0] // No rotation
+            };
+
+            smud_ui_meta.vertices.push(SmudUiVertex {
+                position: [position.x, position.y, 0.0],
+                color: node.color.to_linear().to_f32_array(),
+                params: node.params.to_array(),
+                rotation,
+                scale,
+                bounds: [rect_size.x / 2.0, rect_size.y / 2.0],
+            });
+
+            instance_index += 1;
+        }
+
+        // Now update batch ranges in a second pass
+        for item_index in 0..ui_phase.items.len() {
+            let item = &mut ui_phase.items[item_index];
+            *item.batch_range_mut() = item_index as u32..item_index as u32 + 1;
+        }
+
+        // Finalize the last batch if it exists
+        if batch_pipeline_key.is_some() && batch_start_instance < instance_index
+            && let Some(last_item) = ui_phase.items.last() {
+                batches.push((
+                    last_item.entity(),
+                    SmudUiBatch {
+                        range: batch_start_instance..instance_index,
+                    },
+                ));
+            }
     }
 
     smud_ui_meta
         .vertices
         .write_buffer(&render_device, &render_queue);
+
+    *previous_len = batches.len();
+    commands.insert_batch(batches);
 }
 
 /// Queue system - adds SmudNode items to the TransparentUi render phase
@@ -450,28 +535,28 @@ struct DrawSmudUiBatch;
 impl RenderCommand<TransparentUi> for DrawSmudUiBatch {
     type Param = SRes<SmudUiMeta>;
     type ViewQuery = ();
-    type ItemQuery = ();
+    type ItemQuery = bevy::ecs::system::lifetimeless::Read<SmudUiBatch>;
 
     fn render<'w>(
-        item: &TransparentUi,
+        _item: &TransparentUi,
         _view: (),
-        _entity: Option<()>,
+        batch: Option<&'w SmudUiBatch>,
         smud_ui_meta: SystemParamItem<'w, '_, Self::Param>,
         pass: &mut TrackedRenderPass<'w>,
     ) -> RenderCommandResult {
+        let Some(batch) = batch else {
+            return RenderCommandResult::Skip;
+        };
+
         let smud_ui_meta = smud_ui_meta.into_inner();
         let Some(vertices) = smud_ui_meta.vertices.buffer() else {
             return RenderCommandResult::Failure("no vertex buffer");
         };
 
-        // Get the index of this specific UI node from the phase item
-        // This was stored in queue_smud_ui as the 'index' field
-        let node_index = item.index as u32;
-
         pass.set_vertex_buffer(0, vertices.slice(..));
-        // Draw 4 vertices for THIS specific instance only
+        // Draw 4 vertices for all instances in this batch
         // Each instance uses 4 vertices in a triangle strip
-        pass.draw(0..4, node_index..(node_index + 1));
+        pass.draw(0..4, batch.range.clone());
         RenderCommandResult::Success
     }
 }
