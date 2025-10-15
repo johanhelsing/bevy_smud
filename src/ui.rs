@@ -2,7 +2,10 @@
 
 use bevy::{
     asset::uuid_handle,
-    ecs::system::{lifetimeless::SRes, SystemParamItem},
+    ecs::system::{
+        lifetimeless::{Read, SRes},
+        SystemParamItem,
+    },
     math::{Affine2, Rect},
     prelude::*,
     render::{
@@ -11,14 +14,17 @@ use bevy::{
             RenderCommandResult, SetItemPipeline, TrackedRenderPass, ViewSortedRenderPhases,
         },
         render_resource::{
-            BlendState, BufferUsages, ColorTargetState, ColorWrites, FragmentState, FrontFace,
-            MultisampleState, PipelineCache, PolygonMode, PrimitiveState, PrimitiveTopology,
-            RawBufferVec, RenderPipelineDescriptor, SpecializedRenderPipeline,
+            binding_types::uniform_buffer, BindGroup, BindGroupEntries, BindGroupLayout,
+            BindGroupLayoutEntries, BlendState, BufferUsages, CachedPipelineState,
+            ColorTargetState, ColorWrites, FragmentState, FrontFace, MultisampleState,
+            PipelineCache, PolygonMode, PrimitiveState, PrimitiveTopology, RawBufferVec,
+            RenderPipelineDescriptor, ShaderStages, SpecializedRenderPipeline,
             SpecializedRenderPipelines, TextureFormat, VertexAttribute, VertexFormat, VertexState,
             VertexStepMode,
         },
-        renderer::RenderDevice,
+        renderer::{RenderDevice, RenderQueue},
         sync_world::{MainEntity, TemporaryRenderEntity},
+        view::{ViewUniform, ViewUniformOffset, ViewUniforms},
         Extract, ExtractSchedule, MainWorld, Render, RenderApp, RenderSystems,
     },
     ui::{ComputedNode, Node, UiGlobalTransform},
@@ -93,7 +99,7 @@ struct SmudUiBatch {
 #[derive(Resource)]
 struct SmudUiMeta {
     vertices: RawBufferVec<SmudUiVertex>,
-    view_bind_group: Option<bevy::render::render_resource::BindGroup>,
+    view_bind_group: Option<BindGroup>,
 }
 
 impl Default for SmudUiMeta {
@@ -200,7 +206,7 @@ struct SmudUiPipelineKey {
 /// Pipeline for rendering SMUD UI shapes
 #[derive(Resource)]
 struct SmudUiPipeline {
-    view_layout: bevy::render::render_resource::BindGroupLayout,
+    view_layout: BindGroupLayout,
     shaders: GeneratedShaders,
 }
 
@@ -209,11 +215,9 @@ impl FromWorld for SmudUiPipeline {
         let render_device = world.resource::<RenderDevice>();
         let view_layout = render_device.create_bind_group_layout(
             "smud_ui_view_layout",
-            &bevy::render::render_resource::BindGroupLayoutEntries::single(
-                bevy::render::render_resource::ShaderStages::VERTEX_FRAGMENT,
-                bevy::render::render_resource::binding_types::uniform_buffer::<
-                    bevy::render::view::ViewUniform,
-                >(true),
+            &BindGroupLayoutEntries::single(
+                ShaderStages::VERTEX_FRAGMENT,
+                uniform_buffer::<ViewUniform>(true),
             ),
         );
 
@@ -324,9 +328,9 @@ fn prepare_smud_ui(
     mut commands: Commands,
     mut smud_ui_meta: ResMut<SmudUiMeta>,
     render_device: Res<RenderDevice>,
-    render_queue: Res<bevy::render::renderer::RenderQueue>,
+    render_queue: Res<RenderQueue>,
     extracted_nodes: Res<ExtractedSmudNodes>,
-    view_uniforms: Res<bevy::render::view::ViewUniforms>,
+    view_uniforms: Res<ViewUniforms>,
     pipeline: Res<SmudUiPipeline>,
     mut phases: ResMut<ViewSortedRenderPhases<TransparentUi>>,
     mut previous_len: Local<usize>,
@@ -336,7 +340,7 @@ fn prepare_smud_ui(
         smud_ui_meta.view_bind_group = Some(render_device.create_bind_group(
             "smud_ui_view_bind_group",
             &pipeline.view_layout,
-            &bevy::render::render_resource::BindGroupEntries::single(view_binding),
+            &BindGroupEntries::single(view_binding),
         ));
     }
 
@@ -480,7 +484,7 @@ fn queue_smud_ui(
             // Check if pipeline is ready - if not, skip this node
             if !matches!(
                 pipeline_cache.get_render_pipeline_state(pipeline_id),
-                bevy::render::render_resource::CachedPipelineState::Ok(_)
+                CachedPipelineState::Ok(_)
             ) {
                 continue;
             }
@@ -511,12 +515,12 @@ struct SetSmudUiViewBindGroup<const I: usize>;
 
 impl<P: PhaseItem, const I: usize> RenderCommand<P> for SetSmudUiViewBindGroup<I> {
     type Param = SRes<SmudUiMeta>;
-    type ViewQuery = bevy::ecs::system::lifetimeless::Read<bevy::render::view::ViewUniformOffset>;
+    type ViewQuery = Read<ViewUniformOffset>;
     type ItemQuery = ();
 
     fn render<'w>(
         _item: &P,
-        view_uniform: &'w bevy::render::view::ViewUniformOffset,
+        view_uniform: &'w ViewUniformOffset,
         _entity: Option<()>,
         smud_ui_meta: SystemParamItem<'w, '_, Self::Param>,
         pass: &mut TrackedRenderPass<'w>,
@@ -535,7 +539,7 @@ struct DrawSmudUiBatch;
 impl RenderCommand<TransparentUi> for DrawSmudUiBatch {
     type Param = SRes<SmudUiMeta>;
     type ViewQuery = ();
-    type ItemQuery = bevy::ecs::system::lifetimeless::Read<SmudUiBatch>;
+    type ItemQuery = Read<SmudUiBatch>;
 
     fn render<'w>(
         _item: &TransparentUi,
