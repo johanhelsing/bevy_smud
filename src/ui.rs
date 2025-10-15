@@ -441,7 +441,6 @@ fn prepare_smud_ui(
     commands.insert_batch(batches);
 }
 
-/// Queue system - adds SmudNode items to the TransparentUi render phase
 fn queue_smud_ui(
     draw_functions: Res<DrawFunctions<TransparentUi>>,
     pipeline: Res<SmudUiPipeline>,
@@ -490,10 +489,8 @@ fn queue_smud_ui(
     }
 }
 
-/// Draw command for rendering SmudNodes - tuple of render commands
 type DrawSmudUi = (SetItemPipeline, SetSmudUiViewBindGroup<0>, DrawSmudUiBatch);
 
-/// Set the view bind group
 struct SetSmudUiViewBindGroup<const I: usize>;
 
 impl<P: PhaseItem, const I: usize> RenderCommand<P> for SetSmudUiViewBindGroup<I> {
@@ -516,7 +513,6 @@ impl<P: PhaseItem, const I: usize> RenderCommand<P> for SetSmudUiViewBindGroup<I
     }
 }
 
-/// Actual draw implementation
 struct DrawSmudUiBatch;
 
 impl RenderCommand<TransparentUi> for DrawSmudUiBatch {
@@ -548,7 +544,7 @@ impl RenderCommand<TransparentUi> for DrawSmudUiBatch {
     }
 }
 
-/// Plugin for rendering SMUD shapes in UI
+/// Plugin for rendering smud shapes in bevy_ui
 pub(crate) struct UiShapePlugin;
 
 impl Plugin for UiShapePlugin {
