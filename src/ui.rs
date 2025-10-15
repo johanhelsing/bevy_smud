@@ -117,8 +117,6 @@ struct ExtractedSmudNode {
     params: Vec4,
     sdf_shader: Handle<Shader>,
     fill_shader: Handle<Shader>,
-    /// Pipeline key for batching
-    pipeline_key: SmudUiPipelineKey,
 }
 
 /// Resource holding all extracted SmudNodes for the current frame
@@ -151,10 +149,6 @@ fn extract_smud_nodes(
     for (entity, smud_node, computed_node, transform) in smud_nodes.iter() {
         let render_entity = commands.spawn(TemporaryRenderEntity).id();
 
-        let pipeline_key = SmudUiPipelineKey {
-            shader: (smud_node.sdf.id(), smud_node.fill.id()),
-        };
-
         extracted_nodes.nodes.push(ExtractedSmudNode {
             main_entity: entity.into(),
             render_entity,
@@ -168,7 +162,6 @@ fn extract_smud_nodes(
             params: smud_node.params,
             sdf_shader: smud_node.sdf.clone(),
             fill_shader: smud_node.fill.clone(),
-            pipeline_key,
         });
     }
 }
@@ -357,10 +350,14 @@ fn prepare_smud_ui(
                 continue;
             };
 
+            let pipeline_key = SmudUiPipelineKey {
+                shader: (node.sdf_shader.id(), node.fill_shader.id()),
+            };
+
             // Check if we need to start a new batch
             let should_start_new_batch = match batch_pipeline_key {
                 None => true,
-                Some(current_key) => current_key != node.pipeline_key,
+                Some(current_key) => current_key != pipeline_key,
             };
 
             if should_start_new_batch {
@@ -380,7 +377,7 @@ fn prepare_smud_ui(
                 // Start new batch
                 batch_start_instance = instance_index;
                 batch_start_item_index = item_index;
-                batch_pipeline_key = Some(node.pipeline_key);
+                batch_pipeline_key = Some(pipeline_key);
             }
 
             // Generate vertex data for this node
