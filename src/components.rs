@@ -26,11 +26,11 @@ pub struct SmudShape {
     pub color: Color,
     /// Shader containing a wgsl function for a signed distance field
     ///
-    /// The shader needs to have the signature `fn sdf(p: vec2<f32>) -> f32`.
+    /// The shader needs to have the signature `fn sdf(input: smud::SdfInput) -> f32`.
     pub sdf: Handle<Shader>,
     /// Shader containing a wgsl function for the fill of the shape
     ///
-    /// The shader needs to have the signature `fn fill(distance: f32, color: vec4<f32>) -> vec4<f32>`.
+    /// The shader needs to have the signature `fn fill(input: smud::FillInput) -> vec4<f32>`.
     pub fill: Handle<Shader>, // todo: wrap in newtypes?
     /// The bounds for rendering this shape, should be larger than the actual SDF shape to avoid clipping
     pub bounds: Rectangle,
