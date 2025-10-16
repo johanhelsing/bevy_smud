@@ -2,38 +2,37 @@
 
 use bevy::{
     ecs::system::{
-        lifetimeless::{Read, SRes},
         SystemParamItem,
+        lifetimeless::{Read, SRes},
     },
     math::{Affine2, Rect},
     prelude::*,
     render::{
+        Extract, ExtractSchedule, MainWorld, Render, RenderApp, RenderSystems,
         render_phase::{
             AddRenderCommand, DrawFunctions, PhaseItem, PhaseItemExtraIndex, RenderCommand,
             RenderCommandResult, SetItemPipeline, TrackedRenderPass, ViewSortedRenderPhases,
         },
         render_resource::{
-            binding_types::uniform_buffer, BindGroup, BindGroupEntries, BindGroupLayout,
-            BindGroupLayoutEntries, BlendState, BufferUsages, CachedPipelineState,
-            ColorTargetState, ColorWrites, FragmentState, FrontFace, MultisampleState,
-            PipelineCache, PolygonMode, PrimitiveState, PrimitiveTopology, RawBufferVec,
-            RenderPipelineDescriptor, ShaderStages, SpecializedRenderPipeline,
-            SpecializedRenderPipelines, TextureFormat, VertexAttribute, VertexFormat, VertexState,
-            VertexStepMode,
+            BindGroup, BindGroupEntries, BindGroupLayout, BindGroupLayoutEntries, BlendState,
+            BufferUsages, CachedPipelineState, ColorTargetState, ColorWrites, FragmentState,
+            FrontFace, MultisampleState, PipelineCache, PolygonMode, PrimitiveState,
+            PrimitiveTopology, RawBufferVec, RenderPipelineDescriptor, ShaderStages,
+            SpecializedRenderPipeline, SpecializedRenderPipelines, TextureFormat, VertexAttribute,
+            VertexFormat, VertexState, VertexStepMode, binding_types::uniform_buffer,
         },
         renderer::{RenderDevice, RenderQueue},
         sync_world::{MainEntity, TemporaryRenderEntity},
         view::{ViewUniform, ViewUniformOffset, ViewUniforms},
-        Extract, ExtractSchedule, MainWorld, Render, RenderApp, RenderSystems,
     },
     ui::{ComputedNode, Node, UiGlobalTransform},
-    ui_render::{stack_z_offsets, TransparentUi},
+    ui_render::{TransparentUi, stack_z_offsets},
 };
 use bytemuck::{Pod, Zeroable};
 
 use crate::{
-    shader_loading::VERTEX_SHADER_HANDLE, FloatOrd, GeneratedShaders, SmudPipeline,
-    VertexBufferLayout, DEFAULT_FILL_HANDLE,
+    DEFAULT_FILL_HANDLE, FloatOrd, GeneratedShaders, SmudPipeline, VertexBufferLayout,
+    shader_loading::VERTEX_SHADER_HANDLE,
 };
 
 /// Component for rendering SMUD shapes in UI.
@@ -125,7 +124,7 @@ fn generate_shaders(mut main_world: ResMut<MainWorld>, mut pipeline: ResMut<Smud
         for node in ui_nodes.iter(world) {
             pipeline
                 .shaders
-                .maybe_generate(&node.sdf, &node.fill, &mut shaders);
+                .get_or_generate(&node.sdf, &node.fill, &mut shaders);
         }
     });
 }

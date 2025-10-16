@@ -439,16 +439,18 @@ pub(crate) struct GeneratedShaders(
 
 impl GeneratedShaders {
     /// Generate and add shader
-    fn maybe_generate(
+    fn get_or_generate(
         &mut self,
         sdf: &Handle<Shader>,
         fill: &Handle<Shader>,
         shaders: &mut Assets<Shader>,
-    ) {
+    ) -> Option<Handle<Shader>> {
         let shader_key = (sdf.id(), fill.id());
-        if self.0.contains_key(&shader_key) {
-            return;
+
+        if let Some(handle) = self.0.get(&shader_key) {
+            return Some(handle.clone());
         }
+
         let sdf_import_path = match shaders.get_mut(sdf) {
             Some(shader) => match shader.import_path() {
                 ShaderImport::Custom(p) => p.to_owned(),
@@ -461,7 +463,7 @@ impl GeneratedShaders {
             },
             None => {
                 debug!("Waiting for sdf to load");
-                return;
+                return None;
             }
         };
 
@@ -477,7 +479,7 @@ impl GeneratedShaders {
             },
             None => {
                 debug!("Waiting for fill to load");
-                return;
+                return None;
             }
         };
 
@@ -527,7 +529,9 @@ fn fragment(in: FragmentInput) -> @location(0) vec4<f32> {{
 
         let generated_shader_handle = shaders.add(generated_shader);
 
-        self.0.insert(shader_key, generated_shader_handle);
+        self.0.insert(shader_key, generated_shader_handle.clone());
+
+        Some(generated_shader_handle)
     }
 }
 
@@ -540,7 +544,7 @@ fn generate_shaders(mut main_world: ResMut<MainWorld>, mut pipeline: ResMut<Smud
         for shape in shapes.iter(world) {
             pipeline
                 .shaders
-                .maybe_generate(&shape.sdf, &shape.fill, &mut shaders);
+                .get_or_generate(&shape.sdf, &shape.fill, &mut shaders);
         }
     });
 }
@@ -552,8 +556,7 @@ struct ExtractedShape {
     color: Color,
     params: Vec4,
     bounds: Vec2,
-    sdf_shader: Handle<Shader>,
-    fill_shader: Handle<Shader>,
+    shader: Handle<Shader>,
     transform: GlobalTransform,
     blend_mode: BlendMode,
 }
@@ -566,6 +569,7 @@ struct ExtractedShapes {
 #[allow(clippy::type_complexity)]
 fn extract_shapes(
     mut extracted_shapes: ResMut<ExtractedShapes>,
+    generated_shaders: Res<SmudPipeline>,
     shape_query: Extract<
         Query<(
             Entity,
@@ -583,6 +587,15 @@ fn extract_shapes(
             continue;
         }
 
+        let Some(shader) = generated_shaders
+            .shaders
+            .0
+            .get(&(shape.sdf.id(), shape.fill.id()))
+            .cloned()
+        else {
+            continue;
+        };
+
         // TODO: bevy_sprite has some slice stuff here? what is it for?
 
         extracted_shapes.shapes.push(ExtractedShape {
@@ -591,8 +604,7 @@ fn extract_shapes(
             color: shape.color,
             params: shape.params,
             transform: *transform,
-            sdf_shader: shape.sdf.clone(),
-            fill_shader: shape.fill.clone(),
+            shader,
             bounds: shape.bounds.half_size,
             blend_mode: shape.blend_mode,
         });
@@ -746,22 +758,13 @@ fn queue_shapes(
             .reserve(extracted_shapes.shapes.len());
 
         for (index, extracted_shape) in extracted_shapes.shapes.iter().enumerate() {
-            let shader = (
-                extracted_shape.sdf_shader.id(),
-                extracted_shape.fill_shader.id(),
-            );
-
-            let mut pipeline = CachedRenderPipelineId::INVALID;
-
-            if let Some(shader) = smud_pipeline.shaders.0.get(&shader) {
-                let shape_key = view_key | PipelineKey::from_blend_mode(extracted_shape.blend_mode);
-                let specialize_key = SmudPipelineKey {
-                    mesh: shape_key,
-                    shader: shader.clone(),
-                    hdr: view.hdr,
-                };
-                pipeline = pipelines.specialize(&pipeline_cache, &smud_pipeline, specialize_key);
-            }
+            let shape_key = view_key | PipelineKey::from_blend_mode(extracted_shape.blend_mode);
+            let specialize_key = SmudPipelineKey {
+                mesh: shape_key,
+                shader: extracted_shape.shader.clone(),
+                hdr: view.hdr,
+            };
+            let pipeline = pipelines.specialize(&pipeline_cache, &smud_pipeline, specialize_key);
 
             if pipeline == CachedRenderPipelineId::INVALID {
                 debug!("Shape not ready yet, skipping");
@@ -849,7 +852,7 @@ fn prepare_shapes(
         let mut batch_item_index = 0;
         // let mut batch_image_size = Vec2::ZERO;
         // let mut batch_image_handle = AssetId::invalid();
-        let mut batch_shader_handles = (AssetId::invalid(), AssetId::invalid());
+        let mut batch_shader_id = AssetId::invalid();
 
         // Iterate through the phase items and detect when successive shapes that can be batched.
         // Spawn an entity with a `ShapeBatch` component for each possible batch.
@@ -864,17 +867,14 @@ fn prepare_shapes(
             else {
                 // If there is a phase item that is not a shape, then we must start a new
                 // batch to draw the other phase item(s) and to respect draw order. This can be
-                // done by invalidating the batch_shader_handles
-                batch_shader_handles = (AssetId::invalid(), AssetId::invalid());
+                // done by invalidating the batch_shader_handle
+                batch_shader_id = AssetId::invalid();
                 continue;
             };
 
-            let shader_handles = (
-                extracted_shape.sdf_shader.id(),
-                extracted_shape.fill_shader.id(),
-            );
+            let shader_id = extracted_shape.shader.id();
 
-            let batch_shader_changed = batch_shader_handles != shader_handles;
+            let batch_shader_changed = batch_shader_id != shader_id;
 
             let lrgba: LinearRgba = extracted_shape.color.into();
             let color = lrgba.to_f32_array();
@@ -907,7 +907,7 @@ fn prepare_shapes(
 
                 current_batch = Some(batches.entry((*retained_view, item.main_entity())).insert(
                     ShapeBatch {
-                        shader: shader_handles,
+                        shader: shader_id,
                         range: index..index,
                     },
                 ));
@@ -961,6 +961,6 @@ struct ShapeBatches(HashMap<(RetainedViewEntity, MainEntity), ShapeBatch>);
 
 #[derive(Component, Eq, PartialEq, Clone)]
 struct ShapeBatch {
-    shader: (AssetId<Shader>, AssetId<Shader>),
+    shader: AssetId<Shader>,
     range: Range<u32>,
 }
