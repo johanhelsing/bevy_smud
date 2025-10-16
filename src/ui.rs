@@ -32,7 +32,7 @@ use bevy::{
 use bytemuck::{Pod, Zeroable};
 
 use crate::{
-    DEFAULT_FILL_HANDLE, FloatOrd, GeneratedShaders, VertexBufferLayout,
+    FloatOrd, GeneratedShaders, SIMPLE_FILL_HANDLE, VertexBufferLayout,
     shader_loading::VERTEX_SHADER_HANDLE,
 };
 
@@ -65,7 +65,7 @@ impl Default for SmudNode {
         Self {
             color: Color::WHITE,
             sdf: Handle::default(),
-            fill: DEFAULT_FILL_HANDLE,
+            fill: SIMPLE_FILL_HANDLE.clone(),
             params: Vec4::ZERO,
         }
     }
