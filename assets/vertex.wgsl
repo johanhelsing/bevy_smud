@@ -45,7 +45,12 @@ fn vertex(
     out.clip_position = view.view_proj * vec4<f32>(pos, 1.);
     out.color = vertex.color;
     out.params = vertex.params;
+#ifdef Y_DOWN
+    // ui shaders have y down, so we need to flip the y coordinate
+    out.pos = vec2<f32>(corner.x, -corner.y);
+#else
     out.pos = corner;
+#endif
     out.bounds = vertex.bounds;
     return out;
 }

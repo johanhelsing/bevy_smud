@@ -210,7 +210,7 @@ impl SpecializedRenderPipeline for SmudUiPipeline {
             push_constant_ranges: vec![],
             vertex: VertexState {
                 shader: VERTEX_SHADER_HANDLE,
-                shader_defs: vec![],
+                shader_defs: vec!["Y_DOWN".into()],
                 entry_point: Some("vertex".into()),
                 buffers: vec![VertexBufferLayout {
                     array_stride: std::mem::size_of::<SmudUiVertex>() as u64,
