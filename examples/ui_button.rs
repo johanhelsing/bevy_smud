@@ -10,12 +10,18 @@ fn main() {
         .run();
 }
 
-fn setup(mut commands: Commands, mut shaders: ResMut<Assets<Shader>>) {
+fn setup(
+    mut commands: Commands,
+    mut shaders: ResMut<Assets<Shader>>,
+    asset_server: Res<AssetServer>,
+) {
     commands.spawn(Camera2d);
 
-    // bounds is a vec2<f32> containing the half-extents of the node
+    // bounds is a vec2<f32> containing the half-extents of the node,
+    // making the rounded box automatically scale to the node size
     let sdf = shaders.add_sdf_expr("smud::sd_rounded_box(p, bounds, vec4<f32>(15.))");
 
+    // fill shader with outline and animated diagonal lines
     let fill = shaders.add_fill_body(
         r#"
 let outline_width = 5.;
@@ -42,32 +48,51 @@ return vec4<f32>(input.color.rgb, a * input.color.a);
             height: Val::Percent(100.0),
             justify_content: JustifyContent::Center,
             align_items: AlignItems::Center,
+            flex_direction: FlexDirection::Column,
             ..default()
         },
-        children![(
-            Button,
-            Node {
-                width: Val::Px(220.0),
-                height: Val::Px(80.0),
-                justify_content: JustifyContent::Center,
-                align_items: AlignItems::Center,
-                ..default()
-            },
-            SmudNode {
-                color: css::CORNFLOWER_BLUE.into(),
-                sdf,
-                fill,
-                ..default()
-            },
-            children![(
-                Text::new("Click Me!"),
-                TextFont {
-                    font_size: 20.0,
+        children![
+            // Regular button
+            (
+                Button,
+                Node {
+                    width: Val::Px(220.0),
+                    height: Val::Px(80.0),
+                    justify_content: JustifyContent::Center,
+                    align_items: AlignItems::Center,
                     ..default()
                 },
-                TextColor(css::WHITE.into()),
-            )],
-        )],
+                SmudNode {
+                    color: css::CORNFLOWER_BLUE.into(),
+                    sdf,
+                    fill: fill.clone(),
+                    ..default()
+                },
+                children![(
+                    Text::new("Click Me!"),
+                    TextFont {
+                        font_size: 20.0,
+                        ..default()
+                    },
+                    TextColor(css::WHITE.into()),
+                )],
+            ),
+            // Bevy button
+            (
+                Button,
+                Node {
+                    width: Val::Px(450.0),
+                    height: Val::Px(450.0),
+                    ..default()
+                },
+                SmudNode {
+                    color: css::CORNFLOWER_BLUE.into(),
+                    sdf: asset_server.load("bevy.wgsl"),
+                    fill,
+                    ..default()
+                },
+            )
+        ],
     ));
 }
 
