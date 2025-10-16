@@ -9,6 +9,7 @@ use bevy::{
     prelude::*,
     render::{
         Extract, ExtractSchedule, MainWorld, Render, RenderApp, RenderSystems,
+        globals::{GlobalsBuffer, GlobalsUniform},
         render_phase::{
             AddRenderCommand, DrawFunctions, PhaseItem, PhaseItemExtraIndex, RenderCommand,
             RenderCommandResult, SetItemPipeline, TrackedRenderPass, ViewSortedRenderPhases,
@@ -180,9 +181,15 @@ impl FromWorld for SmudUiPipeline {
         let render_device = world.resource::<RenderDevice>();
         let view_layout = render_device.create_bind_group_layout(
             "smud_ui_view_layout",
-            &BindGroupLayoutEntries::single(
+            &BindGroupLayoutEntries::with_indices(
                 ShaderStages::VERTEX_FRAGMENT,
-                uniform_buffer::<ViewUniform>(true),
+                (
+                    (0, uniform_buffer::<ViewUniform>(true)),
+                    (
+                        1,
+                        uniform_buffer::<GlobalsUniform>(false).visibility(ShaderStages::FRAGMENT),
+                    ),
+                ),
             ),
         );
 
@@ -285,14 +292,18 @@ fn prepare_smud_ui(
     render_queue: Res<RenderQueue>,
     extracted_nodes: Res<ExtractedSmudNodes>,
     view_uniforms: Res<ViewUniforms>,
+    globals_buffer: Res<GlobalsBuffer>,
     pipeline: Res<SmudUiPipeline>,
 ) {
     // Create view bind group
-    if let Some(view_binding) = view_uniforms.uniforms.binding() {
+    if let (Some(view_binding), Some(globals)) = (
+        view_uniforms.uniforms.binding(),
+        globals_buffer.buffer.binding(),
+    ) {
         smud_ui_meta.view_bind_group = Some(render_device.create_bind_group(
             "smud_ui_view_bind_group",
             &pipeline.view_layout,
-            &BindGroupEntries::single(view_binding),
+            &BindGroupEntries::with_indices(((0, view_binding), (1, globals))),
         ));
     }
 
