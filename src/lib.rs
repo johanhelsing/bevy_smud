@@ -246,7 +246,7 @@ impl FromWorld for SmudPipeline {
 struct SmudPipelineKey {
     /// Mix of bevy_render Mesh2DPipelineKey and SpritePipelineKey
     mesh: PipelineKey,
-    shader: (AssetId<Shader>, AssetId<Shader>),
+    shader: Handle<Shader>,
     hdr: bool,
 }
 
@@ -304,8 +304,6 @@ impl SpecializedRenderPipeline for SmudPipeline {
             }
         }
 
-        let shader = self.shaders.0.get(&key.shader).unwrap();
-        debug!("specializing for {shader:?}");
         debug!("shader_defs: {shader_defs:?}");
 
         // Customize how to store the meshes' vertex attributes in the vertex buffer
@@ -365,7 +363,7 @@ impl SpecializedRenderPipeline for SmudPipeline {
                 }],
             },
             fragment: Some(FragmentState {
-                shader: shader.clone(),
+                shader: key.shader.clone(),
                 entry_point: Some("fragment".into()),
                 shader_defs,
                 targets: vec![Some(ColorTargetState {
@@ -755,12 +753,12 @@ fn queue_shapes(
 
             let mut pipeline = CachedRenderPipelineId::INVALID;
 
-            if let Some(_shader) = smud_pipeline.shaders.0.get(&shader) {
+            if let Some(shader) = smud_pipeline.shaders.0.get(&shader) {
                 // todo pass the shader into specialize
                 let shape_key = view_key | PipelineKey::from_blend_mode(extracted_shape.blend_mode);
                 let specialize_key = SmudPipelineKey {
                     mesh: shape_key,
-                    shader,
+                    shader: shader.clone(),
                     hdr: view.hdr,
                 };
                 pipeline = pipelines.specialize(&pipeline_cache, &smud_pipeline, specialize_key);
