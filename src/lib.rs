@@ -107,7 +107,7 @@ pub struct SmudPlugin;
 
 /// System set for shape rendering.
 #[derive(Debug, Hash, PartialEq, Eq, Clone, SystemSet)]
-pub enum ShapeSystem {
+pub enum ShapeRenderSystems {
     /// Extract shapes
     ExtractShapes,
 }
@@ -136,8 +136,10 @@ impl Plugin for SmudPlugin {
                 .add_systems(
                     ExtractSchedule,
                     (
-                        extract_shapes.in_set(ShapeSystem::ExtractShapes),
                         generate_shaders,
+                        extract_shapes
+                            .in_set(ShapeRenderSystems::ExtractShapes)
+                            .after(generate_shaders),
                     ),
                 );
         }
@@ -148,6 +150,7 @@ impl Plugin for SmudPlugin {
         render_app
             .init_resource::<ShapeBatches>()
             .init_resource::<SmudPipeline>()
+            .init_resource::<GeneratedShaders>()
             .add_systems(
                 Render,
                 (
@@ -205,7 +208,6 @@ impl<P: PhaseItem> RenderCommand<P> for DrawShapeBatch {
 #[derive(Resource)]
 struct SmudPipeline {
     view_layout: BindGroupLayout,
-    shaders: GeneratedShaders,
 }
 
 impl FromWorld for SmudPipeline {
@@ -235,10 +237,7 @@ impl FromWorld for SmudPipeline {
             ),
         );
 
-        Self {
-            view_layout,
-            shaders: default(),
-        }
+        Self { view_layout }
     }
 }
 
@@ -432,14 +431,14 @@ impl SpecializedRenderPipeline for SmudPipeline {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Resource)]
 pub(crate) struct GeneratedShaders(
     pub(crate) HashMap<(AssetId<Shader>, AssetId<Shader>), Handle<Shader>>,
 );
 
 impl GeneratedShaders {
     /// Generate and add shader
-    fn get_or_generate(
+    fn try_generate(
         &mut self,
         sdf: &Handle<Shader>,
         fill: &Handle<Shader>,
@@ -537,14 +536,15 @@ fn fragment(in: FragmentInput) -> @location(0) vec4<f32> {{
 
 // TODO: do some of this work in the main world instead, so we don't need to take a mutable
 // reference to MainWorld.
-fn generate_shaders(mut main_world: ResMut<MainWorld>, mut pipeline: ResMut<SmudPipeline>) {
+fn generate_shaders(
+    mut main_world: ResMut<MainWorld>,
+    mut generated_shaders: ResMut<GeneratedShaders>,
+) {
     main_world.resource_scope(|world, mut shaders: Mut<Assets<Shader>>| {
         let mut shapes = world.query::<&SmudShape>();
 
         for shape in shapes.iter(world) {
-            pipeline
-                .shaders
-                .get_or_generate(&shape.sdf, &shape.fill, &mut shaders);
+            generated_shaders.try_generate(&shape.sdf, &shape.fill, &mut shaders);
         }
     });
 }
@@ -569,7 +569,7 @@ struct ExtractedShapes {
 #[allow(clippy::type_complexity)]
 fn extract_shapes(
     mut extracted_shapes: ResMut<ExtractedShapes>,
-    generated_shaders: Res<SmudPipeline>,
+    generated_shaders: Res<GeneratedShaders>,
     shape_query: Extract<
         Query<(
             Entity,
@@ -588,7 +588,6 @@ fn extract_shapes(
         }
 
         let Some(shader) = generated_shaders
-            .shaders
             .0
             .get(&(shape.sdf.id(), shape.fill.id()))
             .cloned()

@@ -31,7 +31,7 @@ use bevy::{
 use bytemuck::{Pod, Zeroable};
 
 use crate::{
-    DEFAULT_FILL_HANDLE, FloatOrd, GeneratedShaders, SmudPipeline, VertexBufferLayout,
+    DEFAULT_FILL_HANDLE, FloatOrd, GeneratedShaders, VertexBufferLayout,
     shader_loading::VERTEX_SHADER_HANDLE,
 };
 
@@ -105,8 +105,7 @@ struct ExtractedSmudNode {
     rect: Rect,
     color: Color,
     params: Vec4,
-    sdf_shader: Handle<Shader>,
-    fill_shader: Handle<Shader>,
+    shader: Handle<Shader>,
 }
 
 /// Resource holding all extracted SmudNodes for the current frame
@@ -117,14 +116,15 @@ struct ExtractedSmudNodes {
 
 // TODO: do some of this work in the main world instead, so we don't need to take a mutable
 // reference to MainWorld.
-fn generate_shaders(mut main_world: ResMut<MainWorld>, mut pipeline: ResMut<SmudPipeline>) {
+fn generate_shaders(
+    mut main_world: ResMut<MainWorld>,
+    mut generated_shaders: ResMut<GeneratedShaders>,
+) {
     main_world.resource_scope(|world, mut shaders: Mut<Assets<Shader>>| {
         let mut ui_nodes = world.query::<&SmudNode>();
 
         for node in ui_nodes.iter(world) {
-            pipeline
-                .shaders
-                .get_or_generate(&node.sdf, &node.fill, &mut shaders);
+            generated_shaders.try_generate(&node.sdf, &node.fill, &mut shaders);
         }
     });
 }
@@ -132,12 +132,22 @@ fn generate_shaders(mut main_world: ResMut<MainWorld>, mut pipeline: ResMut<Smud
 fn extract_smud_nodes(
     mut commands: Commands,
     mut extracted_nodes: ResMut<ExtractedSmudNodes>,
+    generated_shaders: Res<GeneratedShaders>,
     smud_nodes: Extract<Query<(Entity, &SmudNode, &ComputedNode, &UiGlobalTransform)>>,
 ) {
     extracted_nodes.nodes.clear();
 
     for (entity, smud_node, computed_node, transform) in smud_nodes.iter() {
         let render_entity = commands.spawn(TemporaryRenderEntity).id();
+
+        let Some(shader) = generated_shaders
+            .0
+            .get(&(smud_node.sdf.id(), smud_node.fill.id()))
+            .cloned()
+        else {
+            // Shader not yet generated - skip this node for now
+            continue;
+        };
 
         extracted_nodes.nodes.push(ExtractedSmudNode {
             main_entity: entity.into(),
@@ -150,33 +160,21 @@ fn extract_smud_nodes(
             },
             color: smud_node.color,
             params: smud_node.params,
-            sdf_shader: smud_node.sdf.clone(),
-            fill_shader: smud_node.fill.clone(),
+            shader,
         });
     }
 }
 
-/// Sync composed shaders from SmudPipeline to SmudUiPipeline
-fn clone_shaders_to_pipeline(
-    main_pipeline: Res<SmudPipeline>,
-    mut ui_pipeline: ResMut<SmudUiPipeline>,
-) {
-    // TODO: can we get rid of this cloning?
-    ui_pipeline.shaders.0.clone_from(&main_pipeline.shaders.0);
-}
-
 /// Pipeline key for specializing UI rendering based on shaders
-#[derive(Clone, Copy, Hash, PartialEq, Eq)]
+#[derive(Clone, Hash, PartialEq, Eq)]
 struct SmudUiPipelineKey {
-    /// Tuple of (SDF shader, fill shader)
-    shader: (AssetId<Shader>, AssetId<Shader>),
+    shader: Handle<Shader>,
 }
 
 /// Pipeline for rendering SMUD UI shapes
 #[derive(Resource)]
 struct SmudUiPipeline {
     view_layout: BindGroupLayout,
-    shaders: GeneratedShaders,
 }
 
 impl FromWorld for SmudUiPipeline {
@@ -190,10 +188,7 @@ impl FromWorld for SmudUiPipeline {
             ),
         );
 
-        Self {
-            view_layout,
-            shaders: Default::default(),
-        }
+        Self { view_layout }
     }
 }
 
@@ -202,12 +197,7 @@ impl SpecializedRenderPipeline for SmudUiPipeline {
 
     fn specialize(&self, key: Self::Key) -> RenderPipelineDescriptor {
         // Get the generated shader for this sdf+fill combination
-        let shader = self
-            .shaders
-            .0
-            .get(&key.shader)
-            .cloned()
-            .expect("failed to get generated shader for smud ui node");
+        let shader = key.shader;
 
         RenderPipelineDescriptor {
             label: Some("smud_ui_pipeline".into()),
@@ -365,7 +355,7 @@ fn queue_smud_ui(
         for (index, node) in extracted_nodes.nodes.iter().enumerate() {
             // Create pipeline key for this shader combination
             let key = SmudUiPipelineKey {
-                shader: (node.sdf_shader.id(), node.fill_shader.id()),
+                shader: node.shader.clone(),
             };
 
             // Specialize the pipeline for this shader combination
@@ -469,11 +459,7 @@ impl Plugin for UiShapePlugin {
                 .init_resource::<SpecializedRenderPipelines<SmudUiPipeline>>()
                 .add_systems(
                     ExtractSchedule,
-                    (
-                        generate_shaders,
-                        extract_smud_nodes,
-                        clone_shaders_to_pipeline.after(generate_shaders),
-                    ),
+                    (generate_shaders, extract_smud_nodes.after(generate_shaders)),
                 )
                 .add_systems(
                     Render,
