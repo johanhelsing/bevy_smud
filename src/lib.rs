@@ -754,7 +754,6 @@ fn queue_shapes(
             let mut pipeline = CachedRenderPipelineId::INVALID;
 
             if let Some(shader) = smud_pipeline.shaders.0.get(&shader) {
-                // todo pass the shader into specialize
                 let shape_key = view_key | PipelineKey::from_blend_mode(extracted_shape.blend_mode);
                 let specialize_key = SmudPipelineKey {
                     mesh: shape_key,
