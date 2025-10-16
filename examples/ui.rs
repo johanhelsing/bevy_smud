@@ -34,7 +34,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                     height: Val::Px(200.0),
                     ..default()
                 },
-                SmudNode {
+                UiShape {
                     color: Color::srgb(1.0, 0.0, 0.0),
                     sdf: circle_sdf.clone(),
                     params: Vec4::new(100.0, 0.0, 0.0, 0.0),
@@ -50,7 +50,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                     height: Val::Px(200.0),
                     ..default()
                 },
-                SmudNode {
+                UiShape {
                     color: Color::srgb(0.0, 1.0, 0.0),
                     sdf: ellipse_sdf.clone(),
                     params: Vec4::new(100.0, 50.0, 0.0, 0.0),
@@ -66,7 +66,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                     height: Val::Px(200.0),
                     ..default()
                 },
-                SmudNode {
+                UiShape {
                     color: Color::srgb(0.0, 0.0, 1.0),
                     sdf: circle_sdf,
                     params: Vec4::new(100.0, 0.0, 0.0, 0.0),

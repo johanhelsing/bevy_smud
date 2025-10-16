@@ -1,4 +1,4 @@
-//! Provides `SmudNode` component for rendering SDF shapes in Bevy's UI
+//! Provides `UiShape` component for rendering SDF shapes in Bevy's UI
 
 use bevy::{
     ecs::system::{
@@ -42,7 +42,7 @@ use crate::{
 #[derive(Component, Reflect, Debug, Clone)]
 #[require(Node)]
 #[reflect(Component)]
-pub struct SmudNode {
+pub struct UiShape {
     /// The color of the shape
     pub color: Color,
 
@@ -60,7 +60,7 @@ pub struct SmudNode {
     pub params: Vec4,
 }
 
-impl Default for SmudNode {
+impl Default for UiShape {
     fn default() -> Self {
         Self {
             color: Color::WHITE,
@@ -73,7 +73,7 @@ impl Default for SmudNode {
 
 #[repr(C)]
 #[derive(Copy, Clone, Pod, Zeroable)]
-struct SmudUiVertex {
+struct UiShapeVertex {
     position: [f32; 3],
     color: [f32; 4],
     params: [f32; 4],
@@ -83,12 +83,12 @@ struct SmudUiVertex {
 }
 
 #[derive(Resource)]
-struct SmudUiMeta {
-    vertices: RawBufferVec<SmudUiVertex>,
+struct UiShapeMeta {
+    vertices: RawBufferVec<UiShapeVertex>,
     view_bind_group: Option<BindGroup>,
 }
 
-impl Default for SmudUiMeta {
+impl Default for UiShapeMeta {
     fn default() -> Self {
         Self {
             vertices: RawBufferVec::new(BufferUsages::VERTEX),
@@ -97,7 +97,7 @@ impl Default for SmudUiMeta {
     }
 }
 
-struct ExtractedSmudNode {
+struct ExtractedUiShape {
     main_entity: MainEntity,
     render_entity: Entity,
     stack_index: u32,
@@ -109,10 +109,9 @@ struct ExtractedSmudNode {
     shader: Handle<Shader>,
 }
 
-/// Resource holding all extracted SmudNodes for the current frame
 #[derive(Resource, Default)]
-struct ExtractedSmudNodes {
-    nodes: Vec<ExtractedSmudNode>,
+struct ExtractedUiShapes {
+    nodes: Vec<ExtractedUiShape>,
 }
 
 // TODO: do some of this work in the main world instead, so we don't need to take a mutable
@@ -122,33 +121,34 @@ fn generate_shaders(
     mut generated_shaders: ResMut<GeneratedShaders>,
 ) {
     main_world.resource_scope(|world, mut shaders: Mut<Assets<Shader>>| {
-        for node in world.query::<&SmudNode>().iter(world) {
+        for node in world.query::<&UiShape>().iter(world) {
             generated_shaders.try_generate(&node.sdf, &node.fill, &mut shaders);
         }
     });
 }
-/// Extract SmudNode components to render world
-fn extract_smud_nodes(
+
+/// Extract UiShape components to render world
+fn extract_ui_shapes(
     mut commands: Commands,
-    mut extracted_nodes: ResMut<ExtractedSmudNodes>,
+    mut extracted_nodes: ResMut<ExtractedUiShapes>,
     generated_shaders: Res<GeneratedShaders>,
-    smud_nodes: Extract<Query<(Entity, &SmudNode, &ComputedNode, &UiGlobalTransform)>>,
+    ui_shapes: Extract<Query<(Entity, &UiShape, &ComputedNode, &UiGlobalTransform)>>,
 ) {
     extracted_nodes.nodes.clear();
 
-    for (entity, smud_node, computed_node, transform) in smud_nodes.iter() {
+    for (entity, ui_shape, computed_node, transform) in ui_shapes.iter() {
         let render_entity = commands.spawn(TemporaryRenderEntity).id();
 
         let Some(shader) = generated_shaders
             .0
-            .get(&(smud_node.sdf.id(), smud_node.fill.id()))
+            .get(&(ui_shape.sdf.id(), ui_shape.fill.id()))
             .cloned()
         else {
             // Shader not yet generated - skip this node for now
             continue;
         };
 
-        extracted_nodes.nodes.push(ExtractedSmudNode {
+        extracted_nodes.nodes.push(ExtractedUiShape {
             main_entity: entity.into(),
             render_entity,
             stack_index: computed_node.stack_index,
@@ -157,8 +157,8 @@ fn extract_smud_nodes(
                 min: Vec2::ZERO,
                 max: computed_node.size,
             },
-            color: smud_node.color,
-            params: smud_node.params,
+            color: ui_shape.color,
+            params: ui_shape.params,
             shader,
         });
     }
@@ -166,21 +166,21 @@ fn extract_smud_nodes(
 
 /// Pipeline key for specializing UI rendering based on shaders
 #[derive(Clone, Hash, PartialEq, Eq)]
-struct SmudUiPipelineKey {
+struct UiShapePipelineKey {
     shader: Handle<Shader>,
 }
 
 /// Pipeline for rendering shapes in UI.
 #[derive(Resource)]
-struct SmudUiPipeline {
+struct UiShapePipeline {
     view_layout: BindGroupLayout,
 }
 
-impl FromWorld for SmudUiPipeline {
+impl FromWorld for UiShapePipeline {
     fn from_world(world: &mut World) -> Self {
         let render_device = world.resource::<RenderDevice>();
         let view_layout = render_device.create_bind_group_layout(
-            "smud_ui_view_layout",
+            "ui_shape_view_layout",
             &BindGroupLayoutEntries::with_indices(
                 ShaderStages::VERTEX_FRAGMENT,
                 (
@@ -197,15 +197,15 @@ impl FromWorld for SmudUiPipeline {
     }
 }
 
-impl SpecializedRenderPipeline for SmudUiPipeline {
-    type Key = SmudUiPipelineKey;
+impl SpecializedRenderPipeline for UiShapePipeline {
+    type Key = UiShapePipelineKey;
 
     fn specialize(&self, key: Self::Key) -> RenderPipelineDescriptor {
         // Get the generated shader for this sdf+fill combination
         let shader = key.shader;
 
         RenderPipelineDescriptor {
-            label: Some("smud_ui_pipeline".into()),
+            label: Some("ui_shape_pipeline".into()),
             layout: vec![self.view_layout.clone()],
             push_constant_ranges: vec![],
             vertex: VertexState {
@@ -213,7 +213,7 @@ impl SpecializedRenderPipeline for SmudUiPipeline {
                 shader_defs: vec!["Y_DOWN".into()],
                 entry_point: Some("vertex".into()),
                 buffers: vec![VertexBufferLayout {
-                    array_stride: std::mem::size_of::<SmudUiVertex>() as u64,
+                    array_stride: std::mem::size_of::<UiShapeVertex>() as u64,
                     step_mode: VertexStepMode::Instance, // One instance per UI node
                     attributes: vec![
                         // position
@@ -286,28 +286,28 @@ impl SpecializedRenderPipeline for SmudUiPipeline {
 }
 
 /// Prepare vertex buffers - generates vertices for each extracted node
-fn prepare_smud_ui(
-    mut smud_ui_meta: ResMut<SmudUiMeta>,
+fn prepare_ui_shapes(
+    mut ui_shape_meta: ResMut<UiShapeMeta>,
     render_device: Res<RenderDevice>,
     render_queue: Res<RenderQueue>,
-    extracted_nodes: Res<ExtractedSmudNodes>,
+    extracted_nodes: Res<ExtractedUiShapes>,
     view_uniforms: Res<ViewUniforms>,
     globals_buffer: Res<GlobalsBuffer>,
-    pipeline: Res<SmudUiPipeline>,
+    pipeline: Res<UiShapePipeline>,
 ) {
     // Create view bind group
     if let (Some(view_binding), Some(globals)) = (
         view_uniforms.uniforms.binding(),
         globals_buffer.buffer.binding(),
     ) {
-        smud_ui_meta.view_bind_group = Some(render_device.create_bind_group(
-            "smud_ui_view_bind_group",
+        ui_shape_meta.view_bind_group = Some(render_device.create_bind_group(
+            "ui_shape_view_bind_group",
             &pipeline.view_layout,
             &BindGroupEntries::with_indices(((0, view_binding), (1, globals))),
         ));
     }
 
-    smud_ui_meta.vertices.clear();
+    ui_shape_meta.vertices.clear();
 
     // Generate one instance per node - vertex shader will use vertex_index to determine corners
     for node in &extracted_nodes.nodes {
@@ -333,7 +333,7 @@ fn prepare_smud_ui(
             [1.0, 0.0] // No rotation
         };
 
-        smud_ui_meta.vertices.push(SmudUiVertex {
+        ui_shape_meta.vertices.push(UiShapeVertex {
             position: [position.x, position.y, 0.0],
             color: node.color.to_linear().to_f32_array(),
             params: node.params.to_array(),
@@ -343,27 +343,27 @@ fn prepare_smud_ui(
         });
     }
 
-    smud_ui_meta
+    ui_shape_meta
         .vertices
         .write_buffer(&render_device, &render_queue);
 }
 
-fn queue_smud_ui(
+fn queue_ui_shapes(
     draw_functions: Res<DrawFunctions<TransparentUi>>,
-    pipeline: Res<SmudUiPipeline>,
-    mut pipelines: ResMut<SpecializedRenderPipelines<SmudUiPipeline>>,
+    pipeline: Res<UiShapePipeline>,
+    mut pipelines: ResMut<SpecializedRenderPipelines<UiShapePipeline>>,
     pipeline_cache: Res<PipelineCache>,
     mut transparent_render_phases: ResMut<ViewSortedRenderPhases<TransparentUi>>,
-    extracted_nodes: Res<ExtractedSmudNodes>,
+    extracted_nodes: Res<ExtractedUiShapes>,
 ) {
-    let draw_function = draw_functions.read().id::<DrawSmudUi>();
+    let draw_function = draw_functions.read().id::<DrawUiShapes>();
 
     // For each view that has a TransparentUi phase
     for (_view_key, transparent_phase) in transparent_render_phases.iter_mut() {
-        // Add each extracted SmudNode to the render phase
+        // Add each extracted UiShape to the render phase
         for (index, node) in extracted_nodes.nodes.iter().enumerate() {
             // Create pipeline key for this shader combination
-            let key = SmudUiPipelineKey {
+            let key = UiShapePipelineKey {
                 shader: node.shader.clone(),
             };
 
@@ -379,7 +379,7 @@ fn queue_smud_ui(
             }
 
             // Use stack_index with an offset to control z-ordering
-            // We use a value slightly after MATERIAL (0.05) so SmudNodes render in proper layer order
+            // We use a value slightly after MATERIAL (0.05) so UiShapes render in proper layer order
             let sort_key = FloatOrd(node.stack_index as f32 + stack_z_offsets::MATERIAL + 0.01);
 
             transparent_phase.add(TransparentUi {
@@ -396,12 +396,16 @@ fn queue_smud_ui(
     }
 }
 
-type DrawSmudUi = (SetItemPipeline, SetSmudUiViewBindGroup<0>, DrawSmudUiBatch);
+type DrawUiShapes = (
+    SetItemPipeline,
+    SetUiShapeViewBindGroup<0>,
+    DrawUiShapeBatch,
+);
 
-struct SetSmudUiViewBindGroup<const I: usize>;
+struct SetUiShapeViewBindGroup<const I: usize>;
 
-impl<P: PhaseItem, const I: usize> RenderCommand<P> for SetSmudUiViewBindGroup<I> {
-    type Param = SRes<SmudUiMeta>;
+impl<P: PhaseItem, const I: usize> RenderCommand<P> for SetUiShapeViewBindGroup<I> {
+    type Param = SRes<UiShapeMeta>;
     type ViewQuery = Read<ViewUniformOffset>;
     type ItemQuery = ();
 
@@ -409,10 +413,10 @@ impl<P: PhaseItem, const I: usize> RenderCommand<P> for SetSmudUiViewBindGroup<I
         _item: &P,
         view_uniform: &'w ViewUniformOffset,
         _entity: Option<()>,
-        smud_ui_meta: SystemParamItem<'w, '_, Self::Param>,
+        ui_shape_meta: SystemParamItem<'w, '_, Self::Param>,
         pass: &mut TrackedRenderPass<'w>,
     ) -> RenderCommandResult {
-        let Some(view_bind_group) = smud_ui_meta.into_inner().view_bind_group.as_ref() else {
+        let Some(view_bind_group) = ui_shape_meta.into_inner().view_bind_group.as_ref() else {
             return RenderCommandResult::Failure("view_bind_group not available");
         };
         pass.set_bind_group(I, view_bind_group, &[view_uniform.offset]);
@@ -420,10 +424,10 @@ impl<P: PhaseItem, const I: usize> RenderCommand<P> for SetSmudUiViewBindGroup<I
     }
 }
 
-struct DrawSmudUiBatch;
+struct DrawUiShapeBatch;
 
-impl RenderCommand<TransparentUi> for DrawSmudUiBatch {
-    type Param = SRes<SmudUiMeta>;
+impl RenderCommand<TransparentUi> for DrawUiShapeBatch {
+    type Param = SRes<UiShapeMeta>;
     type ViewQuery = ();
     type ItemQuery = ();
 
@@ -431,11 +435,11 @@ impl RenderCommand<TransparentUi> for DrawSmudUiBatch {
         item: &TransparentUi,
         _view: (),
         _entity: Option<()>,
-        smud_ui_meta: SystemParamItem<'w, '_, Self::Param>,
+        ui_shape_meta: SystemParamItem<'w, '_, Self::Param>,
         pass: &mut TrackedRenderPass<'w>,
     ) -> RenderCommandResult {
-        let smud_ui_meta = smud_ui_meta.into_inner();
-        let Some(vertices) = smud_ui_meta.vertices.buffer() else {
+        let ui_shape_meta = ui_shape_meta.into_inner();
+        let Some(vertices) = ui_shape_meta.vertices.buffer() else {
             return RenderCommandResult::Failure("no vertex buffer");
         };
 
@@ -450,31 +454,31 @@ impl RenderCommand<TransparentUi> for DrawSmudUiBatch {
     }
 }
 
-/// Plugin for rendering smud shapes in bevy_ui
+/// Plugin for rendering shapes in bevy_ui
 pub(crate) struct UiShapePlugin;
 
 impl Plugin for UiShapePlugin {
     fn build(&self, app: &mut App) {
-        app.register_type::<SmudNode>();
+        app.register_type::<UiShape>();
     }
 
     fn finish(&self, app: &mut App) {
         if let Some(render_app) = app.get_sub_app_mut(RenderApp) {
             render_app
-                .add_render_command::<TransparentUi, DrawSmudUi>()
-                .init_resource::<SmudUiMeta>()
-                .init_resource::<SmudUiPipeline>()
-                .init_resource::<ExtractedSmudNodes>()
-                .init_resource::<SpecializedRenderPipelines<SmudUiPipeline>>()
+                .add_render_command::<TransparentUi, DrawUiShapes>()
+                .init_resource::<UiShapeMeta>()
+                .init_resource::<UiShapePipeline>()
+                .init_resource::<ExtractedUiShapes>()
+                .init_resource::<SpecializedRenderPipelines<UiShapePipeline>>()
                 .add_systems(
                     ExtractSchedule,
-                    (generate_shaders, extract_smud_nodes.after(generate_shaders)),
+                    (generate_shaders, extract_ui_shapes.after(generate_shaders)),
                 )
                 .add_systems(
                     Render,
                     (
-                        queue_smud_ui.in_set(RenderSystems::Queue),
-                        prepare_smud_ui.in_set(RenderSystems::PrepareResources),
+                        queue_ui_shapes.in_set(RenderSystems::Queue),
+                        prepare_ui_shapes.in_set(RenderSystems::PrepareResources),
                     ),
                 );
         }

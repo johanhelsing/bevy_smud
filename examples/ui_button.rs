@@ -62,7 +62,7 @@ return vec4<f32>(input.color.rgb, a * input.color.a);
                     align_items: AlignItems::Center,
                     ..default()
                 },
-                SmudNode {
+                UiShape {
                     color: css::CORNFLOWER_BLUE.into(),
                     sdf,
                     fill: fill.clone(),
@@ -85,7 +85,7 @@ return vec4<f32>(input.color.rgb, a * input.color.a);
                     height: Val::Px(450.0),
                     ..default()
                 },
-                SmudNode {
+                UiShape {
                     color: css::CORNFLOWER_BLUE.into(),
                     sdf: asset_server.load("bevy.wgsl"),
                     fill,
@@ -96,7 +96,7 @@ return vec4<f32>(input.color.rgb, a * input.color.a);
     ));
 }
 
-fn button_interaction(mut query: Query<(&mut SmudNode, &Interaction), Changed<Interaction>>) {
+fn button_interaction(mut query: Query<(&mut UiShape, &Interaction), Changed<Interaction>>) {
     for (mut shape, interaction) in query.iter_mut() {
         shape.color = match interaction {
             Interaction::Pressed => css::DARK_BLUE.into(),

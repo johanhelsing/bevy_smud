@@ -96,7 +96,7 @@ pub mod prelude {
     };
 
     #[cfg(feature = "bevy_ui")]
-    pub use crate::ui::SmudNode;
+    pub use crate::ui::UiShape;
 
     pub use crate::sdf;
 }
