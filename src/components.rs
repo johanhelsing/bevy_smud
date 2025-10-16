@@ -40,6 +40,8 @@ pub struct SmudShape {
     pub params: Vec4,
     /// Blend mode for the shape
     pub blend_mode: BlendMode,
+    /// Extra padding to add to the bounds when rendering the shape
+    pub extra_bounds: f32,
 }
 
 impl Default for SmudShape {
@@ -51,6 +53,7 @@ impl Default for SmudShape {
             params: default(),
             fill: DEFAULT_FILL_HANDLE,
             blend_mode: BlendMode::default(),
+            extra_bounds: 0.0,
         }
     }
 }

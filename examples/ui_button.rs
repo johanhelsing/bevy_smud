@@ -19,7 +19,7 @@ fn setup(
 
     // bounds is a vec2<f32> containing the half-extents of the node,
     // making the rounded box automatically scale to the node size
-    let sdf = shaders.add_sdf_expr("smud::sd_rounded_box(p, bounds, vec4<f32>(15.))");
+    let rounded_box = shaders.add_sdf_expr("smud::sd_rounded_box(p, bounds, vec4<f32>(15.))");
 
     // fill shader with outline and animated diagonal lines
     let fill = shaders.add_fill_body(
@@ -49,6 +49,7 @@ return vec4<f32>(input.color.rgb, a * input.color.a);
             justify_content: JustifyContent::Center,
             align_items: AlignItems::Center,
             flex_direction: FlexDirection::Column,
+            row_gap: Val::Px(10.0),
             ..default()
         },
         children![
@@ -64,7 +65,31 @@ return vec4<f32>(input.color.rgb, a * input.color.a);
                 },
                 UiShape {
                     color: css::CORNFLOWER_BLUE.into(),
-                    sdf,
+                    sdf: rounded_box.clone(),
+                    ..default()
+                },
+                children![(
+                    Text::new("Click Me!"),
+                    TextFont {
+                        font_size: 20.0,
+                        ..default()
+                    },
+                    TextColor(css::WHITE.into()),
+                )],
+            ),
+            // Regular button
+            (
+                Button,
+                Node {
+                    width: Val::Px(220.0),
+                    height: Val::Px(80.0),
+                    justify_content: JustifyContent::Center,
+                    align_items: AlignItems::Center,
+                    ..default()
+                },
+                UiShape {
+                    color: css::CORNFLOWER_BLUE.into(),
+                    sdf: rounded_box,
                     fill: fill.clone(),
                     ..default()
                 },

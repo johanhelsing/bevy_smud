@@ -14,7 +14,8 @@ struct Vertex {
     @location(2) params: vec4<f32>,
     @location(3) rotation: vec2<f32>,
     @location(4) scale: f32,
-    @location(5) bounds: vec2<f32>,
+    // z and w contain extra padding
+    @location(5) bounds: vec4<f32>,
 };
 
 struct VertexOutput {
@@ -36,7 +37,8 @@ fn vertex(
     let c = vertex.rotation.x;
     let s = vertex.rotation.y;
     // Scale by bounds first to get the rectangle shape
-    let corner = vec2<f32>(x, y) * vertex.bounds;
+    let bounds_with_padding = vertex.bounds.xy + vertex.bounds.zw;
+    let corner = vec2<f32>(x, y) * bounds_with_padding;
     // Then rotate the rectangle
     let rotated = vec2<f32>(corner.x * c - corner.y * s, corner.x * s + corner.y * c);
     // Then apply scale
@@ -51,6 +53,6 @@ fn vertex(
 #else
     out.pos = corner;
 #endif
-    out.bounds = vertex.bounds;
+    out.bounds = vertex.bounds.xy;
     return out;
 }
