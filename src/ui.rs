@@ -35,7 +35,7 @@ use crate::{
     shader_loading::VERTEX_SHADER_HANDLE,
 };
 
-/// Component for rendering SMUD shapes in UI.
+/// Component for rendering shapes in UI.
 ///
 /// This component requires `Node` and renders an SDF-based shape within the UI node bounds.
 #[derive(Component, Reflect, Debug, Clone)]
@@ -121,9 +121,7 @@ fn generate_shaders(
     mut generated_shaders: ResMut<GeneratedShaders>,
 ) {
     main_world.resource_scope(|world, mut shaders: Mut<Assets<Shader>>| {
-        let mut ui_nodes = world.query::<&SmudNode>();
-
-        for node in ui_nodes.iter(world) {
+        for node in world.query::<&SmudNode>().iter(world) {
             generated_shaders.try_generate(&node.sdf, &node.fill, &mut shaders);
         }
     });
@@ -171,7 +169,7 @@ struct SmudUiPipelineKey {
     shader: Handle<Shader>,
 }
 
-/// Pipeline for rendering SMUD UI shapes
+/// Pipeline for rendering shapes in UI.
 #[derive(Resource)]
 struct SmudUiPipeline {
     view_layout: BindGroupLayout,

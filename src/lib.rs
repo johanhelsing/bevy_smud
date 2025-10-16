@@ -541,9 +541,7 @@ fn generate_shaders(
     mut generated_shaders: ResMut<GeneratedShaders>,
 ) {
     main_world.resource_scope(|world, mut shaders: Mut<Assets<Shader>>| {
-        let mut shapes = world.query::<&SmudShape>();
-
-        for shape in shapes.iter(world) {
+        for shape in world.query::<&SmudShape>().iter(world) {
             generated_shaders.try_generate(&shape.sdf, &shape.fill, &mut shaders);
         }
     });
