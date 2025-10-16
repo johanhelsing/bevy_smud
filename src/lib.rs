@@ -501,11 +501,12 @@ struct FragmentInput {{
     @location(0) color: vec4<f32>,
     @location(1) pos: vec2<f32>,
     @location(2) params: vec4<f32>,
+    @location(3) bounds: vec2<f32>,
 }};
 
 @fragment
 fn fragment(in: FragmentInput) -> @location(0) vec4<f32> {{
-    let sdf_input = smud::SdfInput(in.pos, in.params);
+    let sdf_input = smud::SdfInput(in.pos, in.params, in.bounds);
     let d = sdf::sdf(sdf_input);
     let fill_input = smud::FillInput(
         in.pos,

@@ -29,7 +29,8 @@ fn sdf(input: smud::SdfInput) -> f32 {{
     // Backward compatibility aliases for the old API
     let p = input.pos;
     let params = input.params;
-    
+    let bounds = input.bounds;
+
     {body}
 }}
 "#

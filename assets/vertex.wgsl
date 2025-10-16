@@ -22,6 +22,7 @@ struct VertexOutput {
     @location(0) color: vec4<f32>,
     @location(1) pos: vec2<f32>,
     @location(2) params: vec4<f32>,
+    @location(3) bounds: vec2<f32>,
 };
 
 @vertex
@@ -45,5 +46,6 @@ fn vertex(
     out.color = vertex.color;
     out.params = vertex.params;
     out.pos = corner;
+    out.bounds = vertex.bounds;
     return out;
 }

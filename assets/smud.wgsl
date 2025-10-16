@@ -7,6 +7,7 @@ const PI: f32 = 3.141592653589793;
 struct SdfInput {
     pos: vec2<f32>,      // Position in shape space
     params: vec4<f32>,   // User-defined parameters
+    bounds: vec2<f32>,   // Half-extents (width/2, height/2) of the node bounds
 }
 
 // Input struct for fill functions containing all available data
