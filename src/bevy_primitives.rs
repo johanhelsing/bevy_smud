@@ -50,7 +50,7 @@ use bevy::prelude::*;
 use crate::SmudShape;
 
 #[cfg(feature = "bevy_picking")]
-use crate::sdf;
+use crate::{picking_backend::SdfInput, sdf};
 
 /// Trait for primitives that can be converted to SmudShape.
 ///
@@ -60,31 +60,32 @@ trait SmudPrimitive: Sized + Bounded2d {
     /// The shader handle for this primitive's SDF
     fn sdf_shader() -> Handle<Shader>;
 
-    /// Extract bounds for rendering (including padding for anti-aliasing)
+    /// Extract bounds for rendering
     ///
-    /// Default implementation uses the `Bounded2d` trait to compute an AABB
-    /// and adds padding for anti-aliasing.
+    /// Default implementation uses the `Bounded2d` trait to compute an AABB.
+    /// Padding for anti-aliasing is handled by `SmudShape::extra_bounds`.
     fn bounds(&self) -> Rectangle {
-        const PADDING: f32 = 4.0;
         let aabb = Bounded2d::aabb_2d(self, Vec2::ZERO);
 
         // For asymmetric shapes, we need the maximum extent from origin in each direction
         let half_size = aabb.min.abs().max(aabb.max.abs());
 
-        Rectangle {
-            half_size: half_size + Vec2::splat(PADDING),
-        }
+        Rectangle { half_size }
     }
 
     /// Extract shader parameters (stored in SmudShape.params)
-    fn params(&self) -> Vec4;
+    /// Default implementation returns Vec4::ZERO (no parameters)
+    fn params(&self) -> Vec4 {
+        Vec4::ZERO
+    }
 
     /// Try to reconstruct a primitive from a SmudShape
     fn try_from_shape(shape: &SmudShape) -> Option<Self>;
 
     #[cfg(feature = "bevy_picking")]
-    /// Create a picking closure for this primitive
-    fn picking_fn(&self) -> Box<dyn Fn(Vec2) -> f32 + Send + Sync>;
+    /// Create a picking closure for this primitive.
+    /// The function receives SdfInput with current position, bounds, and params.
+    fn picking_fn(&self) -> Box<dyn Fn(SdfInput) -> f32 + Send + Sync>;
 
     #[cfg(feature = "bevy_picking")]
     /// Try to create a picking shape by reconstructing this primitive from a SmudShape
@@ -193,14 +194,10 @@ impl SmudPrimitive for Rectangle {
         RECTANGLE_SDF_HANDLE
     }
 
-    fn params(&self) -> Vec4 {
-        Vec4::new(self.half_size.x, self.half_size.y, 0.0, 0.0)
-    }
-
     fn try_from_shape(shape: &SmudShape) -> Option<Self> {
         if shape.sdf.id() == RECTANGLE_SDF_HANDLE.id() {
             Some(Rectangle {
-                half_size: shape.params.xy(),
+                half_size: shape.bounds.half_size,
             })
         } else {
             None
@@ -208,9 +205,8 @@ impl SmudPrimitive for Rectangle {
     }
 
     #[cfg(feature = "bevy_picking")]
-    fn picking_fn(&self) -> Box<dyn Fn(Vec2) -> f32 + Send + Sync> {
-        let half_size = self.half_size;
-        Box::new(move |p| sdf::sd_box(p, half_size))
+    fn picking_fn(&self) -> Box<dyn Fn(SdfInput) -> f32 + Send + Sync> {
+        Box::new(move |input| sdf::sd_box(input.pos, input.bounds))
     }
 }
 
@@ -219,24 +215,22 @@ impl SmudPrimitive for Circle {
         CIRCLE_SDF_HANDLE
     }
 
-    fn params(&self) -> Vec4 {
-        Vec4::new(self.radius, 0.0, 0.0, 0.0)
-    }
-
     fn try_from_shape(shape: &SmudShape) -> Option<Self> {
         if shape.sdf.id() == CIRCLE_SDF_HANDLE.id() {
-            Some(Circle {
-                radius: shape.params.x,
-            })
+            let radius = shape.bounds.half_size.x.min(shape.bounds.half_size.y);
+            Some(Circle { radius })
         } else {
             None
         }
     }
 
     #[cfg(feature = "bevy_picking")]
-    fn picking_fn(&self) -> Box<dyn Fn(Vec2) -> f32 + Send + Sync> {
-        let radius = self.radius;
-        Box::new(move |p| sdf::circle(p, radius))
+    fn picking_fn(&self) -> Box<dyn Fn(SdfInput) -> f32 + Send + Sync> {
+        // Circle uses min(bounds.x, bounds.y) for radius in shader
+        Box::new(move |input| {
+            let radius = input.bounds.x.min(input.bounds.y);
+            sdf::circle(input.pos, radius)
+        })
     }
 }
 
@@ -245,14 +239,10 @@ impl SmudPrimitive for Ellipse {
         ELLIPSE_SDF_HANDLE
     }
 
-    fn params(&self) -> Vec4 {
-        Vec4::new(self.half_size.x, self.half_size.y, 0.0, 0.0)
-    }
-
     fn try_from_shape(shape: &SmudShape) -> Option<Self> {
         if shape.sdf.id() == ELLIPSE_SDF_HANDLE.id() {
             Some(Ellipse {
-                half_size: shape.params.xy(),
+                half_size: shape.bounds.half_size,
             })
         } else {
             None
@@ -260,15 +250,16 @@ impl SmudPrimitive for Ellipse {
     }
 
     #[cfg(feature = "bevy_picking")]
-    fn picking_fn(&self) -> Box<dyn Fn(Vec2) -> f32 + Send + Sync> {
-        let a = self.half_size.x;
-        let b = self.half_size.y;
-        Box::new(move |p| {
+    fn picking_fn(&self) -> Box<dyn Fn(SdfInput) -> f32 + Send + Sync> {
+        // Ellipse uses bounds directly for half-extents
+        Box::new(move |input| {
+            let a = input.bounds.x;
+            let b = input.bounds.y;
             const EPSILON: f32 = 1e-6;
             if (a - b).abs() < EPSILON {
-                sdf::circle(p, a)
+                sdf::circle(input.pos, a)
             } else {
-                sdf::ellipse(p, a, b)
+                sdf::ellipse(input.pos, a, b)
             }
         })
     }
@@ -280,22 +271,27 @@ impl SmudPrimitive for Annulus {
     }
 
     fn params(&self) -> Vec4 {
-        Vec4::new(self.outer_circle.radius, self.inner_circle.radius, 0.0, 0.0)
+        Vec4::new(self.inner_circle.radius, 0.0, 0.0, 0.0)
     }
 
     fn try_from_shape(shape: &SmudShape) -> Option<Self> {
         if shape.sdf.id() == ANNULUS_SDF_HANDLE.id() {
-            Some(Annulus::new(shape.params.y, shape.params.x))
+            let outer_radius = shape.bounds.half_size.x.min(shape.bounds.half_size.y);
+            let inner_radius = shape.params.x;
+            Some(Annulus::new(inner_radius, outer_radius))
         } else {
             None
         }
     }
 
     #[cfg(feature = "bevy_picking")]
-    fn picking_fn(&self) -> Box<dyn Fn(Vec2) -> f32 + Send + Sync> {
-        let outer_radius = self.outer_circle.radius;
-        let inner_radius = self.inner_circle.radius;
-        Box::new(move |p| sdf::annulus(p, outer_radius, inner_radius))
+    fn picking_fn(&self) -> Box<dyn Fn(SdfInput) -> f32 + Send + Sync> {
+        // Annulus uses min(bounds.x, bounds.y) for outer radius, inner radius from params
+        Box::new(move |input| {
+            let outer_radius = input.bounds.x.min(input.bounds.y);
+            let inner_radius = input.params.x;
+            sdf::annulus(input.pos, outer_radius, inner_radius)
+        })
     }
 }
 
@@ -304,23 +300,26 @@ impl SmudPrimitive for Capsule2d {
         CAPSULE_SDF_HANDLE
     }
 
-    fn params(&self) -> Vec4 {
-        Vec4::new(self.radius, self.half_length, 0.0, 0.0)
-    }
-
     fn try_from_shape(shape: &SmudShape) -> Option<Self> {
         if shape.sdf.id() == CAPSULE_SDF_HANDLE.id() {
-            Some(Capsule2d::new(shape.params.x, shape.params.y))
+            // Must match shader logic: radius = min(bounds.x, bounds.y)
+            let radius = shape.bounds.half_size.x.min(shape.bounds.half_size.y);
+            let half_length_from_bounds = shape.bounds.half_size.y - radius;
+            // Note: Capsule2d::new takes (radius, full_length), not (radius, half_length)!
+            Some(Capsule2d::new(radius, half_length_from_bounds * 2.0))
         } else {
             None
         }
     }
 
     #[cfg(feature = "bevy_picking")]
-    fn picking_fn(&self) -> Box<dyn Fn(Vec2) -> f32 + Send + Sync> {
-        let radius = self.radius;
-        let half_length = self.half_length;
-        Box::new(move |p| sdf::capsule(p, radius, half_length))
+    fn picking_fn(&self) -> Box<dyn Fn(SdfInput) -> f32 + Send + Sync> {
+        // The shader computes from bounds: radius = min(bounds.x, bounds.y), half_length = bounds.y - radius
+        Box::new(move |input| {
+            let radius = input.bounds.x.min(input.bounds.y);
+            let half_length = input.bounds.y - radius;
+            sdf::capsule(input.pos, radius, half_length)
+        })
     }
 }
 
@@ -329,14 +328,10 @@ impl SmudPrimitive for Rhombus {
         RHOMBUS_SDF_HANDLE
     }
 
-    fn params(&self) -> Vec4 {
-        Vec4::new(self.half_diagonals.x, self.half_diagonals.y, 0.0, 0.0)
-    }
-
     fn try_from_shape(shape: &SmudShape) -> Option<Self> {
         if shape.sdf.id() == RHOMBUS_SDF_HANDLE.id() {
             Some(Rhombus {
-                half_diagonals: shape.params.xy(),
+                half_diagonals: shape.bounds.half_size,
             })
         } else {
             None
@@ -344,9 +339,9 @@ impl SmudPrimitive for Rhombus {
     }
 
     #[cfg(feature = "bevy_picking")]
-    fn picking_fn(&self) -> Box<dyn Fn(Vec2) -> f32 + Send + Sync> {
-        let half_diagonals = self.half_diagonals;
-        Box::new(move |p| sdf::rhombus(p, half_diagonals))
+    fn picking_fn(&self) -> Box<dyn Fn(SdfInput) -> f32 + Send + Sync> {
+        // Rhombus uses bounds directly for half-diagonals
+        Box::new(move |input| sdf::rhombus(input.pos, input.bounds))
     }
 }
 
@@ -355,15 +350,23 @@ impl SmudPrimitive for CircularSector {
         CIRCULAR_SECTOR_SDF_HANDLE
     }
 
+    fn bounds(&self) -> Rectangle {
+        // CircularSector uses min(bounds.x, bounds.y) for radius in shader
+        // So we need square bounds where both half-extents equal the radius
+        Rectangle {
+            half_size: Vec2::splat(self.arc.radius),
+        }
+    }
+
     fn params(&self) -> Vec4 {
         let (sin, cos) = self.arc.half_angle.sin_cos();
-        Vec4::new(self.arc.radius, sin, cos, 0.0)
+        Vec4::new(sin, cos, 0.0, 0.0)
     }
 
     fn try_from_shape(shape: &SmudShape) -> Option<Self> {
         if shape.sdf.id() == CIRCULAR_SECTOR_SDF_HANDLE.id() {
-            let radius = shape.params.x;
-            let half_angle = shape.params.y.atan2(shape.params.z);
+            let radius = shape.bounds.half_size.x.min(shape.bounds.half_size.y);
+            let half_angle = shape.params.x.atan2(shape.params.y);
             Some(CircularSector::new(radius, half_angle))
         } else {
             None
@@ -371,11 +374,13 @@ impl SmudPrimitive for CircularSector {
     }
 
     #[cfg(feature = "bevy_picking")]
-    fn picking_fn(&self) -> Box<dyn Fn(Vec2) -> f32 + Send + Sync> {
-        let (sin, cos) = self.arc.half_angle.sin_cos();
-        let c = Vec2::new(sin, cos);
-        let radius = self.arc.radius;
-        Box::new(move |p| sdf::pie(p, c, radius))
+    fn picking_fn(&self) -> Box<dyn Fn(SdfInput) -> f32 + Send + Sync> {
+        // CircularSector uses min(bounds.x, bounds.y) for radius, angle from params
+        Box::new(move |input| {
+            let radius = input.bounds.x.min(input.bounds.y);
+            let c = Vec2::new(input.params.x, input.params.y); // sin, cos
+            sdf::pie(input.pos, c, radius)
+        })
     }
 }
 
@@ -384,14 +389,22 @@ impl SmudPrimitive for RegularPolygon {
         REGULAR_POLYGON_SDF_HANDLE
     }
 
+    fn bounds(&self) -> Rectangle {
+        // RegularPolygon uses min(bounds.x, bounds.y) for radius in shader
+        // So we need square bounds where both half-extents equal the circumradius
+        Rectangle {
+            half_size: Vec2::splat(self.circumcircle.radius),
+        }
+    }
+
     fn params(&self) -> Vec4 {
-        Vec4::new(self.circumcircle.radius, self.sides as f32, 0.0, 0.0)
+        Vec4::new(self.sides as f32, 0.0, 0.0, 0.0)
     }
 
     fn try_from_shape(shape: &SmudShape) -> Option<Self> {
         if shape.sdf.id() == REGULAR_POLYGON_SDF_HANDLE.id() {
-            let radius = shape.params.x;
-            let sides = shape.params.y as u32;
+            let radius = shape.bounds.half_size.x.min(shape.bounds.half_size.y);
+            let sides = shape.params.x as u32;
             Some(RegularPolygon::new(radius, sides))
         } else {
             None
@@ -399,10 +412,13 @@ impl SmudPrimitive for RegularPolygon {
     }
 
     #[cfg(feature = "bevy_picking")]
-    fn picking_fn(&self) -> Box<dyn Fn(Vec2) -> f32 + Send + Sync> {
-        let radius = self.circumcircle.radius;
-        let sides = self.sides as i32;
-        Box::new(move |p| sdf::regular_polygon(p, radius, sides))
+    fn picking_fn(&self) -> Box<dyn Fn(SdfInput) -> f32 + Send + Sync> {
+        // RegularPolygon uses min(bounds.x, bounds.y) for radius, sides from params
+        Box::new(move |input| {
+            let radius = input.bounds.x.min(input.bounds.y);
+            let sides = input.params.x as i32;
+            sdf::regular_polygon(input.pos, radius, sides)
+        })
     }
 }
 
@@ -420,7 +436,7 @@ impl<T: SmudPrimitive> From<T> for SmudShape {
 #[cfg(feature = "bevy_picking")]
 impl<T: SmudPrimitive> From<T> for crate::picking_backend::SmudPickingShape {
     fn from(primitive: T) -> Self {
-        Self::new(primitive.picking_fn())
+        Self::with_input(primitive.picking_fn())
     }
 }
 
@@ -446,5 +462,170 @@ fn auto_add_picking_shape(
         if let Some(picking_shape) = picking_shape {
             commands.entity(entity).insert(picking_shape);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_rectangle_round_trip() {
+        let original = Rectangle::new(100.0, 50.0);
+        let shape = SmudShape::from(original);
+        let reconstructed =
+            Rectangle::try_from_shape(&shape).expect("Failed to reconstruct rectangle");
+
+        assert_eq!(
+            original.half_size, reconstructed.half_size,
+            "Rectangle half_size should match after round-trip conversion"
+        );
+    }
+
+    #[test]
+    fn test_capsule2d_round_trip() {
+        let original = Capsule2d::new(10.0, 20.0);
+        let shape = SmudShape::from(original);
+
+        println!(
+            "Original: radius={}, half_length={}",
+            original.radius, original.half_length
+        );
+        println!("Original bounds: {:?}", original.bounds());
+        println!("Shape bounds: {:?}", shape.bounds.half_size);
+
+        let reconstructed =
+            Capsule2d::try_from_shape(&shape).expect("Failed to reconstruct capsule");
+
+        println!(
+            "Reconstructed: radius={}, half_length={}",
+            reconstructed.radius, reconstructed.half_length
+        );
+
+        assert_eq!(
+            original.radius, reconstructed.radius,
+            "Capsule2d radius should match after round-trip conversion"
+        );
+        assert_eq!(
+            original.half_length, reconstructed.half_length,
+            "Capsule2d half_length should match after round-trip conversion"
+        );
+    }
+
+    #[test]
+    fn test_capsule2d_with_wide_bounds() {
+        // Test a capsule with bounds wider than tall (70x40)
+        let original = Capsule2d::new(10.0, 20.0);
+        let mut shape = SmudShape::from(original);
+        shape.bounds = Rectangle::new(70.0, 40.0);
+
+        let reconstructed =
+            Capsule2d::try_from_shape(&shape).expect("Failed to reconstruct wide capsule");
+
+        // With bounds (70, 40):
+        // - radius = min(70, 40) = 40
+        // - half_length_from_bounds = 40 - 40 = 0
+        // - Capsule2d::new(40, 0*2) creates a capsule with radius=20, half_length=0
+        // (because Capsule2d::new divides both parameters by 2 internally)
+        assert_eq!(
+            reconstructed.radius, 20.0,
+            "Radius should match shader: min(bounds.x, bounds.y) / 2"
+        );
+        assert_eq!(
+            reconstructed.half_length, 0.0,
+            "Half_length should be 0 for wide bounds"
+        );
+
+        // Ensure it's not negative
+        assert!(
+            reconstructed.half_length >= 0.0,
+            "Half_length must not be negative"
+        );
+    }
+
+    #[test]
+    fn test_circle_round_trip() {
+        let original = Circle::new(25.0);
+        let shape = SmudShape::from(original);
+        let reconstructed = Circle::try_from_shape(&shape).expect("Failed to reconstruct circle");
+
+        assert_eq!(
+            original.radius, reconstructed.radius,
+            "Circle radius should match after round-trip conversion"
+        );
+    }
+
+    #[test]
+    fn test_ellipse_round_trip() {
+        let original = Ellipse::new(40.0, 25.0);
+        let shape = SmudShape::from(original);
+        let reconstructed = Ellipse::try_from_shape(&shape).expect("Failed to reconstruct ellipse");
+
+        assert_eq!(
+            original.half_size, reconstructed.half_size,
+            "Ellipse half_size should match after round-trip conversion"
+        );
+    }
+
+    #[test]
+    fn test_annulus_round_trip() {
+        let original = Annulus::new(15.0, 30.0);
+        let shape = SmudShape::from(original);
+        let reconstructed = Annulus::try_from_shape(&shape).expect("Failed to reconstruct annulus");
+
+        assert_eq!(
+            original.inner_circle.radius, reconstructed.inner_circle.radius,
+            "Annulus inner_radius should match after round-trip conversion"
+        );
+        assert_eq!(
+            original.outer_circle.radius, reconstructed.outer_circle.radius,
+            "Annulus outer_radius should match after round-trip conversion"
+        );
+    }
+
+    #[test]
+    fn test_rhombus_round_trip() {
+        let original = Rhombus::new(30.0, 40.0);
+        let shape = SmudShape::from(original);
+        let reconstructed = Rhombus::try_from_shape(&shape).expect("Failed to reconstruct rhombus");
+
+        assert_eq!(
+            original.half_diagonals, reconstructed.half_diagonals,
+            "Rhombus half_diagonals should match after round-trip conversion"
+        );
+    }
+
+    #[test]
+    fn test_circular_sector_round_trip() {
+        let original = CircularSector::from_turns(35.0, 0.25);
+        let shape = SmudShape::from(original);
+        let reconstructed =
+            CircularSector::try_from_shape(&shape).expect("Failed to reconstruct circular sector");
+
+        assert_eq!(
+            original.arc.radius, reconstructed.arc.radius,
+            "CircularSector radius should match after round-trip conversion"
+        );
+        assert_eq!(
+            original.arc.half_angle, reconstructed.arc.half_angle,
+            "CircularSector half_angle should match after round-trip conversion"
+        );
+    }
+
+    #[test]
+    fn test_regular_polygon_round_trip() {
+        let original = RegularPolygon::new(30.0, 6);
+        let shape = SmudShape::from(original);
+        let reconstructed =
+            RegularPolygon::try_from_shape(&shape).expect("Failed to reconstruct regular polygon");
+
+        assert_eq!(
+            original.circumcircle.radius, reconstructed.circumcircle.radius,
+            "RegularPolygon radius should match after round-trip conversion"
+        );
+        assert_eq!(
+            original.sides, reconstructed.sides,
+            "RegularPolygon sides should match after round-trip conversion"
+        );
     }
 }

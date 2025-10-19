@@ -53,7 +53,7 @@ impl Default for SmudShape {
             params: default(),
             fill: DEFAULT_FILL_HANDLE,
             blend_mode: BlendMode::default(),
-            extra_bounds: 0.0,
+            extra_bounds: 5.0,
         }
     }
 }

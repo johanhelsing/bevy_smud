@@ -2,9 +2,8 @@
 
 #import smud
 
-// Parametrized rhombus SDF
-// params.x contains half of the horizontal diagonal
-// params.y contains half of the vertical diagonal
+// Rhombus SDF using bounds
+// Uses input.bounds for the half-diagonals
 fn sdf(input: smud::SdfInput) -> f32 {
-    return smud::sd_rhombus(input.pos, vec2<f32>(input.params.x, input.params.y));
+    return smud::sd_rhombus(input.pos, input.bounds);
 }

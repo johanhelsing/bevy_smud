@@ -21,6 +21,17 @@ use bevy::{picking::PickingSystems, picking::backend::prelude::*, prelude::*};
 
 use crate::SmudShape;
 
+/// Input parameters for SDF picking functions, matching the shader SdfInput struct.
+#[derive(Debug, Clone, Copy)]
+pub struct SdfInput {
+    /// Position in local space
+    pub pos: Vec2,
+    /// Shape bounds (half-extents)
+    pub bounds: Vec2,
+    /// Shader parameters
+    pub params: Vec4,
+}
+
 /// An optional component that marks cameras that should be used for SDF shape picking.
 ///
 /// Only needed if [`SmudPickingSettings::require_markers`] is set to `true`, and ignored
@@ -32,37 +43,62 @@ pub struct SmudPickingCamera;
 /// An optional component that provides a custom distance function for precise hit testing.
 ///
 /// When present, this will be used instead of simple bounds-based picking to determine
-/// if a point is inside or outside the shape. The function takes a local position
-/// (Vec2) and returns the signed distance to the shape surface.
+/// if a point is inside or outside the shape. The function receives an `SdfInput` struct
+/// containing position, bounds, and params, matching the shader interface.
 #[derive(Component)]
 pub struct SmudPickingShape {
     /// The signed distance function. Returns negative values inside the shape,
     /// positive values outside, and zero on the surface.
-    pub distance_fn: Box<dyn Fn(Vec2) -> f32 + Send + Sync>,
+    /// Takes SdfInput with current position, bounds, and params.
+    pub distance_fn: Box<dyn Fn(SdfInput) -> f32 + Send + Sync>,
 }
 
 impl SmudPickingShape {
-    /// Create a new SDF picking shape with the given distance function.
+    /// Create a new SDF picking shape with a simple position-only distance function.
+    ///
+    /// This is a convenience method for shapes that don't need bounds or params.
+    /// The function receives only the position and returns the signed distance.
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use bevy::prelude::*;
+    /// # use bevy_smud::prelude::*;
+    /// # use bevy_smud::sdf;
+    /// # let _ =
+    /// SmudPickingShape::new(|p| sdf::circle(p, 50.0))
+    /// # ;
+    /// ```
     pub fn new<F>(distance_fn: F) -> Self
     where
         F: Fn(Vec2) -> f32 + Send + Sync + 'static,
     {
+        Self::with_input(move |input| distance_fn(input.pos))
+    }
+
+    /// Create a new SDF picking shape with the given distance function that receives full input.
+    ///
+    /// Use this when you need access to bounds or params from the shape.
+    /// For simple position-only SDFs, use [`Self::new`] instead.
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use bevy::prelude::*;
+    /// # use bevy_smud::prelude::*;
+    /// # use bevy_smud::sdf;
+    /// # let _ =
+    /// SmudPickingShape::with_input(|input| {
+    ///     let radius = input.bounds.x.min(input.bounds.y);
+    ///     sdf::circle(input.pos, radius)
+    /// })
+    /// # ;
+    /// ```
+    pub fn with_input<F>(distance_fn: F) -> Self
+    where
+        F: Fn(SdfInput) -> f32 + Send + Sync + 'static,
+    {
         Self {
             distance_fn: Box::new(distance_fn),
         }
-    }
-
-    /// Create a circle SDF picking shape with the given radius.
-    pub fn circle(radius: f32) -> Self {
-        Self::new(move |p| p.length() - radius)
-    }
-
-    /// Create a rectangle SDF picking shape with the given half-extents.
-    pub fn rect(half_width: f32, half_height: f32) -> Self {
-        Self::new(move |p| {
-            let d = Vec2::new(p.x.abs() - half_width, p.y.abs() - half_height);
-            Vec2::new(d.x.max(0.0), d.y.max(0.0)).length() + d.x.max(d.y).min(0.0)
-        })
     }
 }
 
@@ -183,9 +219,13 @@ pub fn smud_picking(
 
             // Check if the point is within the shape using SDF or bounding box
             let is_hit = if let Some(sdf_shape) = sdf_picking {
-                // Use the custom SDF function for precise hit testing
-                let local_2d = Vec2::new(local_point.x, local_point.y);
-                let distance = (sdf_shape.distance_fn)(local_2d);
+                // Use the custom SDF function for precise hit testing with current bounds and params
+                let sdf_input = SdfInput {
+                    pos: Vec2::new(local_point.x, local_point.y),
+                    bounds: shape.bounds.half_size,
+                    params: shape.params,
+                };
+                let distance = (sdf_shape.distance_fn)(sdf_input);
                 distance <= 0.0 // Inside or on the surface
             } else {
                 // Fall back to bounds-based hit testing
