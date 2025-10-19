@@ -53,6 +53,10 @@ pub fn annulus(p: Vec2, outer_radius: f32, inner_radius: f32) -> f32 {
 
 /// Signed distance to a capsule (pill shape)
 pub fn capsule(p: Vec2, radius: f32, half_length: f32) -> f32 {
+    // Special case: when half_length is 0, the capsule is just a circle
+    if half_length == 0.0 {
+        return circle(p, radius);
+    }
     let a = Vec2::new(0.0, -half_length);
     let b = Vec2::new(0.0, half_length);
     segment(p, a, b) - radius
@@ -83,7 +87,14 @@ pub fn oriented_box(p: Vec2, a: Vec2, b: Vec2, th: f32) -> f32 {
 pub fn segment(p: Vec2, a: Vec2, b: Vec2) -> f32 {
     let pa = p - a;
     let ba = b - a;
-    let h = clamp(pa.dot(ba) / ba.dot(ba), 0.0, 1.0);
+    let ba_len_sq = ba.dot(ba);
+
+    // Degenerate case: when a == b, the segment is just a point
+    if ba_len_sq == 0.0 {
+        return pa.length();
+    }
+
+    let h = clamp(pa.dot(ba) / ba_len_sq, 0.0, 1.0);
     (pa - ba * h).length()
 }
 
@@ -672,5 +683,60 @@ mod tests {
 
         // Point outside circle should be positive
         assert!(circle(Vec2::new(2.0, 0.0), 1.0) > 0.0);
+    }
+
+    #[test]
+    fn test_segment_degenerate_case() {
+        // When a == b, segment is just a point, should return distance to that point
+        let a = Vec2::new(5.0, 5.0);
+        let b = Vec2::new(5.0, 5.0);
+
+        // Distance from origin to the point (5, 5)
+        let result = segment(Vec2::ZERO, a, b);
+        assert!(
+            result.is_finite(),
+            "segment should not return NaN for a == b"
+        );
+        let expected = (Vec2::new(5.0, 5.0) - Vec2::ZERO).length();
+        assert!((result - expected).abs() < 0.001);
+
+        // Distance from a point to itself should be 0
+        let result = segment(Vec2::new(5.0, 5.0), a, b);
+        assert!(result.is_finite());
+        assert!(result.abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn test_capsule_with_zero_half_length() {
+        // When half_length is 0, capsule should behave like a circle
+        let radius = 20.0;
+        let half_length = 0.0;
+
+        // Point at center should be -radius
+        let result = capsule(Vec2::ZERO, radius, half_length);
+        assert!(result.is_finite(), "capsule should not return NaN");
+        assert_eq!(result, -radius);
+
+        // Point on the circle edge
+        let result = capsule(Vec2::new(radius, 0.0), radius, half_length);
+        assert!(result.is_finite(), "capsule should not return NaN");
+        assert!(result.abs() < 0.001);
+
+        // Point outside
+        let result = capsule(Vec2::new(30.0, 0.0), radius, half_length);
+        assert!(result.is_finite(), "capsule should not return NaN");
+        assert!(result > 0.0);
+    }
+
+    #[test]
+    fn test_capsule_with_normal_half_length() {
+        // Normal capsule with half_length > 0
+        let radius = 10.0;
+        let half_length = 10.0;
+
+        // Point at center
+        let result = capsule(Vec2::ZERO, radius, half_length);
+        assert!(result.is_finite());
+        assert_eq!(result, -radius);
     }
 }

@@ -11,98 +11,127 @@ fn main() {
 }
 
 fn setup(mut commands: Commands) {
-    // Spawn a camera
     commands.spawn((Camera2d, Msaa::Off));
 
+    // Row 1: Default bounds (each shape uses its natural size)
     commands.spawn((
-        Transform::from_translation(Vec3::new(-200., 100., 0.)),
-        SmudShape::from(Rectangle::new(100., 50.)).with_color(css::TOMATO),
+        Transform::from_translation(Vec3::new(-420., 150., 0.)),
+        SmudShape::from(Rectangle::new(50., 50.)).with_color(css::TOMATO),
         OriginalColor(css::TOMATO.into()),
     ));
 
     commands.spawn((
-        Transform::from_translation(Vec3::new(100., 100., 0.)),
-        SmudShape::from(Circle::new(40.)).with_color(css::CORNFLOWER_BLUE),
+        Transform::from_translation(Vec3::new(-300., 150., 0.)),
+        SmudShape::from(Circle::new(25.)).with_color(css::CORNFLOWER_BLUE),
         OriginalColor(css::CORNFLOWER_BLUE.into()),
     ));
 
-    // Using struct initialization with spread operator
     commands.spawn((
-        Transform::from_translation(Vec3::new(-200., -100., 0.)),
-        SmudShape {
-            color: css::LIMEGREEN.into(),
-            ..SmudShape::from(Rectangle::new(120., 40.))
-        },
-    ));
-
-    // Rotated rectangle
-    commands.spawn((
-        Transform::from_translation(Vec3::new(100., -100., 0.))
-            .with_rotation(Quat::from_rotation_z(0.5)),
-        SmudShape::from(Rectangle::new(100., 50.)).with_color(css::ORANGE),
-    ));
-
-    // Scaled rectangle
-    commands.spawn((
-        Transform::from_translation(Vec3::new(0., 0., 0.)).with_scale(Vec3::splat(1.5)),
-        SmudShape::from(Rectangle::new(60., 60.)).with_color(css::HOT_PINK),
-    ));
-
-    commands.spawn((
-        Transform::from_translation(Vec3::new(250., 0., 0.)),
-        SmudShape::from(Rectangle::new(50., 100.))
-            .with_color(css::YELLOW)
-            .with_fill(SIMPLE_FILL_HANDLE),
-        OriginalColor(css::YELLOW.into()),
-    ));
-
-    // Ellipse
-    commands.spawn((
-        Transform::from_translation(Vec3::new(-250., 0., 0.)),
-        SmudShape::from(Ellipse::new(70., 40.)).with_color(css::VIOLET),
+        Transform::from_translation(Vec3::new(-180., 150., 0.)),
+        SmudShape::from(Ellipse::new(30., 30.)).with_color(css::VIOLET),
         OriginalColor(css::VIOLET.into()),
     ));
 
-    // Rotated ellipse
     commands.spawn((
-        Transform::from_translation(Vec3::new(0., 150., 0.))
-            .with_rotation(Quat::from_rotation_z(0.8)),
-        SmudShape::from(Ellipse::new(80., 30.)).with_color(css::TURQUOISE),
-        OriginalColor(css::TURQUOISE.into()),
-    ));
-
-    // Annulus (ring)
-    commands.spawn((
-        Transform::from_translation(Vec3::new(0., -150., 0.)),
-        SmudShape::from(Annulus::new(20., 50.)).with_color(css::MAGENTA),
+        Transform::from_translation(Vec3::new(-60., 150., 0.)),
+        SmudShape::from(Annulus::new(15., 30.)).with_color(css::MAGENTA),
         OriginalColor(css::MAGENTA.into()),
     ));
 
-    // Capsule (pill shape)
     commands.spawn((
-        Transform::from_translation(Vec3::new(-350., 0., 0.)),
-        SmudShape::from(Capsule2d::new(15., 40.)).with_color(css::LIME),
+        Transform::from_translation(Vec3::new(60., 150., 0.)),
+        SmudShape::from(Capsule2d::new(10., 20.)).with_color(css::LIME),
         OriginalColor(css::LIME.into()),
     ));
 
-    // Rhombus (diamond)
     commands.spawn((
-        Transform::from_translation(Vec3::new(350., 0., 0.)),
-        SmudShape::from(Rhombus::new(50., 30.)).with_color(css::GOLD),
+        Transform::from_translation(Vec3::new(180., 150., 0.)),
+        SmudShape::from(Rhombus::new(30., 30.)).with_color(css::GOLD),
         OriginalColor(css::GOLD.into()),
     ));
 
-    // Circular sector (pie slice) - 90 degrees (quarter turn)
     commands.spawn((
-        Transform::from_translation(Vec3::new(0., 200., 0.)),
-        SmudShape::from(CircularSector::from_turns(60., 0.25)).with_color(css::ORANGE_RED),
+        Transform::from_translation(Vec3::new(300., 150., 0.)),
+        SmudShape::from(CircularSector::from_turns(35., 0.25)).with_color(css::ORANGE_RED),
         OriginalColor(css::ORANGE_RED.into()),
     ));
 
-    // Regular polygon - hexagon (6 sides)
     commands.spawn((
-        Transform::from_translation(Vec3::new(250., -150., 0.)),
-        SmudShape::from(RegularPolygon::new(50., 6)).with_color(css::AQUA),
+        Transform::from_translation(Vec3::new(420., 150., 0.)),
+        SmudShape::from(RegularPolygon::new(30., 6)).with_color(css::AQUA),
+        OriginalColor(css::AQUA.into()),
+    ));
+
+    // Row 2: Rectangular bounds (showing how Rectangle and Ellipse adapt to different bounds)
+    commands.spawn((
+        Transform::from_translation(Vec3::new(-420., -150., 0.)),
+        SmudShape {
+            bounds: Rectangle::new(70., 40.),
+            ..SmudShape::from(Rectangle::new(50., 50.)).with_color(css::TOMATO)
+        },
+        OriginalColor(css::TOMATO.into()),
+    ));
+
+    commands.spawn((
+        Transform::from_translation(Vec3::new(-300., -150., 0.)),
+        SmudShape {
+            bounds: Rectangle::new(70., 40.),
+            ..SmudShape::from(Circle::new(25.)).with_color(css::CORNFLOWER_BLUE)
+        },
+        OriginalColor(css::CORNFLOWER_BLUE.into()),
+    ));
+
+    commands.spawn((
+        Transform::from_translation(Vec3::new(-180., -150., 0.)),
+        SmudShape {
+            bounds: Rectangle::new(70., 40.),
+            ..SmudShape::from(Ellipse::new(30., 30.)).with_color(css::VIOLET)
+        },
+        OriginalColor(css::VIOLET.into()),
+    ));
+
+    commands.spawn((
+        Transform::from_translation(Vec3::new(-60., -150., 0.)),
+        SmudShape {
+            bounds: Rectangle::new(70., 40.),
+            ..SmudShape::from(Annulus::new(15., 30.)).with_color(css::MAGENTA)
+        },
+        OriginalColor(css::MAGENTA.into()),
+    ));
+
+    commands.spawn((
+        Transform::from_translation(Vec3::new(60., -150., 0.)),
+        SmudShape {
+            bounds: Rectangle::new(70., 40.),
+            ..SmudShape::from(Capsule2d::new(10., 20.)).with_color(css::LIME)
+        },
+        OriginalColor(css::LIME.into()),
+    ));
+
+    commands.spawn((
+        Transform::from_translation(Vec3::new(180., -150., 0.)),
+        SmudShape {
+            bounds: Rectangle::new(70., 40.),
+            ..SmudShape::from(Rhombus::new(30., 30.)).with_color(css::GOLD)
+        },
+        OriginalColor(css::GOLD.into()),
+    ));
+
+    commands.spawn((
+        Transform::from_translation(Vec3::new(300., -150., 0.)),
+        SmudShape {
+            bounds: Rectangle::new(70., 40.),
+            ..SmudShape::from(CircularSector::from_turns(35., 0.25)).with_color(css::ORANGE_RED)
+        },
+        OriginalColor(css::ORANGE_RED.into()),
+    ));
+
+    commands.spawn((
+        Transform::from_translation(Vec3::new(420., -150., 0.)),
+        SmudShape {
+            bounds: Rectangle::new(70., 40.),
+            ..SmudShape::from(RegularPolygon::new(30., 6)).with_color(css::AQUA)
+        },
         OriginalColor(css::AQUA.into()),
     ));
 }
