@@ -54,10 +54,12 @@ use bevy::{
 use bytemuck::{Pod, Zeroable};
 use fixedbitset::FixedBitSet;
 use shader_loading::*;
-// use ui::UiShapePlugin;
 
 pub use components::*;
 pub use shader_loading::{DEFAULT_FILL_HANDLE, SIMPLE_FILL_HANDLE};
+
+#[cfg(feature = "bevy_ui")]
+use ui::UiShapePlugin;
 
 use crate::util::generate_shader_id;
 
@@ -69,8 +71,9 @@ mod picking_backend;
 pub mod sdf;
 mod sdf_assets;
 mod shader_loading;
+#[cfg(feature = "bevy_ui")]
+mod ui;
 mod util;
-// mod ui;
 
 /// Re-export of the essentials needed for rendering shapes
 ///
@@ -92,6 +95,9 @@ pub mod prelude {
         SmudPickingCamera, SmudPickingPlugin, SmudPickingSettings, SmudPickingShape,
     };
 
+    #[cfg(feature = "bevy_ui")]
+    pub use crate::ui::UiShape;
+
     pub use crate::sdf;
 }
 
@@ -101,10 +107,9 @@ pub struct SmudPlugin;
 
 /// System set for shape rendering.
 #[derive(Debug, Hash, PartialEq, Eq, Clone, SystemSet)]
-pub enum ShapeSystem {
+pub enum ShapeRenderSystems {
     /// Extract shapes
     ExtractShapes,
-    // ComputeSlices,
 }
 
 impl Plugin for SmudPlugin {
@@ -115,7 +120,8 @@ impl Plugin for SmudPlugin {
         #[cfg(feature = "bevy_primitives")]
         app.add_plugins(bevy_primitives::BevyPrimitivesPlugin);
 
-        // app.add_plugins(UiShapePlugin);
+        #[cfg(feature = "bevy_ui")]
+        app.add_plugins(UiShapePlugin);
 
         app.register_type::<SmudShape>();
         // TODO: calculate bounds?
@@ -130,8 +136,10 @@ impl Plugin for SmudPlugin {
                 .add_systems(
                     ExtractSchedule,
                     (
-                        extract_shapes.in_set(ShapeSystem::ExtractShapes),
-                        extract_sdf_shaders,
+                        generate_shaders,
+                        extract_shapes
+                            .in_set(ShapeRenderSystems::ExtractShapes)
+                            .after(generate_shaders),
                     ),
                 );
         }
@@ -142,6 +150,7 @@ impl Plugin for SmudPlugin {
         render_app
             .init_resource::<ShapeBatches>()
             .init_resource::<SmudPipeline>()
+            .init_resource::<GeneratedShaders>()
             .add_systems(
                 Render,
                 (
@@ -199,7 +208,6 @@ impl<P: PhaseItem> RenderCommand<P> for DrawShapeBatch {
 #[derive(Resource)]
 struct SmudPipeline {
     view_layout: BindGroupLayout,
-    shaders: ShapeShaders,
 }
 
 impl FromWorld for SmudPipeline {
@@ -229,10 +237,7 @@ impl FromWorld for SmudPipeline {
             ),
         );
 
-        Self {
-            view_layout,
-            shaders: default(),
-        }
+        Self { view_layout }
     }
 }
 
@@ -240,7 +245,7 @@ impl FromWorld for SmudPipeline {
 struct SmudPipelineKey {
     /// Mix of bevy_render Mesh2DPipelineKey and SpritePipelineKey
     mesh: PipelineKey,
-    shader: (AssetId<Shader>, AssetId<Shader>),
+    shader: Handle<Shader>,
     hdr: bool,
 }
 
@@ -298,8 +303,6 @@ impl SpecializedRenderPipeline for SmudPipeline {
             }
         }
 
-        let shader = self.shaders.0.get(&key.shader).unwrap();
-        debug!("specializing for {shader:?}");
         debug!("shader_defs: {shader_defs:?}");
 
         // Customize how to store the meshes' vertex attributes in the vertex buffer
@@ -359,7 +362,7 @@ impl SpecializedRenderPipeline for SmudPipeline {
                 }],
             },
             fragment: Some(FragmentState {
-                shader: shader.clone(),
+                shader: key.shader.clone(),
                 entry_point: Some("fragment".into()),
                 shader_defs,
                 targets: vec![Some(ColorTargetState {
@@ -428,58 +431,61 @@ impl SpecializedRenderPipeline for SmudPipeline {
     }
 }
 
-#[derive(Default)]
-struct ShapeShaders(HashMap<(AssetId<Shader>, AssetId<Shader>), Handle<Shader>>);
+#[derive(Default, Resource)]
+pub(crate) struct GeneratedShaders(
+    pub(crate) HashMap<(AssetId<Shader>, AssetId<Shader>), Handle<Shader>>,
+);
 
-// TODO: do some of this work in the main world instead, so we don't need to take a mutable
-// reference to MainWorld.
-fn extract_sdf_shaders(mut main_world: ResMut<MainWorld>, mut pipeline: ResMut<SmudPipeline>) {
-    main_world.resource_scope(|world, mut shaders: Mut<Assets<Shader>>| {
-        let mut shapes = world.query::<&SmudShape>();
+impl GeneratedShaders {
+    /// Generate and add shader
+    fn try_generate(
+        &mut self,
+        sdf: &Handle<Shader>,
+        fill: &Handle<Shader>,
+        shaders: &mut Assets<Shader>,
+    ) -> Option<Handle<Shader>> {
+        let shader_key = (sdf.id(), fill.id());
 
-        for shape in shapes.iter(world) {
-            let shader_key = (shape.sdf.id(), shape.fill.id());
-            if pipeline.shaders.0.contains_key(&shader_key) {
-                continue;
+        if let Some(handle) = self.0.get(&shader_key) {
+            return Some(handle.clone());
+        }
+
+        let sdf_import_path = match shaders.get_mut(sdf) {
+            Some(shader) => match shader.import_path() {
+                ShaderImport::Custom(p) => p.to_owned(),
+                _ => {
+                    let id = generate_shader_id();
+                    let path = format!("smud::generated::{id}");
+                    shader.set_import_path(&path);
+                    path
+                }
+            },
+            None => {
+                debug!("Waiting for sdf to load");
+                return None;
             }
+        };
 
-            // todo use asset events instead?
-            let sdf_import_path = match shaders.get_mut(&shape.sdf.clone()) {
-                Some(shader) => match shader.import_path() {
-                    ShaderImport::Custom(p) => p.to_owned(),
-                    _ => {
-                        let id = generate_shader_id();
-                        let path = format!("smud::generated::{id}");
-                        shader.set_import_path(&path);
-                        path
-                    }
-                },
-                None => {
-                    debug!("Waiting for sdf to load");
-                    continue;
+        let fill_import_path = match shaders.get_mut(fill) {
+            Some(shader) => match shader.import_path() {
+                ShaderImport::Custom(p) => p.to_owned(),
+                _ => {
+                    let id = generate_shader_id();
+                    let path = format!("smud::generated::{id}");
+                    shader.set_import_path(&path);
+                    path
                 }
-            };
+            },
+            None => {
+                debug!("Waiting for fill to load");
+                return None;
+            }
+        };
 
-            let fill_import_path = match shaders.get_mut(&shape.fill.clone()) {
-                Some(shader) => match shader.import_path() {
-                    ShaderImport::Custom(p) => p.to_owned(),
-                    _ => {
-                        let id = generate_shader_id();
-                        let path = format!("smud::generated::{id}");
-                        shader.set_import_path(&path);
-                        path
-                    }
-                },
-                None => {
-                    debug!("Waiting for fill to load");
-                    continue;
-                }
-            };
-
-            debug!("Generating shader");
-            let generated_shader = Shader::from_wgsl(
-                format!(
-                    r#"
+        debug!("Generating shader");
+        let generated_shader = Shader::from_wgsl(
+            format!(
+                r#"
 #ifdef TONEMAP_IN_SHADER
 #import bevy_core_pipeline::tonemapping
 #endif
@@ -494,11 +500,12 @@ struct FragmentInput {{
     @location(0) color: vec4<f32>,
     @location(1) pos: vec2<f32>,
     @location(2) params: vec4<f32>,
+    @location(3) bounds: vec2<f32>,
 }};
 
 @fragment
 fn fragment(in: FragmentInput) -> @location(0) vec4<f32> {{
-    let sdf_input = smud::SdfInput(in.pos, in.params);
+    let sdf_input = smud::SdfInput(in.pos, in.params, in.bounds);
     let d = sdf::sdf(sdf_input);
     let fill_input = smud::FillInput(
         in.pos,
@@ -515,17 +522,27 @@ fn fragment(in: FragmentInput) -> @location(0) vec4<f32> {{
     return color;
 }}
 "#
-                ),
-                format!("smud::generated::{shader_key:?}"),
-            );
+            ),
+            format!("smud::generated::{shader_key:?}"),
+        );
 
-            // todo does this work, or is it too late?
-            let generated_shader_handle = shaders.add(generated_shader);
+        let generated_shader_handle = shaders.add(generated_shader);
 
-            pipeline
-                .shaders
-                .0
-                .insert(shader_key, generated_shader_handle);
+        self.0.insert(shader_key, generated_shader_handle.clone());
+
+        Some(generated_shader_handle)
+    }
+}
+
+// TODO: do some of this work in the main world instead, so we don't need to take a mutable
+// reference to MainWorld.
+fn generate_shaders(
+    mut main_world: ResMut<MainWorld>,
+    mut generated_shaders: ResMut<GeneratedShaders>,
+) {
+    main_world.resource_scope(|world, mut shaders: Mut<Assets<Shader>>| {
+        for shape in world.query::<&SmudShape>().iter(world) {
+            generated_shaders.try_generate(&shape.sdf, &shape.fill, &mut shaders);
         }
     });
 }
@@ -537,8 +554,7 @@ struct ExtractedShape {
     color: Color,
     params: Vec4,
     bounds: Vec2,
-    sdf_shader: Handle<Shader>,
-    fill_shader: Handle<Shader>,
+    shader: Handle<Shader>,
     transform: GlobalTransform,
     blend_mode: BlendMode,
 }
@@ -551,6 +567,7 @@ struct ExtractedShapes {
 #[allow(clippy::type_complexity)]
 fn extract_shapes(
     mut extracted_shapes: ResMut<ExtractedShapes>,
+    generated_shaders: Res<GeneratedShaders>,
     shape_query: Extract<
         Query<(
             Entity,
@@ -568,6 +585,14 @@ fn extract_shapes(
             continue;
         }
 
+        let Some(shader) = generated_shaders
+            .0
+            .get(&(shape.sdf.id(), shape.fill.id()))
+            .cloned()
+        else {
+            continue;
+        };
+
         // TODO: bevy_sprite has some slice stuff here? what is it for?
 
         extracted_shapes.shapes.push(ExtractedShape {
@@ -576,8 +601,7 @@ fn extract_shapes(
             color: shape.color,
             params: shape.params,
             transform: *transform,
-            sdf_shader: shape.sdf.clone(),
-            fill_shader: shape.fill.clone(),
+            shader,
             bounds: shape.bounds.half_size,
             blend_mode: shape.blend_mode,
         });
@@ -731,23 +755,13 @@ fn queue_shapes(
             .reserve(extracted_shapes.shapes.len());
 
         for (index, extracted_shape) in extracted_shapes.shapes.iter().enumerate() {
-            let shader = (
-                extracted_shape.sdf_shader.id(),
-                extracted_shape.fill_shader.id(),
-            );
-
-            let mut pipeline = CachedRenderPipelineId::INVALID;
-
-            if let Some(_shader) = smud_pipeline.shaders.0.get(&shader) {
-                // todo pass the shader into specialize
-                let shape_key = view_key | PipelineKey::from_blend_mode(extracted_shape.blend_mode);
-                let specialize_key = SmudPipelineKey {
-                    mesh: shape_key,
-                    shader,
-                    hdr: view.hdr,
-                };
-                pipeline = pipelines.specialize(&pipeline_cache, &smud_pipeline, specialize_key);
-            }
+            let shape_key = view_key | PipelineKey::from_blend_mode(extracted_shape.blend_mode);
+            let specialize_key = SmudPipelineKey {
+                mesh: shape_key,
+                shader: extracted_shape.shader.clone(),
+                hdr: view.hdr,
+            };
+            let pipeline = pipelines.specialize(&pipeline_cache, &smud_pipeline, specialize_key);
 
             if pipeline == CachedRenderPipelineId::INVALID {
                 debug!("Shape not ready yet, skipping");
@@ -835,7 +849,7 @@ fn prepare_shapes(
         let mut batch_item_index = 0;
         // let mut batch_image_size = Vec2::ZERO;
         // let mut batch_image_handle = AssetId::invalid();
-        let mut batch_shader_handles = (AssetId::invalid(), AssetId::invalid());
+        let mut batch_shader_id = AssetId::invalid();
 
         // Iterate through the phase items and detect when successive shapes that can be batched.
         // Spawn an entity with a `ShapeBatch` component for each possible batch.
@@ -850,17 +864,14 @@ fn prepare_shapes(
             else {
                 // If there is a phase item that is not a shape, then we must start a new
                 // batch to draw the other phase item(s) and to respect draw order. This can be
-                // done by invalidating the batch_shader_handles
-                batch_shader_handles = (AssetId::invalid(), AssetId::invalid());
+                // done by invalidating the batch_shader_handle
+                batch_shader_id = AssetId::invalid();
                 continue;
             };
 
-            let shader_handles = (
-                extracted_shape.sdf_shader.id(),
-                extracted_shape.fill_shader.id(),
-            );
+            let shader_id = extracted_shape.shader.id();
 
-            let batch_shader_changed = batch_shader_handles != shader_handles;
+            let batch_shader_changed = batch_shader_id != shader_id;
 
             let lrgba: LinearRgba = extracted_shape.color.into();
             let color = lrgba.to_f32_array();
@@ -893,7 +904,7 @@ fn prepare_shapes(
 
                 current_batch = Some(batches.entry((*retained_view, item.main_entity())).insert(
                     ShapeBatch {
-                        shader: shader_handles,
+                        shader: shader_id,
                         range: index..index,
                     },
                 ));
@@ -947,6 +958,6 @@ struct ShapeBatches(HashMap<(RetainedViewEntity, MainEntity), ShapeBatch>);
 
 #[derive(Component, Eq, PartialEq, Clone)]
 struct ShapeBatch {
-    shader: (AssetId<Shader>, AssetId<Shader>),
+    shader: AssetId<Shader>,
     range: Range<u32>,
 }

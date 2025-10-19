@@ -29,7 +29,8 @@ fn sdf(input: smud::SdfInput) -> f32 {{
     // Backward compatibility aliases for the old API
     let p = input.pos;
     let params = input.params;
-    
+    let bounds = input.bounds;
+
     {body}
 }}
 "#
@@ -48,8 +49,15 @@ fn sdf(input: smud::SdfInput) -> f32 {{
 #define_import_path smud::fill{id}
 
 #import smud
+#import bevy_render::globals::Globals
+
+@group(0) @binding(1) var<uniform> globals: Globals;
 
 fn fill(input: smud::FillInput) -> vec4<f32> {{
+    let time = globals.time;
+    let p = input.pos;
+    let params = input.params;
+    let d = input.distance;
     {body}
 }}
 "#

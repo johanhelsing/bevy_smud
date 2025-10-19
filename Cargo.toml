@@ -10,8 +10,9 @@ repository = "https://github.com/johanhelsing/bevy_smud"
 version = "0.12.0"
 
 [features]
-default = ["bevy_picking", "bevy_primitives"]
+default = ["bevy_picking", "bevy_primitives", "bevy_ui"]
 bevy_picking = ["bevy/bevy_picking"]
+bevy_ui = ["bevy/bevy_ui_render"]
 bevy_primitives = []
 
 [dependencies]
@@ -34,8 +35,9 @@ bevy = { version = "0.17", default-features = false, features = [
   "bevy_sprite_render",
   "bevy_state",
   "bevy_winit",
-  "x11",            # github actions runners don't have libxkbcommon installed, so can't use wayland
+  "default_font",
   "file_watcher",
+  "x11",            # github actions runners don't have libxkbcommon installed, so can't use wayland
 ] }
 bevy_asset_loader = "0.24.0-rc.1"
 bevy_lospec = "0.11"
