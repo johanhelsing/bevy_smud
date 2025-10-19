@@ -6,7 +6,7 @@ fn main() {
     App::new()
         .add_plugins((DefaultPlugins, SmudPlugin, SmudPickingPlugin))
         .add_systems(Startup, setup)
-        .add_systems(Update, update_colors_on_hover)
+        .add_systems(Update, (animate_bounds, update_colors_on_hover))
         .run();
 }
 
@@ -62,7 +62,7 @@ fn setup(mut commands: Commands) {
         OriginalColor(css::AQUA.into()),
     ));
 
-    // Row 2: Rectangular bounds (showing how Rectangle and Ellipse adapt to different bounds)
+    // Row 2: Animated bounds (shapes smoothly transition between tall and wide)
     commands.spawn((
         Transform::from_translation(Vec3::new(-420., -150., 0.)),
         SmudShape {
@@ -71,6 +71,7 @@ fn setup(mut commands: Commands) {
             ..SmudShape::from(Rectangle::new(50., 50.))
         },
         OriginalColor(css::TOMATO.into()),
+        AnimatedBounds,
     ));
 
     commands.spawn((
@@ -81,6 +82,7 @@ fn setup(mut commands: Commands) {
             ..SmudShape::from(Circle::new(25.))
         },
         OriginalColor(css::CORNFLOWER_BLUE.into()),
+        AnimatedBounds,
     ));
 
     commands.spawn((
@@ -91,6 +93,7 @@ fn setup(mut commands: Commands) {
             ..SmudShape::from(Ellipse::new(30., 30.))
         },
         OriginalColor(css::VIOLET.into()),
+        AnimatedBounds,
     ));
 
     commands.spawn((
@@ -101,6 +104,7 @@ fn setup(mut commands: Commands) {
             ..SmudShape::from(Annulus::new(15., 30.))
         },
         OriginalColor(css::MAGENTA.into()),
+        AnimatedBounds,
     ));
 
     commands.spawn((
@@ -111,6 +115,7 @@ fn setup(mut commands: Commands) {
             ..SmudShape::from(Capsule2d::new(10., 20.))
         },
         OriginalColor(css::LIME.into()),
+        AnimatedBounds,
     ));
 
     commands.spawn((
@@ -121,6 +126,7 @@ fn setup(mut commands: Commands) {
             ..SmudShape::from(Rhombus::new(30., 30.))
         },
         OriginalColor(css::GOLD.into()),
+        AnimatedBounds,
     ));
 
     commands.spawn((
@@ -131,6 +137,7 @@ fn setup(mut commands: Commands) {
             ..SmudShape::from(CircularSector::from_turns(35., 0.25))
         },
         OriginalColor(css::ORANGE_RED.into()),
+        AnimatedBounds,
     ));
 
     commands.spawn((
@@ -141,12 +148,32 @@ fn setup(mut commands: Commands) {
             ..SmudShape::from(RegularPolygon::new(30., 6))
         },
         OriginalColor(css::AQUA.into()),
+        AnimatedBounds,
     ));
 }
 
 // Component to store the original color for restoring after hover
 #[derive(Component)]
 struct OriginalColor(Color);
+
+// Marker component for shapes with animated bounds
+#[derive(Component)]
+struct AnimatedBounds;
+
+// System to animate bounds based on time
+fn animate_bounds(time: Res<Time>, mut shapes: Query<&mut SmudShape, With<AnimatedBounds>>) {
+    let t = time.elapsed_secs();
+
+    // Use sine and cosine to smoothly transition between tall and wide
+    // sin ranges from -1 to 1, we'll map it to create width variation
+    // cos ranges from -1 to 1, we'll map it to create height variation
+    let width = 55.0 + 15.0 * t.sin(); // Ranges from 40 to 70
+    let height = 55.0 - 15.0 * t.cos(); // Ranges from 40 to 70, offset from width
+
+    for mut shape in &mut shapes {
+        shape.bounds = Rectangle::new(width, height);
+    }
+}
 
 // System to change colors on hover
 fn update_colors_on_hover(
