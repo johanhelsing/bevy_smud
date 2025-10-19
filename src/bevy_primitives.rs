@@ -74,7 +74,10 @@ trait SmudPrimitive: Sized + Bounded2d {
     }
 
     /// Extract shader parameters (stored in SmudShape.params)
-    fn params(&self) -> Vec4;
+    /// Default implementation returns Vec4::ZERO (no parameters)
+    fn params(&self) -> Vec4 {
+        Vec4::ZERO
+    }
 
     /// Try to reconstruct a primitive from a SmudShape
     fn try_from_shape(shape: &SmudShape) -> Option<Self>;
@@ -191,10 +194,6 @@ impl SmudPrimitive for Rectangle {
         RECTANGLE_SDF_HANDLE
     }
 
-    fn params(&self) -> Vec4 {
-        Vec4::ZERO
-    }
-
     fn try_from_shape(shape: &SmudShape) -> Option<Self> {
         if shape.sdf.id() == RECTANGLE_SDF_HANDLE.id() {
             Some(Rectangle {
@@ -214,10 +213,6 @@ impl SmudPrimitive for Rectangle {
 impl SmudPrimitive for Circle {
     fn sdf_shader() -> Handle<Shader> {
         CIRCLE_SDF_HANDLE
-    }
-
-    fn params(&self) -> Vec4 {
-        Vec4::ZERO
     }
 
     fn try_from_shape(shape: &SmudShape) -> Option<Self> {
@@ -242,10 +237,6 @@ impl SmudPrimitive for Circle {
 impl SmudPrimitive for Ellipse {
     fn sdf_shader() -> Handle<Shader> {
         ELLIPSE_SDF_HANDLE
-    }
-
-    fn params(&self) -> Vec4 {
-        Vec4::ZERO
     }
 
     fn try_from_shape(shape: &SmudShape) -> Option<Self> {
@@ -309,10 +300,6 @@ impl SmudPrimitive for Capsule2d {
         CAPSULE_SDF_HANDLE
     }
 
-    fn params(&self) -> Vec4 {
-        Vec4::ZERO
-    }
-
     fn try_from_shape(shape: &SmudShape) -> Option<Self> {
         if shape.sdf.id() == CAPSULE_SDF_HANDLE.id() {
             // Must match shader logic: radius = min(bounds.x, bounds.y)
@@ -339,10 +326,6 @@ impl SmudPrimitive for Capsule2d {
 impl SmudPrimitive for Rhombus {
     fn sdf_shader() -> Handle<Shader> {
         RHOMBUS_SDF_HANDLE
-    }
-
-    fn params(&self) -> Vec4 {
-        Vec4::ZERO
     }
 
     fn try_from_shape(shape: &SmudShape) -> Option<Self> {
