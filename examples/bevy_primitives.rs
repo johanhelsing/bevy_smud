@@ -162,13 +162,12 @@ struct AnimatedBounds;
 
 // System to animate bounds based on time
 fn animate_bounds(time: Res<Time>, mut shapes: Query<&mut SmudShape, With<AnimatedBounds>>) {
-    let t = time.elapsed_secs();
+    let speed = 2.0;
+    let t = time.elapsed_secs() * speed;
 
     // Use sine and cosine to smoothly transition between tall and wide
-    // sin ranges from -1 to 1, we'll map it to create width variation
-    // cos ranges from -1 to 1, we'll map it to create height variation
-    let width = 55.0 + 15.0 * t.sin(); // Ranges from 40 to 70
-    let height = 55.0 - 15.0 * t.cos(); // Ranges from 40 to 70, offset from width
+    let width = 55.0 + 25.0 * t.sin(); // Ranges from 30 to 80
+    let height = 55.0 - 25.0 * t.cos(); // Ranges from 30 to 80, offset from width
 
     for mut shape in &mut shapes {
         shape.bounds = Rectangle::new(width, height);
