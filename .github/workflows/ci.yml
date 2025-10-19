@@ -17,6 +17,12 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
+    env:
+      # Optimizations are disabled to speed up compilation times in CI
+      # and avoid ooms on the GitHub runners.
+      CARGO_PROFILE_TEST_OPT_LEVEL: 0
+      CARGO_PROFILE_DEV_OPT_LEVEL: 0
+      RUSTFLAGS: "-C debuginfo=0"
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
