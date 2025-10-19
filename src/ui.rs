@@ -15,12 +15,13 @@ use bevy::{
             RenderCommandResult, SetItemPipeline, TrackedRenderPass, ViewSortedRenderPhases,
         },
         render_resource::{
-            BindGroup, BindGroupEntries, BindGroupLayout, BindGroupLayoutEntries, BlendState,
-            BufferUsages, CachedPipelineState, ColorTargetState, ColorWrites, FragmentState,
-            FrontFace, MultisampleState, PipelineCache, PolygonMode, PrimitiveState,
-            PrimitiveTopology, RawBufferVec, RenderPipelineDescriptor, ShaderStages,
-            SpecializedRenderPipeline, SpecializedRenderPipelines, TextureFormat, VertexAttribute,
-            VertexFormat, VertexState, VertexStepMode, binding_types::uniform_buffer,
+            BindGroup, BindGroupEntries, BindGroupLayout, BindGroupLayoutEntries, BlendComponent,
+            BlendFactor, BlendOperation, BlendState, BufferUsages, CachedPipelineState,
+            ColorTargetState, ColorWrites, FragmentState, FrontFace, MultisampleState,
+            PipelineCache, PolygonMode, PrimitiveState, PrimitiveTopology, RawBufferVec,
+            RenderPipelineDescriptor, ShaderStages, SpecializedRenderPipeline,
+            SpecializedRenderPipelines, TextureFormat, VertexAttribute, VertexFormat, VertexState,
+            VertexStepMode, binding_types::uniform_buffer,
         },
         renderer::{RenderDevice, RenderQueue},
         sync_world::{MainEntity, TemporaryRenderEntity},
@@ -32,7 +33,7 @@ use bevy::{
 use bytemuck::{Pod, Zeroable};
 
 use crate::{
-    FloatOrd, GeneratedShaders, SIMPLE_FILL_HANDLE, VertexBufferLayout,
+    BlendMode, FloatOrd, GeneratedShaders, SIMPLE_FILL_HANDLE, VertexBufferLayout,
     shader_loading::VERTEX_SHADER_HANDLE,
 };
 
@@ -58,6 +59,9 @@ pub struct UiShape {
 
     /// Parameters to pass to shapes, for things such as width of a box
     pub params: Vec4,
+
+    /// Blend mode for the shape
+    pub blend_mode: BlendMode,
 }
 
 impl Default for UiShape {
@@ -67,7 +71,16 @@ impl Default for UiShape {
             sdf: Handle::default(),
             fill: SIMPLE_FILL_HANDLE.clone(),
             params: Vec4::ZERO,
+            blend_mode: BlendMode::default(),
         }
+    }
+}
+
+impl UiShape {
+    /// Set the blend mode for this shape (builder pattern)
+    pub fn with_blend_mode(mut self, blend_mode: BlendMode) -> Self {
+        self.blend_mode = blend_mode;
+        self
     }
 }
 
@@ -107,6 +120,7 @@ struct ExtractedUiShape {
     color: Color,
     params: Vec4,
     shader: Handle<Shader>,
+    blend_mode: BlendMode,
 }
 
 #[derive(Resource, Default)]
@@ -160,6 +174,7 @@ fn extract_ui_shapes(
             color: ui_shape.color,
             params: ui_shape.params,
             shader,
+            blend_mode: ui_shape.blend_mode,
         });
     }
 }
@@ -168,6 +183,7 @@ fn extract_ui_shapes(
 #[derive(Clone, Hash, PartialEq, Eq)]
 struct UiShapePipelineKey {
     shader: Handle<Shader>,
+    blend_mode: BlendMode,
 }
 
 /// Pipeline for rendering shapes in UI.
@@ -261,7 +277,21 @@ impl SpecializedRenderPipeline for UiShapePipeline {
                 entry_point: Some("fragment".into()),
                 targets: vec![Some(ColorTargetState {
                     format: TextureFormat::Rgba8UnormSrgb, // UI render target format
-                    blend: Some(BlendState::ALPHA_BLENDING),
+                    blend: Some(match key.blend_mode {
+                        BlendMode::Alpha => BlendState::ALPHA_BLENDING,
+                        BlendMode::Additive => BlendState {
+                            color: BlendComponent {
+                                src_factor: BlendFactor::SrcAlpha,
+                                dst_factor: BlendFactor::One,
+                                operation: BlendOperation::Add,
+                            },
+                            alpha: BlendComponent {
+                                src_factor: BlendFactor::One,
+                                dst_factor: BlendFactor::One,
+                                operation: BlendOperation::Add,
+                            },
+                        },
+                    }),
                     write_mask: ColorWrites::ALL,
                 })],
             }),
@@ -365,6 +395,7 @@ fn queue_ui_shapes(
             // Create pipeline key for this shader combination
             let key = UiShapePipelineKey {
                 shader: node.shader.clone(),
+                blend_mode: node.blend_mode,
             };
 
             // Specialize the pipeline for this shader combination
