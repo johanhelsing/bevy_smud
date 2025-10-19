@@ -67,7 +67,8 @@ fn setup(mut commands: Commands) {
         Transform::from_translation(Vec3::new(-420., -150., 0.)),
         SmudShape {
             bounds: Rectangle::new(70., 40.),
-            ..SmudShape::from(Rectangle::new(50., 50.)).with_color(css::TOMATO)
+            color: css::TOMATO.into(),
+            ..SmudShape::from(Rectangle::new(50., 50.))
         },
         OriginalColor(css::TOMATO.into()),
     ));
@@ -76,7 +77,8 @@ fn setup(mut commands: Commands) {
         Transform::from_translation(Vec3::new(-300., -150., 0.)),
         SmudShape {
             bounds: Rectangle::new(70., 40.),
-            ..SmudShape::from(Circle::new(25.)).with_color(css::CORNFLOWER_BLUE)
+            color: css::CORNFLOWER_BLUE.into(),
+            ..SmudShape::from(Circle::new(25.))
         },
         OriginalColor(css::CORNFLOWER_BLUE.into()),
     ));
@@ -85,7 +87,8 @@ fn setup(mut commands: Commands) {
         Transform::from_translation(Vec3::new(-180., -150., 0.)),
         SmudShape {
             bounds: Rectangle::new(70., 40.),
-            ..SmudShape::from(Ellipse::new(30., 30.)).with_color(css::VIOLET)
+            color: css::VIOLET.into(),
+            ..SmudShape::from(Ellipse::new(30., 30.))
         },
         OriginalColor(css::VIOLET.into()),
     ));
@@ -94,7 +97,8 @@ fn setup(mut commands: Commands) {
         Transform::from_translation(Vec3::new(-60., -150., 0.)),
         SmudShape {
             bounds: Rectangle::new(70., 40.),
-            ..SmudShape::from(Annulus::new(15., 30.)).with_color(css::MAGENTA)
+            color: css::MAGENTA.into(),
+            ..SmudShape::from(Annulus::new(15., 30.))
         },
         OriginalColor(css::MAGENTA.into()),
     ));
@@ -103,7 +107,8 @@ fn setup(mut commands: Commands) {
         Transform::from_translation(Vec3::new(60., -150., 0.)),
         SmudShape {
             bounds: Rectangle::new(70., 40.),
-            ..SmudShape::from(Capsule2d::new(10., 20.)).with_color(css::LIME)
+            color: css::LIME.into(),
+            ..SmudShape::from(Capsule2d::new(10., 20.))
         },
         OriginalColor(css::LIME.into()),
     ));
@@ -112,7 +117,8 @@ fn setup(mut commands: Commands) {
         Transform::from_translation(Vec3::new(180., -150., 0.)),
         SmudShape {
             bounds: Rectangle::new(70., 40.),
-            ..SmudShape::from(Rhombus::new(30., 30.)).with_color(css::GOLD)
+            color: css::GOLD.into(),
+            ..SmudShape::from(Rhombus::new(30., 30.))
         },
         OriginalColor(css::GOLD.into()),
     ));
@@ -121,7 +127,8 @@ fn setup(mut commands: Commands) {
         Transform::from_translation(Vec3::new(300., -150., 0.)),
         SmudShape {
             bounds: Rectangle::new(70., 40.),
-            ..SmudShape::from(CircularSector::from_turns(35., 0.25)).with_color(css::ORANGE_RED)
+            color: css::ORANGE_RED.into(),
+            ..SmudShape::from(CircularSector::from_turns(35., 0.25))
         },
         OriginalColor(css::ORANGE_RED.into()),
     ));
@@ -130,7 +137,8 @@ fn setup(mut commands: Commands) {
         Transform::from_translation(Vec3::new(420., -150., 0.)),
         SmudShape {
             bounds: Rectangle::new(70., 40.),
-            ..SmudShape::from(RegularPolygon::new(30., 6)).with_color(css::AQUA)
+            color: css::AQUA.into(),
+            ..SmudShape::from(RegularPolygon::new(30., 6))
         },
         OriginalColor(css::AQUA.into()),
     ));
