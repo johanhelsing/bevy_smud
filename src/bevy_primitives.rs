@@ -50,7 +50,7 @@ use bevy::prelude::*;
 use crate::SmudShape;
 
 #[cfg(feature = "bevy_picking")]
-use crate::sdf;
+use crate::{picking_backend::SdfInput, sdf};
 
 /// Trait for primitives that can be converted to SmudShape.
 ///
@@ -80,8 +80,9 @@ trait SmudPrimitive: Sized + Bounded2d {
     fn try_from_shape(shape: &SmudShape) -> Option<Self>;
 
     #[cfg(feature = "bevy_picking")]
-    /// Create a picking closure for this primitive
-    fn picking_fn(&self) -> Box<dyn Fn(Vec2) -> f32 + Send + Sync>;
+    /// Create a picking closure for this primitive.
+    /// The function receives SdfInput with current position, bounds, and params.
+    fn picking_fn(&self) -> Box<dyn Fn(SdfInput) -> f32 + Send + Sync>;
 
     #[cfg(feature = "bevy_picking")]
     /// Try to create a picking shape by reconstructing this primitive from a SmudShape
@@ -205,9 +206,8 @@ impl SmudPrimitive for Rectangle {
     }
 
     #[cfg(feature = "bevy_picking")]
-    fn picking_fn(&self) -> Box<dyn Fn(Vec2) -> f32 + Send + Sync> {
-        let half_size = self.half_size;
-        Box::new(move |p| sdf::sd_box(p, half_size))
+    fn picking_fn(&self) -> Box<dyn Fn(SdfInput) -> f32 + Send + Sync> {
+        Box::new(move |input| sdf::sd_box(input.pos, input.bounds))
     }
 }
 
@@ -230,9 +230,12 @@ impl SmudPrimitive for Circle {
     }
 
     #[cfg(feature = "bevy_picking")]
-    fn picking_fn(&self) -> Box<dyn Fn(Vec2) -> f32 + Send + Sync> {
-        let radius = self.radius;
-        Box::new(move |p| sdf::circle(p, radius))
+    fn picking_fn(&self) -> Box<dyn Fn(SdfInput) -> f32 + Send + Sync> {
+        // Circle uses min(bounds.x, bounds.y) for radius in shader
+        Box::new(move |input| {
+            let radius = input.bounds.x.min(input.bounds.y);
+            sdf::circle(input.pos, radius)
+        })
     }
 }
 
@@ -256,15 +259,16 @@ impl SmudPrimitive for Ellipse {
     }
 
     #[cfg(feature = "bevy_picking")]
-    fn picking_fn(&self) -> Box<dyn Fn(Vec2) -> f32 + Send + Sync> {
-        let a = self.half_size.x;
-        let b = self.half_size.y;
-        Box::new(move |p| {
+    fn picking_fn(&self) -> Box<dyn Fn(SdfInput) -> f32 + Send + Sync> {
+        // Ellipse uses bounds directly for half-extents
+        Box::new(move |input| {
+            let a = input.bounds.x;
+            let b = input.bounds.y;
             const EPSILON: f32 = 1e-6;
             if (a - b).abs() < EPSILON {
-                sdf::circle(p, a)
+                sdf::circle(input.pos, a)
             } else {
-                sdf::ellipse(p, a, b)
+                sdf::ellipse(input.pos, a, b)
             }
         })
     }
@@ -290,10 +294,13 @@ impl SmudPrimitive for Annulus {
     }
 
     #[cfg(feature = "bevy_picking")]
-    fn picking_fn(&self) -> Box<dyn Fn(Vec2) -> f32 + Send + Sync> {
-        let outer_radius = self.outer_circle.radius;
-        let inner_radius = self.inner_circle.radius;
-        Box::new(move |p| sdf::annulus(p, outer_radius, inner_radius))
+    fn picking_fn(&self) -> Box<dyn Fn(SdfInput) -> f32 + Send + Sync> {
+        // Annulus uses min(bounds.x, bounds.y) for outer radius, inner radius from params
+        Box::new(move |input| {
+            let outer_radius = input.bounds.x.min(input.bounds.y);
+            let inner_radius = input.params.x;
+            sdf::annulus(input.pos, outer_radius, inner_radius)
+        })
     }
 }
 
@@ -319,16 +326,13 @@ impl SmudPrimitive for Capsule2d {
     }
 
     #[cfg(feature = "bevy_picking")]
-    fn picking_fn(&self) -> Box<dyn Fn(Vec2) -> f32 + Send + Sync> {
+    fn picking_fn(&self) -> Box<dyn Fn(SdfInput) -> f32 + Send + Sync> {
         // The shader computes from bounds: radius = min(bounds.x, bounds.y), half_length = bounds.y - radius
-        // We need to reconstruct bounds from Capsule2d and apply the same logic
-        // bounds.x = self.radius, bounds.y = self.half_length + self.radius
-        let bounds_x = self.radius;
-        let bounds_y = self.half_length + self.radius;
-        // Now apply shader logic
-        let radius = bounds_x.min(bounds_y);
-        let half_length = bounds_y - radius;
-        Box::new(move |p| sdf::capsule(p, radius, half_length))
+        Box::new(move |input| {
+            let radius = input.bounds.x.min(input.bounds.y);
+            let half_length = input.bounds.y - radius;
+            sdf::capsule(input.pos, radius, half_length)
+        })
     }
 }
 
@@ -352,9 +356,9 @@ impl SmudPrimitive for Rhombus {
     }
 
     #[cfg(feature = "bevy_picking")]
-    fn picking_fn(&self) -> Box<dyn Fn(Vec2) -> f32 + Send + Sync> {
-        let half_diagonals = self.half_diagonals;
-        Box::new(move |p| sdf::rhombus(p, half_diagonals))
+    fn picking_fn(&self) -> Box<dyn Fn(SdfInput) -> f32 + Send + Sync> {
+        // Rhombus uses bounds directly for half-diagonals
+        Box::new(move |input| sdf::rhombus(input.pos, input.bounds))
     }
 }
 
@@ -387,11 +391,13 @@ impl SmudPrimitive for CircularSector {
     }
 
     #[cfg(feature = "bevy_picking")]
-    fn picking_fn(&self) -> Box<dyn Fn(Vec2) -> f32 + Send + Sync> {
-        let (sin, cos) = self.arc.half_angle.sin_cos();
-        let c = Vec2::new(sin, cos);
-        let radius = self.arc.radius;
-        Box::new(move |p| sdf::pie(p, c, radius))
+    fn picking_fn(&self) -> Box<dyn Fn(SdfInput) -> f32 + Send + Sync> {
+        // CircularSector uses min(bounds.x, bounds.y) for radius, angle from params
+        Box::new(move |input| {
+            let radius = input.bounds.x.min(input.bounds.y);
+            let c = Vec2::new(input.params.x, input.params.y); // sin, cos
+            sdf::pie(input.pos, c, radius)
+        })
     }
 }
 
@@ -423,10 +429,13 @@ impl SmudPrimitive for RegularPolygon {
     }
 
     #[cfg(feature = "bevy_picking")]
-    fn picking_fn(&self) -> Box<dyn Fn(Vec2) -> f32 + Send + Sync> {
-        let radius = self.circumcircle.radius;
-        let sides = self.sides as i32;
-        Box::new(move |p| sdf::regular_polygon(p, radius, sides))
+    fn picking_fn(&self) -> Box<dyn Fn(SdfInput) -> f32 + Send + Sync> {
+        // RegularPolygon uses min(bounds.x, bounds.y) for radius, sides from params
+        Box::new(move |input| {
+            let radius = input.bounds.x.min(input.bounds.y);
+            let sides = input.params.x as i32;
+            sdf::regular_polygon(input.pos, radius, sides)
+        })
     }
 }
 
