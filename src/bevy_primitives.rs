@@ -436,7 +436,7 @@ impl<T: SmudPrimitive> From<T> for SmudShape {
 #[cfg(feature = "bevy_picking")]
 impl<T: SmudPrimitive> From<T> for crate::picking_backend::SmudPickingShape {
     fn from(primitive: T) -> Self {
-        Self::new(primitive.picking_fn())
+        Self::with_input(primitive.picking_fn())
     }
 }
 

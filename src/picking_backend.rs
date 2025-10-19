@@ -54,8 +54,45 @@ pub struct SmudPickingShape {
 }
 
 impl SmudPickingShape {
-    /// Create a new SDF picking shape with the given distance function.
+    /// Create a new SDF picking shape with a simple position-only distance function.
+    ///
+    /// This is a convenience method for shapes that don't need bounds or params.
+    /// The function receives only the position and returns the signed distance.
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use bevy::prelude::*;
+    /// # use bevy_smud::prelude::*;
+    /// # use bevy_smud::sdf;
+    /// # let _ =
+    /// SmudPickingShape::new(|p| sdf::circle(p, 50.0))
+    /// # ;
+    /// ```
     pub fn new<F>(distance_fn: F) -> Self
+    where
+        F: Fn(Vec2) -> f32 + Send + Sync + 'static,
+    {
+        Self::with_input(move |input| distance_fn(input.pos))
+    }
+
+    /// Create a new SDF picking shape with the given distance function that receives full input.
+    ///
+    /// Use this when you need access to bounds or params from the shape.
+    /// For simple position-only SDFs, use [`Self::new`] instead.
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use bevy::prelude::*;
+    /// # use bevy_smud::prelude::*;
+    /// # use bevy_smud::sdf;
+    /// # let _ =
+    /// SmudPickingShape::with_input(|input| {
+    ///     let radius = input.bounds.x.min(input.bounds.y);
+    ///     sdf::circle(input.pos, radius)
+    /// })
+    /// # ;
+    /// ```
+    pub fn with_input<F>(distance_fn: F) -> Self
     where
         F: Fn(SdfInput) -> f32 + Send + Sync + 'static,
     {

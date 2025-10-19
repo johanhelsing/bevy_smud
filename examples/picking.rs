@@ -24,9 +24,9 @@ fn setup(mut commands: Commands, mut shaders: ResMut<Assets<Shader>>) {
             ..default()
         },
         Pickable::default(),
-        SmudPickingShape::new(|input| {
+        SmudPickingShape::new(|p| {
             // Circle SDF using the sdf module
-            sdf::circle(input.pos, 100.0)
+            sdf::circle(p, 100.0)
         }),
     ));
 
@@ -52,9 +52,9 @@ fn setup(mut commands: Commands, mut shaders: ResMut<Assets<Shader>>) {
             ..default()
         },
         Pickable::default(),
-        SmudPickingShape::new(|input| {
+        SmudPickingShape::new(|p| {
             // Heart SDF using the sdf module, scaled and offset
-            sdf::heart((input.pos / 160.0) - Vec2::new(0.0, -0.5)) * 160.0
+            sdf::heart((p / 160.0) - Vec2::new(0.0, -0.5)) * 160.0
         }),
     ));
 
