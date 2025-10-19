@@ -62,6 +62,9 @@ pub struct UiShape {
 
     /// Blend mode for the shape
     pub blend_mode: BlendMode,
+
+    /// Extra padding to add to the bounds when rendering the shape
+    pub extra_bounds: f32,
 }
 
 impl Default for UiShape {
@@ -72,6 +75,7 @@ impl Default for UiShape {
             fill: SIMPLE_FILL_HANDLE.clone(),
             params: Vec4::ZERO,
             blend_mode: BlendMode::default(),
+            extra_bounds: 0.0,
         }
     }
 }
@@ -92,7 +96,7 @@ struct UiShapeVertex {
     params: [f32; 4],
     rotation: [f32; 2],
     scale: f32,
-    bounds: [f32; 2],
+    bounds: [f32; 4],
 }
 
 #[derive(Resource)]
@@ -117,6 +121,7 @@ struct ExtractedUiShape {
     transform: Affine2,
     /// Node bounds in local space
     rect: Rect,
+    extra_bounds: f32,
     color: Color,
     params: Vec4,
     shader: Handle<Shader>,
@@ -171,6 +176,7 @@ fn extract_ui_shapes(
                 min: Vec2::ZERO,
                 max: computed_node.size,
             },
+            extra_bounds: ui_shape.extra_bounds,
             color: ui_shape.color,
             params: ui_shape.params,
             shader,
@@ -264,7 +270,7 @@ impl SpecializedRenderPipeline for UiShapePipeline {
                         },
                         // bounds
                         VertexAttribute {
-                            format: VertexFormat::Float32x2,
+                            format: VertexFormat::Float32x4,
                             offset: 56,
                             shader_location: 5,
                         },
@@ -341,8 +347,6 @@ fn prepare_ui_shapes(
 
     // Generate one instance per node - vertex shader will use vertex_index to determine corners
     for node in &extracted_nodes.nodes {
-        let rect_size = node.rect.size();
-
         // Extract transform components from Affine2
         let position = node.transform.translation;
 
@@ -363,13 +367,15 @@ fn prepare_ui_shapes(
             [1.0, 0.0] // No rotation
         };
 
+        let bounds = node.rect.size() / 2.0;
+
         ui_shape_meta.vertices.push(UiShapeVertex {
             position: [position.x, position.y, 0.0],
             color: node.color.to_linear().to_f32_array(),
             params: node.params.to_array(),
             rotation,
             scale,
-            bounds: [rect_size.x / 2.0, rect_size.y / 2.0],
+            bounds: [bounds.x, bounds.y, node.extra_bounds, node.extra_bounds],
         });
     }
 

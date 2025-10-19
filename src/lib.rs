@@ -317,7 +317,7 @@ impl SpecializedRenderPipeline for SmudPipeline {
             },
             // Bounds
             VertexAttribute {
-                format: VertexFormat::Float32x2,
+                format: VertexFormat::Float32x4,
                 offset: (4) * 4,
                 shader_location: 5,
             },
@@ -325,30 +325,30 @@ impl SpecializedRenderPipeline for SmudPipeline {
             // Params
             VertexAttribute {
                 format: VertexFormat::Float32x4,
-                offset: (4 + 2) * 4,
+                offset: (4 + 4) * 4,
                 shader_location: 2,
             },
             // Position
             VertexAttribute {
                 format: VertexFormat::Float32x3,
-                offset: (4 + 2 + 4) * 4,
+                offset: (4 + 4 + 4) * 4,
                 shader_location: 0,
             },
             // Rotation
             VertexAttribute {
                 format: VertexFormat::Float32x2,
-                offset: (4 + 2 + 4 + 3) * 4,
+                offset: (4 + 4 + 4 + 3) * 4,
                 shader_location: 3,
             },
             // Scale
             VertexAttribute {
                 format: VertexFormat::Float32,
-                offset: (4 + 2 + 4 + 3 + 2) * 4,
+                offset: (4 + 4 + 4 + 3 + 2) * 4,
                 shader_location: 4,
             },
         ];
         // This is the sum of the size of the attributes above
-        let vertex_array_stride = (4 + 2 + 4 + 3 + 2 + 1) * 4;
+        let vertex_array_stride = (4 + 4 + 4 + 3 + 2 + 1) * 4;
 
         RenderPipelineDescriptor {
             vertex: VertexState {
@@ -554,6 +554,7 @@ struct ExtractedShape {
     color: Color,
     params: Vec4,
     bounds: Vec2,
+    extra_bounds: f32,
     shader: Handle<Shader>,
     transform: GlobalTransform,
     blend_mode: BlendMode,
@@ -603,6 +604,7 @@ fn extract_shapes(
             transform: *transform,
             shader,
             bounds: shape.bounds.half_size,
+            extra_bounds: shape.extra_bounds,
             blend_mode: shape.blend_mode,
         });
     }
@@ -889,13 +891,16 @@ fn prepare_shapes(
             let scale = rotation_and_scale.length();
             let rotation = (rotation_and_scale / scale).into();
 
+            let bounds = extracted_shape.bounds;
+            let extra_bounds = extracted_shape.extra_bounds;
+
             let vertex = ShapeVertex {
                 position,
                 color,
                 params,
                 rotation,
                 scale,
-                bounds: extracted_shape.bounds.to_array(),
+                bounds: [bounds.x, bounds.y, extra_bounds, extra_bounds],
             };
             shape_meta.vertices.push(vertex);
 
@@ -928,7 +933,7 @@ fn prepare_shapes(
 #[derive(Debug, Copy, Clone, Pod, Zeroable)]
 struct ShapeVertex {
     pub color: [f32; 4],
-    pub bounds: [f32; 2],
+    pub bounds: [f32; 4],
     pub params: [f32; 4], // for now all shapes have 4 f32 parameters
     pub position: [f32; 3],
     pub rotation: [f32; 2],
