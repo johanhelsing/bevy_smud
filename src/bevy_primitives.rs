@@ -363,6 +363,14 @@ impl SmudPrimitive for CircularSector {
         CIRCULAR_SECTOR_SDF_HANDLE
     }
 
+    fn bounds(&self) -> Rectangle {
+        // CircularSector uses min(bounds.x, bounds.y) for radius in shader
+        // So we need square bounds where both half-extents equal the radius
+        Rectangle {
+            half_size: Vec2::splat(self.arc.radius),
+        }
+    }
+
     fn params(&self) -> Vec4 {
         let (sin, cos) = self.arc.half_angle.sin_cos();
         Vec4::new(sin, cos, 0.0, 0.0)
@@ -390,6 +398,14 @@ impl SmudPrimitive for CircularSector {
 impl SmudPrimitive for RegularPolygon {
     fn sdf_shader() -> Handle<Shader> {
         REGULAR_POLYGON_SDF_HANDLE
+    }
+
+    fn bounds(&self) -> Rectangle {
+        // RegularPolygon uses min(bounds.x, bounds.y) for radius in shader
+        // So we need square bounds where both half-extents equal the circumradius
+        Rectangle {
+            half_size: Vec2::splat(self.circumcircle.radius),
+        }
     }
 
     fn params(&self) -> Vec4 {
@@ -532,6 +548,92 @@ mod tests {
         assert!(
             reconstructed.half_length >= 0.0,
             "Half_length must not be negative"
+        );
+    }
+
+    #[test]
+    fn test_circle_round_trip() {
+        let original = Circle::new(25.0);
+        let shape = SmudShape::from(original);
+        let reconstructed = Circle::try_from_shape(&shape).expect("Failed to reconstruct circle");
+
+        assert_eq!(
+            original.radius, reconstructed.radius,
+            "Circle radius should match after round-trip conversion"
+        );
+    }
+
+    #[test]
+    fn test_ellipse_round_trip() {
+        let original = Ellipse::new(40.0, 25.0);
+        let shape = SmudShape::from(original);
+        let reconstructed = Ellipse::try_from_shape(&shape).expect("Failed to reconstruct ellipse");
+
+        assert_eq!(
+            original.half_size, reconstructed.half_size,
+            "Ellipse half_size should match after round-trip conversion"
+        );
+    }
+
+    #[test]
+    fn test_annulus_round_trip() {
+        let original = Annulus::new(15.0, 30.0);
+        let shape = SmudShape::from(original);
+        let reconstructed = Annulus::try_from_shape(&shape).expect("Failed to reconstruct annulus");
+
+        assert_eq!(
+            original.inner_circle.radius, reconstructed.inner_circle.radius,
+            "Annulus inner_radius should match after round-trip conversion"
+        );
+        assert_eq!(
+            original.outer_circle.radius, reconstructed.outer_circle.radius,
+            "Annulus outer_radius should match after round-trip conversion"
+        );
+    }
+
+    #[test]
+    fn test_rhombus_round_trip() {
+        let original = Rhombus::new(30.0, 40.0);
+        let shape = SmudShape::from(original);
+        let reconstructed = Rhombus::try_from_shape(&shape).expect("Failed to reconstruct rhombus");
+
+        assert_eq!(
+            original.half_diagonals, reconstructed.half_diagonals,
+            "Rhombus half_diagonals should match after round-trip conversion"
+        );
+    }
+
+    #[test]
+    fn test_circular_sector_round_trip() {
+        let original = CircularSector::from_turns(35.0, 0.25);
+        let shape = SmudShape::from(original);
+        let reconstructed =
+            CircularSector::try_from_shape(&shape).expect("Failed to reconstruct circular sector");
+
+        assert_eq!(
+            original.arc.radius, reconstructed.arc.radius,
+            "CircularSector radius should match after round-trip conversion"
+        );
+        assert_eq!(
+            original.arc.half_angle, reconstructed.arc.half_angle,
+            "CircularSector half_angle should match after round-trip conversion"
+        );
+    }
+
+    #[test]
+    fn test_regular_polygon_round_trip() {
+        let original = RegularPolygon::new(30.0, 6);
+        let shape = SmudShape::from(original);
+        let reconstructed =
+            RegularPolygon::try_from_shape(&shape).expect("Failed to reconstruct regular polygon");
+
+        assert_eq!(
+            original.circumcircle.radius, reconstructed.circumcircle.radius,
+            "RegularPolygon radius should match after round-trip conversion"
+        );
+        assert_eq!(
+            original.sides, reconstructed.sides,
+            "RegularPolygon sides should match after round-trip conversion"
         );
     }
 }
