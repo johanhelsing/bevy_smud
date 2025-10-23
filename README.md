@@ -92,11 +92,11 @@ For convenience, bevy_smud provides `From` implementations for some of Bevy's bu
 
 Send me a PR if you want your project featured here.
 
-### Bevy Smud Editor
+### Bevy Smud Demo
 
 [@jakoschiko](https://github.com/jakoschiko/) made an interactive editor for `bevy_smud` shapes.
 
-[![bevy_smud_editor screenshot](https://raw.githubusercontent.com/jakoschiko/bevy_smud_demo/refs/heads/main/screenshot.png)](https://jakoschiko.github.io/bevy_smud_demo)
+[![bevy_smud_demo screenshot](https://raw.githubusercontent.com/jakoschiko/bevy_smud_demo/refs/heads/main/screenshot.png)](https://jakoschiko.github.io/bevy_smud_demo)
 
 It lets you code sdf shaders and fills and tweak parameters while seeing a live preview on the side.
 
