@@ -90,9 +90,26 @@ For convenience, bevy_smud provides `From` implementations for some of Bevy's bu
 
 ## Showcase
 
-Send me a PR if you want your project featured here:
+Send me a PR if you want your project featured here.
 
-- Dis order: [![dis order screenshot](https://johanhelsing.studio/assets/dis-order.png)](https://jhelsing.itch.io/dis-order)
+### Bevy Smud Demo
+
+[@jakoschiko](https://github.com/jakoschiko/) made an interactive editor for `bevy_smud` shapes.
+
+[![bevy_smud_demo screenshot](https://raw.githubusercontent.com/jakoschiko/bevy_smud_demo/refs/heads/main/screenshot.png)](https://jakoschiko.github.io/bevy_smud_demo)
+
+It lets you code sdf shaders and fills and tweak parameters while seeing a live preview on the side.
+
+It contains a set of templates and is a good way to try out and get familiar with the tech.
+
+- [source code](https://github.com/jakoschiko/bevy_smud_demo)
+- [live demo](https://jakoschiko.github.io/bevy_smud_demo)
+
+### Dis order
+
+[![dis order screenshot](https://johanhelsing.studio/assets/dis-order.png)](https://jhelsing.itch.io/dis-order)
+
+A downloadable game I made for MiniJam. It uses sdfs to draw into an offscreen buffer which in turn is used in a compute shader to influence particle movement.
 
 ## Bevy version support
 
