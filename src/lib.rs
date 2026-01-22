@@ -210,8 +210,8 @@ struct SmudPipeline {
     view_layout: BindGroupLayoutDescriptor,
 }
 
-impl FromWorld for SmudPipeline {
-    fn from_world(_world: &mut World) -> Self {
+impl Default for SmudPipeline {
+    fn default() -> Self {
         let tonemapping_lut_entries = get_lut_bind_group_layout_entries();
         let entries = BindGroupLayoutEntries::with_indices(
             ShaderStages::VERTEX_FRAGMENT,

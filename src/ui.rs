@@ -198,8 +198,8 @@ struct UiShapePipeline {
     view_layout: BindGroupLayoutDescriptor,
 }
 
-impl FromWorld for UiShapePipeline {
-    fn from_world(_world: &mut World) -> Self {
+impl Default for UiShapePipeline {
+    fn default() -> Self {
         let entries = BindGroupLayoutEntries::with_indices(
             ShaderStages::VERTEX_FRAGMENT,
             (
