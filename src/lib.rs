@@ -32,11 +32,11 @@ use bevy::{
             RenderCommandResult, SetItemPipeline, TrackedRenderPass, ViewSortedRenderPhases,
         },
         render_resource::{
-            BindGroup, BindGroupEntries, BindGroupLayout, BindGroupLayoutEntries, BlendComponent,
-            BlendFactor, BlendOperation, BlendState, BufferUsages, CachedRenderPipelineId,
-            ColorTargetState, ColorWrites, CompareFunction, DepthBiasState, DepthStencilState,
-            Face, FragmentState, FrontFace, MultisampleState, PipelineCache, PolygonMode,
-            PrimitiveState, PrimitiveTopology, RawBufferVec, RenderPipelineDescriptor,
+            BindGroup, BindGroupEntries, BindGroupLayoutDescriptor, BindGroupLayoutEntries,
+            BlendComponent, BlendFactor, BlendOperation, BlendState, BufferUsages,
+            CachedRenderPipelineId, ColorTargetState, ColorWrites, CompareFunction, DepthBiasState,
+            DepthStencilState, Face, FragmentState, FrontFace, MultisampleState, PipelineCache,
+            PolygonMode, PrimitiveState, PrimitiveTopology, RawBufferVec, RenderPipelineDescriptor,
             ShaderStages, SpecializedRenderPipeline, SpecializedRenderPipelines, StencilFaceState,
             StencilState, TextureFormat, VertexAttribute, VertexFormat, VertexState,
             VertexStepMode, binding_types::uniform_buffer,
@@ -207,35 +207,32 @@ impl<P: PhaseItem> RenderCommand<P> for DrawShapeBatch {
 
 #[derive(Resource)]
 struct SmudPipeline {
-    view_layout: BindGroupLayout,
+    view_layout: BindGroupLayoutDescriptor,
 }
 
-impl FromWorld for SmudPipeline {
-    fn from_world(world: &mut World) -> Self {
-        let render_device = world.get_resource::<RenderDevice>().unwrap();
-
+impl Default for SmudPipeline {
+    fn default() -> Self {
         let tonemapping_lut_entries = get_lut_bind_group_layout_entries();
-        let view_layout = render_device.create_bind_group_layout(
-            Some("shape_view_layout"),
-            &BindGroupLayoutEntries::with_indices(
-                ShaderStages::VERTEX_FRAGMENT,
+        let entries = BindGroupLayoutEntries::with_indices(
+            ShaderStages::VERTEX_FRAGMENT,
+            (
+                (0, uniform_buffer::<ViewUniform>(true)),
                 (
-                    (0, uniform_buffer::<ViewUniform>(true)),
-                    (
-                        1,
-                        uniform_buffer::<GlobalsUniform>(false).visibility(ShaderStages::FRAGMENT),
-                    ),
-                    (
-                        2,
-                        tonemapping_lut_entries[0].visibility(ShaderStages::FRAGMENT),
-                    ),
-                    (
-                        3,
-                        tonemapping_lut_entries[1].visibility(ShaderStages::FRAGMENT),
-                    ),
+                    1,
+                    uniform_buffer::<GlobalsUniform>(false).visibility(ShaderStages::FRAGMENT),
+                ),
+                (
+                    2,
+                    tonemapping_lut_entries[0].visibility(ShaderStages::FRAGMENT),
+                ),
+                (
+                    3,
+                    tonemapping_lut_entries[1].visibility(ShaderStages::FRAGMENT),
                 ),
             ),
         );
+
+        let view_layout = BindGroupLayoutDescriptor::new("shape_view_layout", &entries);
 
         Self { view_layout }
     }
@@ -749,7 +746,7 @@ fn queue_shapes(
         view_entities.extend(
             visible_entities
                 .iter::<SmudShape>()
-                .map(|(_, e)| e.index() as usize),
+                .map(|(_, e)| e.index_u32() as usize),
         );
 
         transparent_phase
@@ -796,6 +793,7 @@ fn prepare_shape_view_bind_groups(
     mut commands: Commands,
     render_device: Res<RenderDevice>,
     smud_pipeline: Res<SmudPipeline>,
+    pipeline_cache: Res<PipelineCache>,
     view_uniforms: Res<ViewUniforms>,
     views: Query<(Entity, &Tonemapping), With<ExtractedView>>,
     tonemapping_luts: Res<TonemappingLuts>,
@@ -810,12 +808,14 @@ fn prepare_shape_view_bind_groups(
         return;
     };
 
+    let view_layout = pipeline_cache.get_bind_group_layout(&smud_pipeline.view_layout);
+
     for (entity, tonemapping) in &views {
         let lut_bindings =
             get_lut_bindings(&images, &tonemapping_luts, tonemapping, &fallback_image);
         let view_bind_group = render_device.create_bind_group(
             "mesh2d_view_bind_group",
-            &smud_pipeline.view_layout,
+            &view_layout,
             &BindGroupEntries::with_indices((
                 (0, view_binding.clone()),
                 (1, globals.clone()),

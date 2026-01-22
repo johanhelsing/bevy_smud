@@ -15,11 +15,11 @@ use bevy::{
             RenderCommandResult, SetItemPipeline, TrackedRenderPass, ViewSortedRenderPhases,
         },
         render_resource::{
-            BindGroup, BindGroupEntries, BindGroupLayout, BindGroupLayoutEntries, BlendComponent,
-            BlendFactor, BlendOperation, BlendState, BufferUsages, CachedPipelineState,
-            ColorTargetState, ColorWrites, FragmentState, FrontFace, MultisampleState,
-            PipelineCache, PolygonMode, PrimitiveState, PrimitiveTopology, RawBufferVec,
-            RenderPipelineDescriptor, ShaderStages, SpecializedRenderPipeline,
+            BindGroup, BindGroupEntries, BindGroupLayoutDescriptor, BindGroupLayoutEntries,
+            BlendComponent, BlendFactor, BlendOperation, BlendState, BufferUsages,
+            CachedPipelineState, ColorTargetState, ColorWrites, FragmentState, FrontFace,
+            MultisampleState, PipelineCache, PolygonMode, PrimitiveState, PrimitiveTopology,
+            RawBufferVec, RenderPipelineDescriptor, ShaderStages, SpecializedRenderPipeline,
             SpecializedRenderPipelines, TextureFormat, VertexAttribute, VertexFormat, VertexState,
             VertexStepMode, binding_types::uniform_buffer,
         },
@@ -195,25 +195,23 @@ struct UiShapePipelineKey {
 /// Pipeline for rendering shapes in UI.
 #[derive(Resource)]
 struct UiShapePipeline {
-    view_layout: BindGroupLayout,
+    view_layout: BindGroupLayoutDescriptor,
 }
 
-impl FromWorld for UiShapePipeline {
-    fn from_world(world: &mut World) -> Self {
-        let render_device = world.resource::<RenderDevice>();
-        let view_layout = render_device.create_bind_group_layout(
-            "ui_shape_view_layout",
-            &BindGroupLayoutEntries::with_indices(
-                ShaderStages::VERTEX_FRAGMENT,
+impl Default for UiShapePipeline {
+    fn default() -> Self {
+        let entries = BindGroupLayoutEntries::with_indices(
+            ShaderStages::VERTEX_FRAGMENT,
+            (
+                (0, uniform_buffer::<ViewUniform>(true)),
                 (
-                    (0, uniform_buffer::<ViewUniform>(true)),
-                    (
-                        1,
-                        uniform_buffer::<GlobalsUniform>(false).visibility(ShaderStages::FRAGMENT),
-                    ),
+                    1,
+                    uniform_buffer::<GlobalsUniform>(false).visibility(ShaderStages::FRAGMENT),
                 ),
             ),
         );
+
+        let view_layout = BindGroupLayoutDescriptor::new("ui_shape_view_layout", &entries);
 
         Self { view_layout }
     }
@@ -330,15 +328,17 @@ fn prepare_ui_shapes(
     view_uniforms: Res<ViewUniforms>,
     globals_buffer: Res<GlobalsBuffer>,
     pipeline: Res<UiShapePipeline>,
+    pipeline_cache: Res<PipelineCache>,
 ) {
     // Create view bind group
     if let (Some(view_binding), Some(globals)) = (
         view_uniforms.uniforms.binding(),
         globals_buffer.buffer.binding(),
     ) {
+        let view_layout = pipeline_cache.get_bind_group_layout(&pipeline.view_layout);
         ui_shape_meta.view_bind_group = Some(render_device.create_bind_group(
             "ui_shape_view_bind_group",
-            &pipeline.view_layout,
+            &view_layout,
             &BindGroupEntries::with_indices(((0, view_binding), (1, globals))),
         ));
     }
