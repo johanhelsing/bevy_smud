@@ -17,6 +17,8 @@
 //! - The `normal` points away from the shape using the transform's back vector
 //! - Depth is calculated based on the shape's Z position in camera space
 
+use std::sync::Arc;
+
 use bevy::{picking::PickingSystems, picking::backend::prelude::*, prelude::*};
 
 use crate::SmudShape;
@@ -45,12 +47,13 @@ pub struct SmudPickingCamera;
 /// When present, this will be used instead of simple bounds-based picking to determine
 /// if a point is inside or outside the shape. The function receives an `SdfInput` struct
 /// containing position, bounds, and params, matching the shader interface.
-#[derive(Component)]
+#[derive(Clone, Component, Reflect)]
+#[reflect(opaque, Component)]
 pub struct SmudPickingShape {
     /// The signed distance function. Returns negative values inside the shape,
     /// positive values outside, and zero on the surface.
     /// Takes SdfInput with current position, bounds, and params.
-    pub distance_fn: Box<dyn Fn(SdfInput) -> f32 + Send + Sync>,
+    pub distance_fn: Arc<dyn Fn(SdfInput) -> f32 + Send + Sync>,
 }
 
 impl SmudPickingShape {
@@ -97,7 +100,7 @@ impl SmudPickingShape {
         F: Fn(SdfInput) -> f32 + Send + Sync + 'static,
     {
         Self {
-            distance_fn: Box::new(distance_fn),
+            distance_fn: Arc::new(distance_fn),
         }
     }
 }
@@ -120,7 +123,10 @@ pub struct SmudPickingPlugin;
 
 impl Plugin for SmudPickingPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<SmudPickingSettings>()
+        app.register_type::<SmudPickingCamera>()
+            .register_type::<SmudPickingShape>()
+            .register_type::<SmudPickingSettings>()
+            .init_resource::<SmudPickingSettings>()
             .add_systems(PreUpdate, smud_picking.in_set(PickingSystems::Backend));
     }
 }
