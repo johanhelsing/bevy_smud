@@ -754,6 +754,9 @@ fn queue_shapes(
             .reserve(extracted_shapes.shapes.len());
 
         for (index, extracted_shape) in extracted_shapes.shapes.iter().enumerate() {
+            if !view_entities.contains(extracted_shape.main_entity.index_u32() as usize) {
+                continue;
+            }
             let shape_key = view_key | PipelineKey::from_blend_mode(extracted_shape.blend_mode);
             let specialize_key = SmudPipelineKey {
                 mesh: shape_key,
