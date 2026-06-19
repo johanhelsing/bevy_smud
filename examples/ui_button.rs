@@ -71,7 +71,7 @@ return vec4<f32>(input.color.rgb, a * input.color.a);
                 children![(
                     Text::new("Click Me!"),
                     TextFont {
-                        font_size: 20.0,
+                        font_size: FontSize::Px(20.0),
                         ..default()
                     },
                     TextColor(css::WHITE.into()),
@@ -96,7 +96,7 @@ return vec4<f32>(input.color.rgb, a * input.color.a);
                 children![(
                     Text::new("Click Me!"),
                     TextFont {
-                        font_size: 20.0,
+                        font_size: FontSize::Px(20.0),
                         ..default()
                     },
                     TextColor(css::WHITE.into()),

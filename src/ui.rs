@@ -27,7 +27,7 @@ use bevy::{
         sync_world::{MainEntity, TemporaryRenderEntity},
         view::{ViewUniform, ViewUniformOffset, ViewUniforms},
     },
-    ui::{ComputedNode, Node, UiGlobalTransform},
+    ui::{ComputedNode, ComputedStackIndex, Node, UiGlobalTransform},
     ui_render::{TransparentUi, stack_z_offsets},
 };
 use bytemuck::{Pod, Zeroable};
@@ -147,15 +147,24 @@ fn generate_shaders(
 }
 
 /// Extract UiShape components to render world
+#[allow(clippy::type_complexity)]
 fn extract_ui_shapes(
     mut commands: Commands,
     mut extracted_nodes: ResMut<ExtractedUiShapes>,
     generated_shaders: Res<GeneratedShaders>,
-    ui_shapes: Extract<Query<(Entity, &UiShape, &ComputedNode, &UiGlobalTransform)>>,
+    ui_shapes: Extract<
+        Query<(
+            Entity,
+            &UiShape,
+            &ComputedNode,
+            &ComputedStackIndex,
+            &UiGlobalTransform,
+        )>,
+    >,
 ) {
     extracted_nodes.nodes.clear();
 
-    for (entity, ui_shape, computed_node, transform) in ui_shapes.iter() {
+    for (entity, ui_shape, computed_node, stack_index, transform) in ui_shapes.iter() {
         let render_entity = commands.spawn(TemporaryRenderEntity).id();
 
         let Some(shader) = generated_shaders
@@ -170,7 +179,7 @@ fn extract_ui_shapes(
         extracted_nodes.nodes.push(ExtractedUiShape {
             main_entity: entity.into(),
             render_entity,
-            stack_index: computed_node.stack_index,
+            stack_index: stack_index.0,
             transform: transform.into(),
             rect: Rect {
                 min: Vec2::ZERO,
@@ -227,7 +236,7 @@ impl SpecializedRenderPipeline for UiShapePipeline {
         RenderPipelineDescriptor {
             label: Some("ui_shape_pipeline".into()),
             layout: vec![self.view_layout.clone()],
-            push_constant_ranges: vec![],
+            immediate_size: 0,
             vertex: VertexState {
                 shader: VERTEX_SHADER_HANDLE,
                 shader_defs: vec!["Y_DOWN".into()],
@@ -419,7 +428,7 @@ fn queue_ui_shapes(
             // We use a value slightly after MATERIAL (0.05) so UiShapes render in proper layer order
             let sort_key = FloatOrd(node.stack_index as f32 + stack_z_offsets::MATERIAL + 0.01);
 
-            transparent_phase.add(TransparentUi {
+            transparent_phase.add_transient(TransparentUi {
                 entity: (node.render_entity, node.main_entity),
                 draw_function,
                 pipeline: pipeline_id,
