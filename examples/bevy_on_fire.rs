@@ -1,4 +1,4 @@
-use bevy::{prelude::*, render::view::Hdr};
+use bevy::{camera::Hdr, prelude::*};
 use bevy_pancam::*;
 use bevy_smud::*;
 

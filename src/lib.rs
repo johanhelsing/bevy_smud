@@ -5,6 +5,7 @@
 use std::ops::Range;
 
 use bevy::{
+    camera::CompositingSpace,
     core_pipeline::{
         core_2d::{CORE_2D_DEPTH_FORMAT, Transparent2d},
         tonemapping::{
@@ -25,6 +26,7 @@ use bevy::{
     prelude::*,
     render::{
         Extract, MainWorld, Render, RenderApp, RenderSystems,
+        camera::ExtractedCamera,
         globals::{GlobalsBuffer, GlobalsUniform},
         render_asset::RenderAssets,
         render_phase::{
@@ -45,8 +47,9 @@ use bevy::{
         sync_world::{MainEntity, RenderEntity},
         texture::{FallbackImage, GpuImage},
         view::{
-            ExtractedView, RenderVisibleEntities, RetainedViewEntity, ViewTarget, ViewUniform,
-            ViewUniformOffset, ViewUniforms,
+            COLOR_TARGET_FORMAT_MASK_BITS, ExtractedView, RenderVisibleEntities,
+            RetainedViewEntity, ViewUniform, ViewUniformOffset, ViewUniforms,
+            texture_format_from_code, texture_format_to_code,
         },
     },
     shader::{ShaderDefVal, ShaderImport},
@@ -243,7 +246,6 @@ struct SmudPipelineKey {
     /// Mix of bevy_render Mesh2DPipelineKey and SpritePipelineKey
     mesh: PipelineKey,
     shader: Handle<Shader>,
-    hdr: bool,
 }
 
 impl SpecializedRenderPipeline for SmudPipeline {
@@ -292,12 +294,22 @@ impl SpecializedRenderPipeline for SmudPipeline {
                 PipelineKey::TONEMAP_METHOD_TONY_MC_MAPFACE => {
                     shader_defs.push("TONEMAP_METHOD_TONY_MC_MAPFACE".into());
                 }
+                PipelineKey::TONEMAP_METHOD_KHRONOS_PBR_NEUTRAL => {
+                    shader_defs.push("TONEMAP_METHOD_PBR_NEUTRAL".into());
+                }
                 _ => {}
             }
             // Debanding is tied to tonemapping in the shader, cannot run without it.
             if key.mesh.contains(PipelineKey::DEBAND_DITHER) {
                 shader_defs.push("DEBAND_DITHER".into());
             }
+        }
+
+        if key.mesh.contains(PipelineKey::SRGB_COMPOSITING) {
+            shader_defs.push("SRGB_OUTPUT".into());
+        }
+        if key.mesh.contains(PipelineKey::OKLAB_COMPOSITING) {
+            shader_defs.push("OKLAB_OUTPUT".into());
         }
 
         debug!("shader_defs: {shader_defs:?}");
@@ -363,11 +375,7 @@ impl SpecializedRenderPipeline for SmudPipeline {
                 entry_point: Some("fragment".into()),
                 shader_defs,
                 targets: vec![Some(ColorTargetState {
-                    format: if key.hdr {
-                        ViewTarget::TEXTURE_FORMAT_HDR
-                    } else {
-                        TextureFormat::bevy_default()
-                    },
+                    format: key.mesh.target_format(),
                     blend: Some(if key.mesh.contains(PipelineKey::BLEND_ADDITIVE) {
                         BlendState {
                             color: BlendComponent {
@@ -402,8 +410,8 @@ impl SpecializedRenderPipeline for SmudPipeline {
             },
             depth_stencil: Some(DepthStencilState {
                 format: CORE_2D_DEPTH_FORMAT,
-                depth_write_enabled: false,
-                depth_compare: CompareFunction::GreaterEqual,
+                depth_write_enabled: Some(false),
+                depth_compare: Some(CompareFunction::GreaterEqual),
                 stencil: StencilState {
                     front: StencilFaceState::IGNORE,
                     back: StencilFaceState::IGNORE,
@@ -422,7 +430,7 @@ impl SpecializedRenderPipeline for SmudPipeline {
                 alpha_to_coverage_enabled: false, // what is this?
             },
             label: Some("bevy_smud_pipeline".into()),
-            push_constant_ranges: Vec::new(),
+            immediate_size: 0,
             zero_initialize_workgroup_memory: false,
         }
     }
@@ -448,12 +456,12 @@ impl GeneratedShaders {
         }
 
         let sdf_import_path = match shaders.get_mut(sdf) {
-            Some(shader) => match shader.import_path() {
+            Some(mut shader) => match &shader.import_path {
                 ShaderImport::Custom(p) => p.to_owned(),
                 _ => {
                     let id = generate_shader_id();
                     let path = format!("smud::generated::{id}");
-                    shader.set_import_path(&path);
+                    shader.import_path = ShaderImport::Custom(path.clone());
                     path
                 }
             },
@@ -464,12 +472,12 @@ impl GeneratedShaders {
         };
 
         let fill_import_path = match shaders.get_mut(fill) {
-            Some(shader) => match shader.import_path() {
+            Some(mut shader) => match &shader.import_path {
                 ShaderImport::Custom(p) => p.to_owned(),
                 _ => {
                     let id = generate_shader_id();
                     let path = format!("smud::generated::{id}");
-                    shader.set_import_path(&path);
+                    shader.import_path = ShaderImport::Custom(path.clone());
                     path
                 }
             },
@@ -485,6 +493,12 @@ impl GeneratedShaders {
                 r#"
 #ifdef TONEMAP_IN_SHADER
 #import bevy_core_pipeline::tonemapping
+#endif
+#ifdef SRGB_OUTPUT
+#import bevy_render::color_operations::linear_to_srgb
+#endif
+#ifdef OKLAB_OUTPUT
+#import bevy_render::color_operations::linear_rgb_to_oklab
 #endif
 
 #import bevy_smud::view_bindings::view
@@ -514,6 +528,14 @@ fn fragment(in: FragmentInput) -> @location(0) vec4<f32> {{
 
 #ifdef TONEMAP_IN_SHADER
     color = tonemapping::tone_mapping(color, view.color_grading);
+#endif
+
+#ifdef SRGB_OUTPUT
+    color = vec4(linear_to_srgb(color.rgb), color.a);
+#endif
+
+#ifdef OKLAB_OUTPUT
+    color = vec4(linear_rgb_to_oklab(color.rgb), color.a);
 #endif
 
     return color;
@@ -617,11 +639,13 @@ bitflags::bitflags! {
     // FIXME: make normals optional?
     pub(crate) struct PipelineKey: u32 {
         const NONE                              = 0;
-        const HDR                               = 1 << 0;
-        const TONEMAP_IN_SHADER                 = 1 << 1;
-        const DEBAND_DITHER                     = 1 << 2;
-        const BLEND_ADDITIVE                    = 1 << 3;
-        const MAY_DISCARD                       = 1 << 4;
+        const TONEMAP_IN_SHADER                 = 1 << 0;
+        const DEBAND_DITHER                     = 1 << 1;
+        const SRGB_COMPOSITING                  = 1 << 2;
+        const OKLAB_COMPOSITING                 = 1 << 3;
+        const BLEND_ADDITIVE                    = 1 << 4;
+        const MAY_DISCARD                       = 1 << 5;
+        const COLOR_TARGET_FORMAT_RESERVED_BITS = Self::COLOR_TARGET_FORMAT_MASK_BITS << Self::COLOR_TARGET_FORMAT_SHIFT_BITS;
         const MSAA_RESERVED_BITS                = Self::MSAA_MASK_BITS << Self::MSAA_SHIFT_BITS;
         const PRIMITIVE_TOPOLOGY_RESERVED_BITS  = Self::PRIMITIVE_TOPOLOGY_MASK_BITS << Self::PRIMITIVE_TOPOLOGY_SHIFT_BITS;
         const TONEMAP_METHOD_RESERVED_BITS      = Self::TONEMAP_METHOD_MASK_BITS << Self::TONEMAP_METHOD_SHIFT_BITS;
@@ -633,6 +657,7 @@ bitflags::bitflags! {
         const TONEMAP_METHOD_SOMEWHAT_BORING_DISPLAY_TRANSFORM = 5 << Self::TONEMAP_METHOD_SHIFT_BITS;
         const TONEMAP_METHOD_TONY_MC_MAPFACE    = 6 << Self::TONEMAP_METHOD_SHIFT_BITS;
         const TONEMAP_METHOD_BLENDER_FILMIC     = 7 << Self::TONEMAP_METHOD_SHIFT_BITS;
+        const TONEMAP_METHOD_KHRONOS_PBR_NEUTRAL = 8 << Self::TONEMAP_METHOD_SHIFT_BITS;
     }
 }
 
@@ -641,9 +666,12 @@ impl PipelineKey {
     const MSAA_SHIFT_BITS: u32 = 32 - Self::MSAA_MASK_BITS.count_ones();
     const PRIMITIVE_TOPOLOGY_MASK_BITS: u32 = 0b111;
     const PRIMITIVE_TOPOLOGY_SHIFT_BITS: u32 = Self::MSAA_SHIFT_BITS - 3;
-    const TONEMAP_METHOD_MASK_BITS: u32 = 0b111;
+    const TONEMAP_METHOD_MASK_BITS: u32 = 0b1111;
     const TONEMAP_METHOD_SHIFT_BITS: u32 =
         Self::PRIMITIVE_TOPOLOGY_SHIFT_BITS - Self::TONEMAP_METHOD_MASK_BITS.count_ones();
+    const COLOR_TARGET_FORMAT_MASK_BITS: u32 = COLOR_TARGET_FORMAT_MASK_BITS;
+    const COLOR_TARGET_FORMAT_SHIFT_BITS: u32 =
+        Self::TONEMAP_METHOD_SHIFT_BITS - Self::COLOR_TARGET_FORMAT_MASK_BITS.count_ones();
 
     pub fn from_msaa_samples(msaa_samples: u32) -> Self {
         let msaa_bits =
@@ -651,8 +679,21 @@ impl PipelineKey {
         Self::from_bits_retain(msaa_bits)
     }
 
-    pub fn from_hdr(hdr: bool) -> Self {
-        if hdr { Self::HDR } else { Self::NONE }
+    /// Create a pipeline key from the view's color target format.
+    pub fn from_target_format(format: TextureFormat) -> Self {
+        let code = texture_format_to_code(format)
+            .expect("Texture format is not supported by the pipeline") as u32;
+        Self::from_bits_retain(
+            (code & Self::COLOR_TARGET_FORMAT_MASK_BITS) << Self::COLOR_TARGET_FORMAT_SHIFT_BITS,
+        )
+    }
+
+    /// Color target format of the main pass for this pipeline key.
+    pub fn target_format(&self) -> TextureFormat {
+        let code = ((self.bits() >> Self::COLOR_TARGET_FORMAT_SHIFT_BITS)
+            & Self::COLOR_TARGET_FORMAT_MASK_BITS) as u8;
+        texture_format_from_code(code)
+            .expect("Unknown bits in `COLOR_TARGET_FORMAT_MASK_BITS` of the pipeline key")
     }
 
     pub fn msaa_samples(&self) -> u32 {
@@ -679,10 +720,10 @@ impl PipelineKey {
         }
     }
 
-    pub fn from_blend_mode(blend_mode: crate::BlendMode) -> Self {
+    pub fn from_blend_mode(blend_mode: BlendMode) -> Self {
         match blend_mode {
-            crate::BlendMode::Alpha => Self::NONE,
-            crate::BlendMode::Additive => Self::BLEND_ADDITIVE,
+            BlendMode::Alpha => Self::NONE,
+            BlendMode::Additive => Self::BLEND_ADDITIVE,
         }
     }
 }
@@ -698,6 +739,7 @@ fn queue_shapes(
     mut transparent_render_phases: ResMut<ViewSortedRenderPhases<Transparent2d>>,
     mut views: Query<(
         &RenderVisibleEntities,
+        &ExtractedCamera,
         &ExtractedView,
         &Msaa,
         Option<&Tonemapping>,
@@ -708,7 +750,7 @@ fn queue_shapes(
     let draw_smud_shape_function = draw_functions.read().get_id::<DrawSmudShape>().unwrap();
 
     // Iterate over each view (a camera is a view)
-    for (visible_entities, view, msaa, tonemapping, dither) in &mut views {
+    for (visible_entities, camera, view, msaa, tonemapping, dither) in &mut views {
         let Some(transparent_phase) = transparent_render_phases.get_mut(&view.retained_view_entity)
         else {
             continue;
@@ -717,9 +759,16 @@ fn queue_shapes(
         let mesh_key = PipelineKey::from_msaa_samples(msaa.samples())
             | PipelineKey::from_primitive_topology(PrimitiveTopology::TriangleStrip);
 
-        let mut view_key = PipelineKey::from_hdr(view.hdr) | mesh_key;
+        let mut view_key = PipelineKey::from_target_format(view.target_format) | mesh_key;
 
-        if !view.hdr {
+        if camera.compositing_space == Some(CompositingSpace::Srgb) {
+            view_key |= PipelineKey::SRGB_COMPOSITING;
+        }
+        if camera.compositing_space == Some(CompositingSpace::Oklab) {
+            view_key |= PipelineKey::OKLAB_COMPOSITING;
+        }
+
+        if !camera.hdr {
             if let Some(tonemapping) = tonemapping {
                 view_key |= PipelineKey::TONEMAP_IN_SHADER;
                 view_key |= match tonemapping {
@@ -735,6 +784,9 @@ fn queue_shapes(
                     }
                     Tonemapping::TonyMcMapface => PipelineKey::TONEMAP_METHOD_TONY_MC_MAPFACE,
                     Tonemapping::BlenderFilmic => PipelineKey::TONEMAP_METHOD_BLENDER_FILMIC,
+                    Tonemapping::KhronosPbrNeutral => {
+                        PipelineKey::TONEMAP_METHOD_KHRONOS_PBR_NEUTRAL
+                    }
                 };
             }
             if let Some(DebandDither::Enabled) = dither {
@@ -743,11 +795,13 @@ fn queue_shapes(
         }
 
         view_entities.clear();
-        view_entities.extend(
-            visible_entities
-                .iter::<SmudShape>()
-                .map(|(_, e)| e.index_u32() as usize),
-        );
+        if let Some(visible_entities) = visible_entities.get::<SmudShape>() {
+            view_entities.extend(
+                visible_entities
+                    .iter_visible()
+                    .map(|(_, e)| e.index_u32() as usize),
+            );
+        }
 
         transparent_phase
             .items
@@ -761,7 +815,6 @@ fn queue_shapes(
             let specialize_key = SmudPipelineKey {
                 mesh: shape_key,
                 shader: extracted_shape.shader.clone(),
-                hdr: view.hdr,
             };
             let pipeline = pipelines.specialize(&pipeline_cache, &smud_pipeline, specialize_key);
 
@@ -774,7 +827,7 @@ fn queue_shapes(
             let sort_key = FloatOrd(extracted_shape.transform.translation().z);
 
             // Add the item to the render phase
-            transparent_phase.add(Transparent2d {
+            transparent_phase.add_transient(Transparent2d {
                 draw_function: draw_smud_shape_function,
                 pipeline,
                 entity: (
