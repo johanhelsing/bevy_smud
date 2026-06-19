@@ -147,6 +147,7 @@ fn generate_shaders(
 }
 
 /// Extract UiShape components to render world
+#[allow(clippy::type_complexity)]
 fn extract_ui_shapes(
     mut commands: Commands,
     mut extracted_nodes: ResMut<ExtractedUiShapes>,
