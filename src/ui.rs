@@ -25,7 +25,7 @@ use bevy::{
         },
         renderer::{RenderDevice, RenderQueue},
         sync_world::{MainEntity, TemporaryRenderEntity},
-        view::{ViewUniform, ViewUniformOffset, ViewUniforms},
+        view::{ExtractedView, ViewUniform, ViewUniformOffset, ViewUniforms},
     },
     ui::{ComputedNode, ComputedStackIndex, Node, UiGlobalTransform},
     ui_render::{TransparentUi, stack_z_offsets},
@@ -199,6 +199,8 @@ fn extract_ui_shapes(
 struct UiShapePipelineKey {
     shader: Handle<Shader>,
     blend_mode: BlendMode,
+    /// The view's render target format: `Rgba16Float` on an HDR camera.
+    target_format: TextureFormat,
 }
 
 /// Pipeline for rendering shapes in UI.
@@ -289,7 +291,7 @@ impl SpecializedRenderPipeline for UiShapePipeline {
                 shader_defs: vec![],
                 entry_point: Some("fragment".into()),
                 targets: vec![Some(ColorTargetState {
-                    format: TextureFormat::Rgba8UnormSrgb, // UI render target format
+                    format: key.target_format,
                     blend: Some(match key.blend_mode {
                         BlendMode::Alpha => BlendState::ALPHA_BLENDING,
                         BlendMode::Additive => BlendState {
@@ -399,18 +401,26 @@ fn queue_ui_shapes(
     mut pipelines: ResMut<SpecializedRenderPipelines<UiShapePipeline>>,
     pipeline_cache: Res<PipelineCache>,
     mut transparent_render_phases: ResMut<ViewSortedRenderPhases<TransparentUi>>,
+    views: Query<&ExtractedView>,
     extracted_nodes: Res<ExtractedUiShapes>,
 ) {
     let draw_function = draw_functions.read().id::<DrawUiShapes>();
 
-    // For each view that has a TransparentUi phase
-    for (_view_key, transparent_phase) in transparent_render_phases.iter_mut() {
+    // For each view that has a TransparentUi phase. The pipeline is specialized
+    // on the view's target format: an HDR camera renders UI to `Rgba16Float`,
+    // and a pipeline built for `Rgba8UnormSrgb` fails validation there.
+    for view in &views {
+        let Some(transparent_phase) = transparent_render_phases.get_mut(&view.retained_view_entity)
+        else {
+            continue;
+        };
         // Add each extracted UiShape to the render phase
         for (index, node) in extracted_nodes.nodes.iter().enumerate() {
             // Create pipeline key for this shader combination
             let key = UiShapePipelineKey {
                 shader: node.shader.clone(),
                 blend_mode: node.blend_mode,
+                target_format: view.target_format,
             };
 
             // Specialize the pipeline for this shader combination
