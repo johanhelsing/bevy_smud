@@ -159,13 +159,30 @@ fn extract_ui_shapes(
             &ComputedNode,
             &ComputedStackIndex,
             &UiGlobalTransform,
+            &InheritedVisibility,
+            Option<&CalculatedClip>,
+            &ComputedUiTargetCamera,
         )>,
     >,
+    camera_map: Extract<UiCameraMap>,
 ) {
     extracted_nodes.nodes.clear();
+    let mut camera_mapper = camera_map.get_mapper();
 
-    for (entity, ui_shape, computed_node, stack_index, transform) in ui_shapes.iter() {
-        let render_entity = commands.spawn(TemporaryRenderEntity).id();
+    for (entity, ui_shape, computed_node, stack_index, transform, visibility, clip, target) in
+        ui_shapes.iter()
+    {
+        // local patch: hidden nodes (and zero-sized ones) are not drawn,
+        // matching bevy_ui's own extraction.
+        if !visibility.get() || computed_node.is_empty() {
+            continue;
+        }
+
+        // local patch: draw only into the node's own UI camera (like
+        // bevy_ui), not into every view with a UI phase.
+        let Some(extracted_camera_entity) = camera_mapper.map(target) else {
+            continue;
+        };
 
         let Some(shader) = generated_shaders
             .0
