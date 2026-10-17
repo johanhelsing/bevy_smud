@@ -27,8 +27,8 @@ use bevy::{
         sync_world::{MainEntity, TemporaryRenderEntity},
         view::{ExtractedView, ViewUniform, ViewUniformOffset, ViewUniforms},
     },
-    ui::{ComputedNode, ComputedStackIndex, Node, UiGlobalTransform},
-    ui_render::{TransparentUi, stack_z_offsets},
+    ui::{ComputedNode, ComputedStackIndex, ComputedUiTargetCamera, Node, UiGlobalTransform},
+    ui_render::{TransparentUi, UiCameraMap, UiCameraView, stack_z_offsets},
 };
 use bytemuck::{Pod, Zeroable};
 
@@ -126,6 +126,8 @@ struct ExtractedUiShape {
     params: Vec4,
     shader: Handle<Shader>,
     blend_mode: BlendMode,
+    /// Render entity of the node's target camera.
+    extracted_camera_entity: Entity,
 }
 
 #[derive(Resource, Default)]
@@ -159,13 +161,29 @@ fn extract_ui_shapes(
             &ComputedNode,
             &ComputedStackIndex,
             &UiGlobalTransform,
+            &InheritedVisibility,
+            &ComputedUiTargetCamera,
         )>,
     >,
+    camera_map: Extract<UiCameraMap>,
 ) {
     extracted_nodes.nodes.clear();
+    let mut camera_mapper = camera_map.get_mapper();
 
-    for (entity, ui_shape, computed_node, stack_index, transform) in ui_shapes.iter() {
-        let render_entity = commands.spawn(TemporaryRenderEntity).id();
+    for (entity, ui_shape, computed_node, stack_index, transform, visibility, target) in
+        ui_shapes.iter()
+    {
+        // hidden nodes (and zero-sized ones) are not drawn,
+        // matching bevy_ui's own extraction.
+        if !visibility.get() || computed_node.is_empty() {
+            continue;
+        }
+
+        // draw only into the node's own UI camera (like
+        // bevy_ui), not into every view with a UI phase.
+        let Some(extracted_camera_entity) = camera_mapper.map(target) else {
+            continue;
+        };
 
         let Some(shader) = generated_shaders
             .0
@@ -175,6 +193,8 @@ fn extract_ui_shapes(
             // Shader not yet generated - skip this node for now
             continue;
         };
+
+        let render_entity = commands.spawn(TemporaryRenderEntity).id();
 
         extracted_nodes.nodes.push(ExtractedUiShape {
             main_entity: entity.into(),
@@ -190,6 +210,7 @@ fn extract_ui_shapes(
             params: ui_shape.params,
             shader,
             blend_mode: ui_shape.blend_mode,
+            extracted_camera_entity,
         });
     }
 }
@@ -401,54 +422,63 @@ fn queue_ui_shapes(
     mut pipelines: ResMut<SpecializedRenderPipelines<UiShapePipeline>>,
     pipeline_cache: Res<PipelineCache>,
     mut transparent_render_phases: ResMut<ViewSortedRenderPhases<TransparentUi>>,
-    views: Query<&ExtractedView>,
+    render_views: Query<&UiCameraView, With<ExtractedView>>,
+    camera_views: Query<&ExtractedView>,
     extracted_nodes: Res<ExtractedUiShapes>,
 ) {
     let draw_function = draw_functions.read().id::<DrawUiShapes>();
 
-    // For each view that has a TransparentUi phase. The pipeline is specialized
-    // on the view's target format: an HDR camera renders UI to `Rgba16Float`,
-    // and a pipeline built for `Rgba8UnormSrgb` fails validation there.
-    for view in &views {
+    // Each node goes into the UI phase of its own target camera
+    // (bevy_ui's `queue_uinodes` does the same). The pipeline is specialized
+    // on that view's target format: an HDR camera renders UI to
+    // `Rgba16Float`, and a pipeline built for `Rgba8UnormSrgb` fails
+    // validation there.
+    for (index, node) in extracted_nodes.nodes.iter().enumerate() {
+        let Some(view) = render_views
+            .get(node.extracted_camera_entity)
+            .ok()
+            .and_then(|ui_view| camera_views.get(ui_view.0).ok())
+        else {
+            continue;
+        };
+        let target_format = view.target_format;
         let Some(transparent_phase) = transparent_render_phases.get_mut(&view.retained_view_entity)
         else {
             continue;
         };
-        // Add each extracted UiShape to the render phase
-        for (index, node) in extracted_nodes.nodes.iter().enumerate() {
-            // Create pipeline key for this shader combination
-            let key = UiShapePipelineKey {
-                shader: node.shader.clone(),
-                blend_mode: node.blend_mode,
-                target_format: view.target_format,
-            };
 
-            // Specialize the pipeline for this shader combination
-            let pipeline_id = pipelines.specialize(&pipeline_cache, &pipeline, key);
+        // Create pipeline key for this shader combination
+        let key = UiShapePipelineKey {
+            shader: node.shader.clone(),
+            blend_mode: node.blend_mode,
+            target_format,
+        };
 
-            // Check if pipeline is ready - if not, skip this node
-            if !matches!(
-                pipeline_cache.get_render_pipeline_state(pipeline_id),
-                CachedPipelineState::Ok(_)
-            ) {
-                continue;
-            }
+        // Specialize the pipeline for this shader combination
+        let pipeline_id = pipelines.specialize(&pipeline_cache, &pipeline, key);
 
-            // Use stack_index with an offset to control z-ordering
-            // We use a value slightly after MATERIAL (0.05) so UiShapes render in proper layer order
-            let sort_key = FloatOrd(node.stack_index as f32 + stack_z_offsets::MATERIAL + 0.01);
-
-            transparent_phase.add_transient(TransparentUi {
-                entity: (node.render_entity, node.main_entity),
-                draw_function,
-                pipeline: pipeline_id,
-                sort_key,
-                batch_range: 0..1,
-                extra_index: PhaseItemExtraIndex::None,
-                index,
-                indexed: false,
-            });
+        // Check if pipeline is ready - if not, skip this node
+        if !matches!(
+            pipeline_cache.get_render_pipeline_state(pipeline_id),
+            CachedPipelineState::Ok(_)
+        ) {
+            continue;
         }
+
+        // Use stack_index with an offset to control z-ordering
+        // We use a value slightly after MATERIAL (0.05) so UiShapes render in proper layer order
+        let sort_key = FloatOrd(node.stack_index as f32 + stack_z_offsets::MATERIAL + 0.01);
+
+        transparent_phase.add_transient(TransparentUi {
+            entity: (node.render_entity, node.main_entity),
+            draw_function,
+            pipeline: pipeline_id,
+            sort_key,
+            batch_range: 0..1,
+            extra_index: PhaseItemExtraIndex::None,
+            index,
+            indexed: false,
+        });
     }
 }
 
