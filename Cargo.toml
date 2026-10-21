@@ -14,6 +14,10 @@ default = ["bevy_picking", "bevy_primitives", "bevy_ui"]
 bevy_picking = ["bevy/bevy_picking"]
 bevy_ui = ["bevy/bevy_ui_render"]
 bevy_primitives = []
+# CPU SDFs call the `libm` crate instead of the platform's math library (through
+# Bevy's own `libm` feature), so they return the same bits on every platform,
+# for deterministic simulation.
+libm = ["bevy/libm"]
 
 [dependencies]
 bevy = { version = "0.19", default-features = false, features = [

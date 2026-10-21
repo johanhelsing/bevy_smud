@@ -4,8 +4,13 @@
 //! that correspond to the WGSL shaders used in bevy_smud for rendering.
 //! These functions can be used for CPU-side calculations like picking,
 //! collision detection, or other geometric computations.
+//!
+//! Their trig and `powf` go through `bevy::math::ops`, which by default calls
+//! the platform's math library, and that can round the last bit differently
+//! between platforms. Enable the `libm` feature (it turns on Bevy's) for the
+//! same bits everywhere, as a deterministic simulation needs.
 
-use bevy::math::{Vec2, Vec3, Vec4};
+use bevy::math::{Vec2, Vec3, Vec4, ops};
 use std::f32::consts::PI;
 
 // Helpers, some of these have perfect implementations in rust std
@@ -268,7 +273,7 @@ pub fn star_5(p: Vec2, r: f32, rf: f32) -> f32 {
 /// Signed distance to a regular polygon
 pub fn regular_polygon(p: Vec2, radius: f32, sides: i32) -> f32 {
     // Get polar angle
-    let mut angle = p.y.atan2(p.x);
+    let mut angle = ops::atan2(p.y, p.x);
     // Add PI/2 to match Bevy's convention (vertex at top instead of right)
     angle += std::f32::consts::FRAC_PI_2;
     // Make angle to range [0, 2*PI]
@@ -287,16 +292,18 @@ pub fn regular_polygon(p: Vec2, radius: f32, sides: i32) -> f32 {
     let theta2 = delta * (area_number + 1.0);
 
     // Start point on current piece
-    let point_a = Vec2::new(radius * theta1.cos(), radius * theta1.sin());
+    let (sin1, cos1) = ops::sin_cos(theta1);
+    let point_a = Vec2::new(radius * cos1, radius * sin1);
     // End point on current piece
-    let point_a_prime = Vec2::new(radius * theta2.cos(), radius * theta2.sin());
+    let (sin2, cos2) = ops::sin_cos(theta2);
+    let point_a_prime = Vec2::new(radius * cos2, radius * sin2);
     // The middle of start and end point
     let point_d = (point_a + point_a_prime) / 2.0;
 
     // Area 1: near start vertex
     let vector1 = p - point_a;
     let axis1 = point_a;
-    let a1 = (axis1.normalize().dot(vector1.normalize())).acos();
+    let a1 = ops::acos(axis1.normalize().dot(vector1.normalize()));
     if a1 < (delta / 2.0) {
         return vector1.length();
     }
@@ -304,25 +311,28 @@ pub fn regular_polygon(p: Vec2, radius: f32, sides: i32) -> f32 {
     // Area 2: near end vertex
     let vector2 = p - point_a_prime;
     let axis2 = point_a_prime;
-    let a2 = (axis2.normalize().dot(vector2.normalize())).acos();
+    let a2 = ops::acos(axis2.normalize().dot(vector2.normalize()));
     if (std::f32::consts::TAU - a2) < (delta / 2.0) {
         return vector2.length();
     }
 
     // Area 3: distance to edge
     let theta = modulo(angle, delta) - delta / 2.0;
-    p.length() * theta.cos() - point_d.length()
+    p.length() * ops::cos(theta) - point_d.length()
 }
 
 /// Signed distance to a star with n points
 pub fn star(p: Vec2, r: f32, n: i32, m: f32) -> f32 {
     let an = PI / n as f32;
     let en = PI / m;
-    let acs = Vec2::new(an.cos(), an.sin());
-    let ecs = Vec2::new(en.cos(), en.sin());
+    let (an_sin, an_cos) = ops::sin_cos(an);
+    let acs = Vec2::new(an_cos, an_sin);
+    let (en_sin, en_cos) = ops::sin_cos(en);
+    let ecs = Vec2::new(en_cos, en_sin);
 
-    let bn = modulo(p.y.atan2(p.x), 2.0 * an) - an;
-    let mut p_star = Vec2::new(p.length() * bn.cos(), p.length() * bn.sin().abs());
+    let bn = modulo(ops::atan2(p.y, p.x), 2.0 * an) - an;
+    let (bn_sin, bn_cos) = ops::sin_cos(bn);
+    let mut p_star = Vec2::new(p.length() * bn_cos, p.length() * bn_sin.abs());
     p_star -= r * acs;
     p_star = p_star + ecs * clamp(-p_star.dot(ecs), 0.0, r * acs.y / ecs.y);
     p_star.length() * sign(p_star.x)
@@ -475,16 +485,16 @@ pub fn ellipse(p: Vec2, a: f32, b: f32) -> f32 {
     let d = c3 + m2 * n2;
     let g = m + m * n2;
     let co = if d < 0.0 {
-        let h = (q / c3).acos() / 3.0;
-        let s = h.cos();
-        let t = h.sin() * (3.0_f32).sqrt();
+        let h = ops::acos(q / c3) / 3.0;
+        let (sin_h, s) = ops::sin_cos(h);
+        let t = sin_h * (3.0_f32).sqrt();
         let rx = (-c * (s + t + 2.0) + m2).sqrt();
         let ry = (-c * (s - t + 2.0) + m2).sqrt();
         (ry + sign(l) * rx + g.abs() / (rx * ry) - m) / 2.0
     } else {
         let h = 2.0 * m * n * d.sqrt();
-        let s = sign(q + h) * (q + h).abs().powf(1.0 / 3.0);
-        let u = sign(q - h) * (q - h).abs().powf(1.0 / 3.0);
+        let s = sign(q + h) * ops::powf((q + h).abs(), 1.0 / 3.0);
+        let u = sign(q - h) * ops::powf((q - h).abs(), 1.0 / 3.0);
         let rx = -s - u - c * 4.0 + 2.0 * m2;
         let ry = (s - u) * (3.0_f32).sqrt();
         let rm = (rx * rx + ry * ry).sqrt();
@@ -504,9 +514,9 @@ pub fn parabola(p: Vec2, k: f32) -> f32 {
     let h = q * q - p * p * p;
     let r = h.abs().sqrt();
     let x = if h > 0.0 {
-        (q + r).powf(1.0 / 3.0) - (q - r).abs().powf(1.0 / 3.0) * sign(r - q)
+        ops::powf(q + r, 1.0 / 3.0) - ops::powf((q - r).abs(), 1.0 / 3.0) * sign(r - q)
     } else {
-        2.0 * ((r / q).atan() / 3.0).cos() * p.sqrt()
+        2.0 * ops::cos(ops::atan(r / q) / 3.0) * p.sqrt()
     };
     (pos - Vec2::new(x, k * x * x)).length() * sign(pos.x - x)
 }
@@ -521,9 +531,9 @@ pub fn parabola_segment(p: Vec2, wi: f32, he: f32) -> f32 {
     let h = q * q - p * p * p;
     let r = h.abs().sqrt();
     let mut x = if h > 0.0 {
-        (q + r).powf(1.0 / 3.0) - (q - r).abs().powf(1.0 / 3.0) * sign(r - q)
+        ops::powf(q + r, 1.0 / 3.0) - ops::powf((q - r).abs(), 1.0 / 3.0) * sign(r - q)
     } else {
-        2.0 * ((r / q).atan() / 3.0).cos() * p.sqrt()
+        2.0 * ops::cos(ops::atan(r / q) / 3.0) * p.sqrt()
     };
     x = x.min(wi);
     (pos - Vec2::new(x, he - x * x / ik)).length() * sign(ik * (pos.y - he) + pos.x * pos.x)
@@ -543,10 +553,10 @@ pub fn blobby_cross(p: Vec2, he: f32) -> f32 {
 
     let x = if h > 0.0 {
         let r = h.sqrt();
-        (q + r).powf(1.0 / 3.0) - (q - r).abs().powf(1.0 / 3.0) * sign(r - q)
+        ops::powf(q + r, 1.0 / 3.0) - ops::powf((q - r).abs(), 1.0 / 3.0) * sign(r - q)
     } else {
         let r = p.sqrt();
-        2.0 * r * ((q / (p * r)).acos() / 3.0).cos()
+        2.0 * r * ops::cos(ops::acos(q / (p * r)) / 3.0)
     };
     let x = x.min((2.0_f32).sqrt() / 2.0);
 
@@ -738,5 +748,53 @@ mod tests {
         let result = capsule(Vec2::ZERO, radius, half_length);
         assert!(result.is_finite());
         assert_eq!(result, -radius);
+    }
+
+    /// Under the `libm` feature `ops` returns the `libm` crate's bits. The
+    /// inputs are ones where glibc rounds the last bit the other way, so on
+    /// Linux this fails if the feature does not reach Bevy's.
+    #[cfg(feature = "libm")]
+    #[test]
+    fn test_ops_return_libm_bits() {
+        assert_eq!(ops::acos(-0.999_447).to_bits(), 0x4046_eef2);
+        assert_eq!(ops::sin(-9.999_97).to_bits(), 0x3f0b_4358);
+        assert_eq!(ops::cos(-8.639_339).to_bits(), 0xbf35_0315);
+        assert_eq!(ops::atan(-9.999_58).to_bits(), 0xbfbc_4dc6);
+        assert_eq!(
+            ops::atan2(-1.999_970_4, -0.199_997_01).to_bits(),
+            0xbfd5_d1cb
+        );
+        assert_eq!(ops::powf(0.000_525, 1.0 / 3.0).to_bits(), 0x3da5_3710);
+    }
+
+    /// The shapes that call `ops`, at points that between them reach every
+    /// call, against values recorded from std before `ops` existed. Run with
+    /// and without the `libm` feature: both must land on them.
+    #[test]
+    fn test_trig_shapes_match_std_values() {
+        #[rustfmt::skip]
+        let cases = [
+            (Vec2::new(0.3, 0.7), [-0.109017015, 0.29999998, -0.035210155, 0.22061822, -0.21250995, -0.33994338, -0.28143716, 0.650242]),
+            (Vec2::new(-1.2, 0.4), [0.4558577, 0.4392303, 0.43374062, 0.34590256, 0.6208425, 0.5962848, 0.34457785, 0.82462114]),
+            (Vec2::new(0.05, -0.9), [-0.05151242, 0.093301356, 0.15832357, 0.4005209, -0.37738326, 0.901013, -1.3086252, -0.7079901]),
+            (Vec2::new(2.5, -1.5), [1.8739717, 2.2671568, 2.12132, 2.048595, 2.1250765, 2.7271929, 2.1213202, 2.236068]),
+            (Vec2::new(0.0, 0.2), [-0.609017, -0.2, -0.2862005, -0.3, -0.5924526, 0.0, -0.8122329, 0.24341898]),
+            (Vec2::new(0.1, 1.5), [0.690983, 1.1, 0.58739, 1.001667, 0.11359351, -0.8491757, 0.306924, 0.82462114]),
+        ];
+        for (p, expected) in cases {
+            let actual = [
+                regular_polygon(p, 1.0, 5),
+                regular_polygon(p, 0.8, 3),
+                star(p, 1.0, 5, 3.0),
+                ellipse(p, 1.0, 0.5),
+                ellipse(p, 0.6, 1.4),
+                parabola(p, 1.5),
+                parabola_segment(p, 1.0, 1.2),
+                blobby_cross(p, 0.7),
+            ];
+            for (i, (a, e)) in actual.iter().zip(expected).enumerate() {
+                assert!((a - e).abs() < 1e-5, "shape {i} at {p}: {a} != {e}");
+            }
+        }
     }
 }

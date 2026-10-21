@@ -42,6 +42,7 @@
 
 use bevy::asset::{load_internal_asset, uuid_handle};
 use bevy::math::bounding::Bounded2d;
+use bevy::math::ops;
 use bevy::math::primitives::{
     Annulus, Capsule2d, Circle, CircularSector, Ellipse, Rectangle, RegularPolygon, Rhombus,
 };
@@ -359,14 +360,14 @@ impl SmudPrimitive for CircularSector {
     }
 
     fn params(&self) -> Vec4 {
-        let (sin, cos) = self.arc.half_angle.sin_cos();
+        let (sin, cos) = ops::sin_cos(self.arc.half_angle);
         Vec4::new(sin, cos, 0.0, 0.0)
     }
 
     fn try_from_shape(shape: &SmudShape) -> Option<Self> {
         if shape.sdf.id() == CIRCULAR_SECTOR_SDF_HANDLE.id() {
             let radius = shape.bounds.half_size.x.min(shape.bounds.half_size.y);
-            let half_angle = shape.params.x.atan2(shape.params.y);
+            let half_angle = ops::atan2(shape.params.x, shape.params.y);
             Some(CircularSector::new(radius, half_angle))
         } else {
             None
