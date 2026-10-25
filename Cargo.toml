@@ -20,7 +20,7 @@ bevy_primitives = []
 libm = ["bevy/libm"]
 
 [dependencies]
-bevy = { version = "0.19", default-features = false, features = [
+bevy = { version = "0.20", default-features = false, features = [
   "bevy_asset",         # needed for handle ids
   "bevy_core_pipeline",
   "bevy_log",
@@ -34,18 +34,19 @@ fixedbitset = "0.5"
 uuid = "1.10.0"
 
 [dev-dependencies]
-bevy = { version = "0.19", default-features = false, features = [
+bevy = { version = "0.20", default-features = false, features = [
   "bevy_post_process",
   "bevy_sprite_render",
   "bevy_state",
+  "bevy_ui_widgets",
   "bevy_winit",
   "default_font",
   "file_watcher",
   "x11",            # github actions runners don't have libxkbcommon installed, so can't use wayland
 ] }
-bevy_asset_loader = "0.27.0-rc.1"
-bevy_lospec = "0.13"
-bevy_pancam = "0.21"
+bevy_asset_loader = "0.28"
+bevy_lospec = "0.14"
+bevy_pancam = "0.22"
 rand = "0.9"
 
 [profile.dev]

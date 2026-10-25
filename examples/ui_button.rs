@@ -1,5 +1,8 @@
 use bevy::color::palettes::css;
+use bevy::picking::hover::Hovered;
 use bevy::prelude::*;
+use bevy::ui::Pressed;
+use bevy::ui_widgets::Button;
 use bevy_smud::prelude::*;
 
 fn main() {
@@ -56,6 +59,7 @@ return vec4<f32>(input.color.rgb, a * input.color.a);
             // Regular button
             (
                 Button,
+                Hovered::default(),
                 Node {
                     width: Val::Px(220.0),
                     height: Val::Px(80.0),
@@ -80,6 +84,7 @@ return vec4<f32>(input.color.rgb, a * input.color.a);
             // Regular button
             (
                 Button,
+                Hovered::default(),
                 Node {
                     width: Val::Px(220.0),
                     height: Val::Px(80.0),
@@ -105,6 +110,7 @@ return vec4<f32>(input.color.rgb, a * input.color.a);
             // Bevy button
             (
                 Button,
+                Hovered::default(),
                 Node {
                     width: Val::Px(450.0),
                     height: Val::Px(450.0),
@@ -112,7 +118,7 @@ return vec4<f32>(input.color.rgb, a * input.color.a);
                 },
                 UiShape {
                     color: css::CORNFLOWER_BLUE.into(),
-                    sdf: asset_server.load("bevy.wgsl"),
+                    sdf: asset_server.load("bevy.wesl"),
                     fill,
                     ..default()
                 },
@@ -121,12 +127,18 @@ return vec4<f32>(input.color.rgb, a * input.color.a);
     ));
 }
 
-fn button_interaction(mut query: Query<(&mut UiShape, &Interaction), Changed<Interaction>>) {
-    for (mut shape, interaction) in query.iter_mut() {
-        shape.color = match interaction {
-            Interaction::Pressed => css::DARK_BLUE.into(),
-            Interaction::Hovered => css::DODGER_BLUE.into(),
-            Interaction::None => css::CORNFLOWER_BLUE.into(),
+#[allow(clippy::type_complexity)]
+fn button_interaction(
+    mut query: Query<
+        (&mut UiShape, &Hovered, Has<Pressed>),
+        Or<(Changed<Hovered>, Changed<Pressed>)>,
+    >,
+) {
+    for (mut shape, hovered, pressed) in query.iter_mut() {
+        shape.color = match (hovered.get(), pressed) {
+            (_, true) => css::DARK_BLUE.into(),
+            (true, false) => css::DODGER_BLUE.into(),
+            (false, false) => css::CORNFLOWER_BLUE.into(),
         };
     }
 }

@@ -11,7 +11,7 @@ fn main() {
 }
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
-    let bevy_shape_shader = asset_server.load("bevy.wgsl");
+    let bevy_shape_shader = asset_server.load("bevy.wesl");
 
     commands.spawn(SmudShape {
         color: Color::srgb(0.36, 0.41, 0.45),

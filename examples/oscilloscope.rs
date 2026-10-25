@@ -19,7 +19,7 @@ fn setup(
     // The fill takes a distance and a color and returns another color
     commands.spawn(SmudShape {
         color: css::ORANGE.into(),
-        sdf: asset_server.load("bevy.wgsl"),
+        sdf: asset_server.load("bevy.wesl"),
         fill: shaders.add_fill_body(
                 r"
 var col = color.rgb / sqrt(abs(d));

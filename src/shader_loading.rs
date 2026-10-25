@@ -1,6 +1,9 @@
+use std::borrow::Cow;
+
 use bevy::{
     asset::{load_internal_asset, uuid_handle},
     prelude::*,
+    shader::ShaderImport,
 };
 
 const SMUD_SHADER_HANDLE: Handle<Shader> = uuid_handle!("eca0ed31-c377-41be-94a8-55154ecb0810");
@@ -25,36 +28,69 @@ impl Plugin for ShaderLoadingPlugin {
         load_internal_asset!(
             app,
             SMUD_SHADER_HANDLE,
-            "../assets/smud.wgsl",
-            Shader::from_wgsl
+            "../assets/smud.wesl",
+            wesl_module,
+            "smud"
         );
 
         load_internal_asset!(
             app,
             VIEW_BINDINGS_SHADER_HANDLE,
-            "../assets/view_bindings.wgsl",
-            Shader::from_wgsl
+            "../assets/view_bindings.wesl",
+            wesl_module,
+            "bevy_smud::view_bindings"
         );
 
         load_internal_asset!(
             app,
             VERTEX_SHADER_HANDLE,
-            "../assets/vertex.wgsl",
-            Shader::from_wgsl
+            "../assets/vertex.wesl",
+            wesl_module,
+            "bevy_smud::vertex"
         );
 
         load_internal_asset!(
             app,
             DEFAULT_FILL_HANDLE,
-            "../assets/fills/cubic_falloff.wgsl",
-            Shader::from_wgsl
+            "../assets/fills/cubic_falloff.wesl",
+            wesl_module,
+            "smud::default_fill"
         );
 
         load_internal_asset!(
             app,
             SIMPLE_FILL_HANDLE,
-            "../assets/fills/simple.wgsl",
-            Shader::from_wgsl
+            "../assets/fills/simple.wesl",
+            wesl_module,
+            "smud::simple_fill"
         );
+    }
+}
+
+/// A WESL shader that other shaders import by `module`, such as `smud::default_fill`.
+///
+/// WESL names a module after its asset path. smud's own shaders are not loaded
+/// from a path, so they get a fixed module path instead.
+pub(crate) fn wesl_module(
+    source: impl Into<Cow<'static, str>>,
+    path: impl Into<String>,
+    module: &str,
+) -> Shader {
+    let mut shader = Shader::from_wesl(source, path);
+    shader.import_path = ShaderImport::Custom(module.into());
+    shader
+}
+
+/// How a WESL shader imports the module of `shader`.
+///
+/// A shader loaded from an asset is imported by its asset path relative to the
+/// asset root: `package::gallery::heart` for `gallery/heart.wesl`.
+pub(crate) fn wesl_import_path(shader: &Shader) -> String {
+    match &shader.import_path {
+        ShaderImport::Custom(module) => module.clone(),
+        ShaderImport::AssetPath(path) => std::iter::once("package")
+            .chain(path.split('/').filter(|component| !component.is_empty()))
+            .collect::<Vec<_>>()
+            .join("::"),
     }
 }

@@ -64,7 +64,7 @@ fn setup(
     let clear_color = palette.lightest();
     commands.insert_resource(ClearColor(clear_color));
 
-    let bevy_shape_shader = asset_server.load("bevy.wgsl");
+    let bevy_shape_shader = asset_server.load("bevy.wesl");
 
     for i in 0..w {
         for j in 0..h {

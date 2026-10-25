@@ -48,11 +48,11 @@ use bevy::{
         texture::{FallbackImage, GpuImage},
         view::{
             COLOR_TARGET_FORMAT_MASK_BITS, ExtractedView, RenderVisibleEntities,
-            RetainedViewEntity, ViewUniform, ViewUniformOffset, ViewUniforms,
-            texture_format_from_code, texture_format_to_code,
+            ResolvedCompositingSpace, RetainedViewEntity, ViewUniform, ViewUniformOffset,
+            ViewUniforms, texture_format_from_code, texture_format_to_code,
         },
     },
-    shader::{ShaderDefVal, ShaderImport},
+    shader::{ShaderDefVal, Source},
 };
 use bytemuck::{Pod, Zeroable};
 use fixedbitset::FixedBitSet;
@@ -91,7 +91,7 @@ pub mod prelude {
     };
 
     #[cfg(feature = "bevy_primitives")]
-    pub use bevy::math::primitives::{Annulus, Circle, Ellipse, Rectangle};
+    pub use bevy::shape::{Annulus, Circle, Ellipse, Rectangle};
 
     #[cfg(feature = "bevy_picking")]
     pub use crate::picking_backend::{
@@ -270,8 +270,8 @@ impl SpecializedRenderPipeline for SmudPipeline {
                 .intersection(PipelineKey::TONEMAP_METHOD_RESERVED_BITS);
 
             match method {
-                PipelineKey::TONEMAP_METHOD_NONE => {
-                    shader_defs.push("TONEMAP_METHOD_NONE".into());
+                PipelineKey::TONEMAP_METHOD_LINEAR => {
+                    shader_defs.push("TONEMAP_METHOD_LINEAR".into());
                 }
                 PipelineKey::TONEMAP_METHOD_REINHARD => {
                     shader_defs.push("TONEMAP_METHOD_REINHARD".into());
@@ -369,6 +369,7 @@ impl SpecializedRenderPipeline for SmudPipeline {
                     step_mode: VertexStepMode::Instance,
                     attributes: vertex_attributes,
                 }],
+                ..default()
             },
             fragment: Some(FragmentState {
                 shader: key.shader.clone(),
@@ -394,6 +395,7 @@ impl SpecializedRenderPipeline for SmudPipeline {
                     }),
                     write_mask: ColorWrites::ALL,
                 })],
+                ..default()
             }),
             layout: vec![
                 // Bind group 0 is the view uniform
@@ -455,57 +457,24 @@ impl GeneratedShaders {
             return Some(handle.clone());
         }
 
-        let sdf_import_path = match shaders.get_mut(sdf) {
-            Some(mut shader) => match &shader.import_path {
-                ShaderImport::Custom(p) => p.to_owned(),
-                _ => {
-                    let id = generate_shader_id();
-                    let path = format!("smud::generated::{id}");
-                    shader.import_path = ShaderImport::Custom(path.clone());
-                    path
-                }
-            },
-            None => {
-                debug!("Waiting for sdf to load");
-                return None;
-            }
-        };
-
-        let fill_import_path = match shaders.get_mut(fill) {
-            Some(mut shader) => match &shader.import_path {
-                ShaderImport::Custom(p) => p.to_owned(),
-                _ => {
-                    let id = generate_shader_id();
-                    let path = format!("smud::generated::{id}");
-                    shader.import_path = ShaderImport::Custom(path.clone());
-                    path
-                }
-            },
-            None => {
-                debug!("Waiting for fill to load");
-                return None;
-            }
-        };
+        let sdf_import_path = import_path_of(shaders, sdf, "sdf")?;
+        let fill_import_path = import_path_of(shaders, fill, "fill")?;
 
         debug!("Generating shader");
-        let generated_shader = Shader::from_wgsl(
+        let generated_shader = Shader::from_wesl(
             format!(
                 r#"
-#ifdef TONEMAP_IN_SHADER
-#import bevy_core_pipeline::tonemapping
-#endif
-#ifdef SRGB_OUTPUT
-#import bevy_render::color_operations::linear_to_srgb
-#endif
-#ifdef OKLAB_OUTPUT
-#import bevy_render::color_operations::linear_rgb_to_oklab
-#endif
+@if(TONEMAP_IN_SHADER)
+import bevy_core_pipeline::tonemapping;
+@if(SRGB_OUTPUT)
+import bevy_render::color_operations::linear_to_srgb;
+@if(OKLAB_OUTPUT)
+import bevy_render::color_operations::linear_rgb_to_oklab;
 
-#import bevy_smud::view_bindings::view
-#import smud
+import bevy_smud::view_bindings::view;
 
-#import {sdf_import_path} as sdf
-#import {fill_import_path} as fill
+import {sdf_import_path} as sdf;
+import {fill_import_path} as fill;
 
 struct FragmentInput {{
     @location(0) color: vec4<f32>,
@@ -526,23 +495,22 @@ fn fragment(in: FragmentInput) -> @location(0) vec4<f32> {{
     );
     var color = fill::fill(fill_input);
 
-#ifdef TONEMAP_IN_SHADER
+@if(TONEMAP_IN_SHADER)
     color = tonemapping::tone_mapping(color, view.color_grading);
-#endif
 
-#ifdef SRGB_OUTPUT
+@if(SRGB_OUTPUT)
     color = vec4(linear_to_srgb(color.rgb), color.a);
-#endif
 
-#ifdef OKLAB_OUTPUT
+@if(OKLAB_OUTPUT)
     color = vec4(linear_rgb_to_oklab(color.rgb), color.a);
-#endif
 
     return color;
 }}
 "#
             ),
-            format!("smud::generated::{shader_key:?}"),
+            // An asset path, so `package::` in the imports above names the
+            // asset root, where shaders loaded from files live.
+            format!("bevy_smud/generated/shape{}.wesl", generate_shader_id()),
         );
 
         let generated_shader_handle = shaders.add(generated_shader);
@@ -551,6 +519,24 @@ fn fragment(in: FragmentInput) -> @location(0) vec4<f32> {{
 
         Some(generated_shader_handle)
     }
+}
+
+/// The WESL import path of a loaded sdf or fill shader, or `None` while it loads.
+fn import_path_of(shaders: &Assets<Shader>, handle: &Handle<Shader>, kind: &str) -> Option<String> {
+    let Some(shader) = shaders.get(handle) else {
+        debug!("Waiting for {kind} to load");
+        return None;
+    };
+    if !matches!(shader.source, Source::Wesl(_)) {
+        // Only WESL shaders can be imported. A `.wgsl` file is plain WGSL, so
+        // the generated shader would wait on it forever.
+        warn_once!(
+            "smud {kind} shader `{}` is not WESL. Rename it to `.wesl`.",
+            shader.path
+        );
+        return None;
+    }
+    Some(wesl_import_path(shader))
 }
 
 // TODO: do some of this work in the main world instead, so we don't need to take a mutable
@@ -649,7 +635,7 @@ bitflags::bitflags! {
         const MSAA_RESERVED_BITS                = Self::MSAA_MASK_BITS << Self::MSAA_SHIFT_BITS;
         const PRIMITIVE_TOPOLOGY_RESERVED_BITS  = Self::PRIMITIVE_TOPOLOGY_MASK_BITS << Self::PRIMITIVE_TOPOLOGY_SHIFT_BITS;
         const TONEMAP_METHOD_RESERVED_BITS      = Self::TONEMAP_METHOD_MASK_BITS << Self::TONEMAP_METHOD_SHIFT_BITS;
-        const TONEMAP_METHOD_NONE               = 0 << Self::TONEMAP_METHOD_SHIFT_BITS;
+        const TONEMAP_METHOD_LINEAR             = 0 << Self::TONEMAP_METHOD_SHIFT_BITS;
         const TONEMAP_METHOD_REINHARD           = 1 << Self::TONEMAP_METHOD_SHIFT_BITS;
         const TONEMAP_METHOD_REINHARD_LUMINANCE = 2 << Self::TONEMAP_METHOD_SHIFT_BITS;
         const TONEMAP_METHOD_ACES_FITTED        = 3 << Self::TONEMAP_METHOD_SHIFT_BITS;
@@ -720,6 +706,15 @@ impl PipelineKey {
         }
     }
 
+    /// Key bits for a view's resolved [`CompositingSpace`].
+    pub fn from_compositing_space(space: Option<CompositingSpace>) -> Self {
+        match space {
+            Some(CompositingSpace::Srgb) => Self::SRGB_COMPOSITING,
+            Some(CompositingSpace::Oklab) => Self::OKLAB_COMPOSITING,
+            Some(CompositingSpace::Linear) | None => Self::NONE,
+        }
+    }
+
     pub fn from_blend_mode(blend_mode: BlendMode) -> Self {
         match blend_mode {
             BlendMode::Alpha => Self::NONE,
@@ -744,13 +739,13 @@ fn queue_shapes(
         &Msaa,
         Option<&Tonemapping>,
         Option<&DebandDither>,
+        Option<&ResolvedCompositingSpace>,
     )>,
-    // ?
 ) {
     let draw_smud_shape_function = draw_functions.read().get_id::<DrawSmudShape>().unwrap();
 
     // Iterate over each view (a camera is a view)
-    for (visible_entities, camera, view, msaa, tonemapping, dither) in &mut views {
+    for (visible_entities, camera, view, msaa, tonemapping, dither, resolved_space) in &mut views {
         let Some(transparent_phase) = transparent_render_phases.get_mut(&view.retained_view_entity)
         else {
             continue;
@@ -759,36 +754,28 @@ fn queue_shapes(
         let mesh_key = PipelineKey::from_msaa_samples(msaa.samples())
             | PipelineKey::from_primitive_topology(PrimitiveTopology::TriangleStrip);
 
-        let mut view_key = PipelineKey::from_target_format(view.target_format) | mesh_key;
+        let mut view_key = PipelineKey::from_target_format(view.target_format)
+            | mesh_key
+            | PipelineKey::from_compositing_space(ResolvedCompositingSpace::space(resolved_space));
 
-        if camera.compositing_space == Some(CompositingSpace::Srgb) {
-            view_key |= PipelineKey::SRGB_COMPOSITING;
-        }
-        if camera.compositing_space == Some(CompositingSpace::Oklab) {
-            view_key |= PipelineKey::OKLAB_COMPOSITING;
-        }
-
-        if !camera.hdr {
-            if let Some(tonemapping) = tonemapping {
-                view_key |= PipelineKey::TONEMAP_IN_SHADER;
-                view_key |= match tonemapping {
-                    Tonemapping::None => PipelineKey::TONEMAP_METHOD_NONE,
-                    Tonemapping::Reinhard => PipelineKey::TONEMAP_METHOD_REINHARD,
-                    Tonemapping::ReinhardLuminance => {
-                        PipelineKey::TONEMAP_METHOD_REINHARD_LUMINANCE
-                    }
-                    Tonemapping::AcesFitted => PipelineKey::TONEMAP_METHOD_ACES_FITTED,
-                    Tonemapping::AgX => PipelineKey::TONEMAP_METHOD_AGX,
-                    Tonemapping::SomewhatBoringDisplayTransform => {
-                        PipelineKey::TONEMAP_METHOD_SOMEWHAT_BORING_DISPLAY_TRANSFORM
-                    }
-                    Tonemapping::TonyMcMapface => PipelineKey::TONEMAP_METHOD_TONY_MC_MAPFACE,
-                    Tonemapping::BlenderFilmic => PipelineKey::TONEMAP_METHOD_BLENDER_FILMIC,
-                    Tonemapping::KhronosPbrNeutral => {
-                        PipelineKey::TONEMAP_METHOD_KHRONOS_PBR_NEUTRAL
-                    }
-                };
-            }
+        if !camera.hdr
+            && let Some(tonemapping) = tonemapping
+            && tonemapping.is_enabled()
+        {
+            view_key |= PipelineKey::TONEMAP_IN_SHADER;
+            view_key |= match tonemapping {
+                Tonemapping::None | Tonemapping::Linear => PipelineKey::TONEMAP_METHOD_LINEAR,
+                Tonemapping::Reinhard => PipelineKey::TONEMAP_METHOD_REINHARD,
+                Tonemapping::ReinhardLuminance => PipelineKey::TONEMAP_METHOD_REINHARD_LUMINANCE,
+                Tonemapping::AcesFitted => PipelineKey::TONEMAP_METHOD_ACES_FITTED,
+                Tonemapping::AgX => PipelineKey::TONEMAP_METHOD_AGX,
+                Tonemapping::SomewhatBoringDisplayTransform => {
+                    PipelineKey::TONEMAP_METHOD_SOMEWHAT_BORING_DISPLAY_TRANSFORM
+                }
+                Tonemapping::TonyMcMapface => PipelineKey::TONEMAP_METHOD_TONY_MC_MAPFACE,
+                Tonemapping::BlenderFilmic => PipelineKey::TONEMAP_METHOD_BLENDER_FILMIC,
+                Tonemapping::KhronosPbrNeutral => PipelineKey::TONEMAP_METHOD_KHRONOS_PBR_NEUTRAL,
+            };
             if let Some(DebandDither::Enabled) = dither {
                 view_key |= PipelineKey::DEBAND_DITHER;
             }
@@ -905,9 +892,7 @@ fn prepare_shapes(
     for (retained_view, transparent_phase) in phases.iter_mut() {
         let mut current_batch = None;
         let mut batch_item_index = 0;
-        // let mut batch_image_size = Vec2::ZERO;
-        // let mut batch_image_handle = AssetId::invalid();
-        let mut batch_shader_id = AssetId::invalid();
+        let mut batch_shader_id = None;
 
         // Iterate through the phase items and detect when successive shapes that can be batched.
         // Spawn an entity with a `ShapeBatch` component for each possible batch.
@@ -923,13 +908,13 @@ fn prepare_shapes(
                 // If there is a phase item that is not a shape, then we must start a new
                 // batch to draw the other phase item(s) and to respect draw order. This can be
                 // done by invalidating the batch_shader_handle
-                batch_shader_id = AssetId::invalid();
+                batch_shader_id = None;
                 continue;
             };
 
             let shader_id = extracted_shape.shader.id();
 
-            let batch_shader_changed = batch_shader_id != shader_id;
+            let batch_shader_changed = batch_shader_id != Some(shader_id);
 
             let lrgba: LinearRgba = extracted_shape.color.into();
             let color = lrgba.to_f32_array();

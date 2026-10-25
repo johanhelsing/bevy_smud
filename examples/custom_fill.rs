@@ -21,7 +21,7 @@ fn setup(
 
     commands.spawn(SmudShape {
         color: css::TEAL.into(),
-        sdf: asset_server.load("bevy.wgsl"),
+        sdf: asset_server.load("bevy.wesl"),
         fill: sin_fill,
         bounds: Rectangle::from_length(590.),
         ..default()
@@ -31,7 +31,7 @@ fn setup(
         Transform::from_translation(Vec3::X * 600.),
         SmudShape {
             color: css::BLUE.into(),
-            sdf: asset_server.load("bevy.wgsl"),
+            sdf: asset_server.load("bevy.wesl"),
             fill: SIMPLE_FILL_HANDLE,
             bounds: Rectangle::from_length(590.),
             ..default()
@@ -42,7 +42,7 @@ fn setup(
         Transform::from_translation(Vec3::X * -600.),
         SmudShape {
             color: css::ORANGE.into(),
-            sdf: asset_server.load("bevy.wgsl"),
+            sdf: asset_server.load("bevy.wesl"),
             fill: shaders.add_fill_body(
                 r"
 let d_2 = abs(d - 1.) - 1.;

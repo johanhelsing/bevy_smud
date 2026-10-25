@@ -1,8 +1,8 @@
 use bevy::camera::visibility::{VisibilityClass, add_visibility_class};
 use bevy::color::palettes::css;
-use bevy::math::primitives::Rectangle;
 use bevy::prelude::*;
 use bevy::render::sync_world::SyncToRenderWorld;
+use bevy::shape::Rectangle;
 
 use crate::DEFAULT_FILL_HANDLE;
 
