@@ -947,6 +947,7 @@ fn prepare_shapes(
 
             if batch_shader_changed {
                 batch_item_index = item_index;
+                batch_shader_id = Some(shader_id);
 
                 current_batch = Some(batches.entry((*retained_view, item.main_entity())).insert(
                     ShapeBatch {
