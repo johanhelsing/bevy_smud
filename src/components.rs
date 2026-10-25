@@ -1,7 +1,5 @@
-use bevy::camera::visibility::{VisibilityClass, add_visibility_class};
 use bevy::color::palettes::css;
 use bevy::prelude::*;
-use bevy::render::sync_world::SyncToRenderWorld;
 use bevy::shape::Rectangle;
 
 use crate::DEFAULT_FILL_HANDLE;
@@ -17,9 +15,8 @@ pub enum BlendMode {
 }
 
 #[derive(Component, Reflect, Debug, Clone)]
-#[require(Transform, Visibility, SyncToRenderWorld, VisibilityClass)] // TODO: anchor?
+#[require(Transform, Visibility)] // TODO: anchor?
 #[reflect(Component, Default, Debug, Clone)]
-#[component(on_add = add_visibility_class::<SmudShape>)]
 /// Main component used for describing an sdf shape
 pub struct SmudShape {
     /// The color used by the fill shader

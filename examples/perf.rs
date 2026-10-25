@@ -6,6 +6,7 @@
 //! - `mode`: `static` (nothing changes), `moving` (every transform changes every
 //!   frame) or `recolor` (every shape's color changes every frame)
 //! - `combos`: number of distinct sdf shaders, so pipelines and batches
+//! - `--shot <file>`: save the image as warmup ends, to check what is drawn
 //!
 //! It renders headless into an image, so no compositor caps the frame rate, and
 //! waits for the GPU at the end of every frame, so a frame time covers the CPU
@@ -20,8 +21,9 @@ use bevy::{
     prelude::*,
     render::{
         Render, RenderApp, RenderSystems,
-        render_resource::{PollType, TextureFormat},
+        render_resource::{PollType, TextureFormat, TextureUsages},
         renderer::RenderDevice,
+        view::screenshot::{Screenshot, save_to_disk},
     },
     window::ExitCondition,
     winit::WinitPlugin,
@@ -43,9 +45,13 @@ enum Mode {
 #[derive(Resource)]
 struct Settings {
     count: usize,
+    shot: Option<String>,
     mode: Mode,
     combos: usize,
 }
+
+#[derive(Resource)]
+struct Target(Handle<Image>);
 
 #[derive(Resource, Default)]
 struct FrameTimes(Vec<f32>);
@@ -63,11 +69,16 @@ fn main() {
         other => panic!("unknown mode {other}"),
     };
     let combos = args.get(3).map_or(1, |s| s.parse().unwrap());
+    let shot = args
+        .iter()
+        .position(|arg| arg == "--shot")
+        .map(|i| args[i + 1].clone());
 
     let mut app = App::new();
     app.insert_resource(ClearColor(Color::BLACK))
         .insert_resource(Settings {
             count,
+            shot,
             mode,
             combos,
         })
@@ -81,10 +92,10 @@ fn main() {
                 })
                 .disable::<WinitPlugin>(),
             ScheduleRunnerPlugin::run_loop(Duration::ZERO),
-            SmudPlugin,
         ))
         .add_systems(Startup, setup)
         .add_systems(Update, (move_shapes, recolor_shapes, measure));
+    app.add_plugins(SmudPlugin);
     app.sub_app_mut(RenderApp)
         .add_systems(Render, wait_for_gpu.in_set(RenderSystems::Cleanup));
     app.run();
@@ -96,17 +107,16 @@ fn setup(
     mut images: ResMut<Assets<Image>>,
     settings: Res<Settings>,
 ) {
-    let target = Image::new_target_texture(
+    let mut target = Image::new_target_texture(
         WIDTH as u32,
         HEIGHT as u32,
         TextureFormat::Rgba8UnormSrgb,
         None,
     );
-    commands.spawn((
-        Camera2d,
-        Msaa::Off,
-        RenderTarget::Image(images.add(target).into()),
-    ));
+    target.texture_descriptor.usage |= TextureUsages::COPY_SRC;
+    let target = images.add(target);
+    commands.insert_resource(Target(target.clone()));
+    commands.spawn((Camera2d, Msaa::Off, RenderTarget::Image(target.into())));
 
     // Distinct shaders that cost the same: circles of slightly different radii.
     let sdfs: Vec<_> = (0..settings.combos)
@@ -181,14 +191,23 @@ fn recolor_shapes(
 }
 
 fn measure(
+    mut commands: Commands,
     time: Res<Time<Real>>,
     settings: Res<Settings>,
+    target: Res<Target>,
     mut frame_times: ResMut<FrameTimes>,
     mut exit: MessageWriter<AppExit>,
 ) {
     let elapsed = time.elapsed_secs();
     if elapsed < WARMUP_SECS {
         return;
+    }
+    if frame_times.0.is_empty()
+        && let Some(path) = &settings.shot
+    {
+        commands
+            .spawn(Screenshot::image(target.0.clone()))
+            .observe(save_to_disk(path.clone()));
     }
     if elapsed < WARMUP_SECS + MEASURE_SECS {
         frame_times.0.push(time.delta_secs() * 1000.);

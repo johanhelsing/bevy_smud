@@ -5,7 +5,9 @@ use bevy::{
         SystemParamItem,
         lifetimeless::{Read, SRes},
     },
-    math::{Affine2, Rect},
+    math::{Affine2, FloatOrd, Rect},
+    mesh::VertexBufferLayout,
+    platform::collections::HashMap,
     prelude::*,
     render::{
         Extract, ExtractSchedule, MainWorld, Render, RenderApp, RenderSystems,
@@ -30,11 +32,13 @@ use bevy::{
     ui::{ComputedNode, ComputedStackIndex, ComputedUiTargetCamera, Node, UiGlobalTransform},
     ui_render::{TransparentUi, UiCameraMap, UiCameraView, stack_z_offsets},
 };
+
 use bytemuck::{Pod, Zeroable};
 
 use crate::{
-    BlendMode, FloatOrd, GeneratedShaders, SIMPLE_FILL_HANDLE, VertexBufferLayout,
-    shader_loading::VERTEX_SHADER_HANDLE,
+    BlendMode, SIMPLE_FILL_HANDLE,
+    shader_loading::{VERTEX_SHADER_HANDLE, import_path_of},
+    util::generate_shader_id,
 };
 
 /// Component for rendering shapes in UI.
@@ -111,6 +115,89 @@ impl Default for UiShapeMeta {
             vertices: RawBufferVec::new(BufferUsages::VERTEX),
             view_bind_group: None,
         }
+    }
+}
+
+#[derive(Default, Resource)]
+pub(crate) struct GeneratedShaders(
+    pub(crate) HashMap<(AssetId<Shader>, AssetId<Shader>), Handle<Shader>>,
+);
+
+impl GeneratedShaders {
+    /// Generate and add the shader for an sdf and fill pair
+    fn try_generate(
+        &mut self,
+        sdf: &Handle<Shader>,
+        fill: &Handle<Shader>,
+        shaders: &mut Assets<Shader>,
+    ) -> Option<Handle<Shader>> {
+        let shader_key = (sdf.id(), fill.id());
+
+        if let Some(handle) = self.0.get(&shader_key) {
+            return Some(handle.clone());
+        }
+
+        let sdf_import_path = import_path_of(shaders, sdf, "sdf")?;
+        let fill_import_path = import_path_of(shaders, fill, "fill")?;
+
+        debug!("Generating shader");
+        let generated_shader = Shader::from_wesl(
+            format!(
+                r#"
+@if(TONEMAP_IN_SHADER)
+import bevy_core_pipeline::tonemapping;
+@if(SRGB_OUTPUT)
+import bevy_render::color_operations::linear_to_srgb;
+@if(OKLAB_OUTPUT)
+import bevy_render::color_operations::linear_rgb_to_oklab;
+
+import bevy_smud::view_bindings::view;
+
+import {sdf_import_path} as sdf;
+import {fill_import_path} as fill;
+
+struct FragmentInput {{
+    @location(0) color: vec4<f32>,
+    @location(1) pos: vec2<f32>,
+    @location(2) params: vec4<f32>,
+    @location(3) bounds: vec2<f32>,
+}};
+
+@fragment
+fn fragment(in: FragmentInput) -> @location(0) vec4<f32> {{
+    let sdf_input = smud::SdfInput(in.pos, in.params, in.bounds);
+    let d = sdf::sdf(sdf_input);
+    let fill_input = smud::FillInput(
+        in.pos,
+        in.params,
+        d,
+        in.color,
+    );
+    var color = fill::fill(fill_input);
+
+@if(TONEMAP_IN_SHADER)
+    color = tonemapping::tone_mapping(color, view.color_grading);
+
+@if(SRGB_OUTPUT)
+    color = vec4(linear_to_srgb(color.rgb), color.a);
+
+@if(OKLAB_OUTPUT)
+    color = vec4(linear_rgb_to_oklab(color.rgb), color.a);
+
+    return color;
+}}
+"#
+            ),
+            // An asset path, so `package::` in the imports above names the
+            // asset root, where shaders loaded from files live.
+            format!("bevy_smud/generated/shape{}.wesl", generate_shader_id()),
+        );
+
+        let generated_shader_handle = shaders.add(generated_shader);
+
+        self.0.insert(shader_key, generated_shader_handle.clone());
+
+        Some(generated_shader_handle)
     }
 }
 
@@ -549,6 +636,7 @@ impl Plugin for UiShapePlugin {
     fn finish(&self, app: &mut App) {
         if let Some(render_app) = app.get_sub_app_mut(RenderApp) {
             render_app
+                .init_resource::<GeneratedShaders>()
                 .add_render_command::<TransparentUi, DrawUiShapes>()
                 .init_resource::<UiShapeMeta>()
                 .init_resource::<UiShapePipeline>()

@@ -13,7 +13,7 @@ Bevy smud is a way to conveniently construct and render sdf shapes with Bevy.
 
 Given a shape function/expression, and a fill type, it generates shaders at run-time.
 
-If you keep the number of different sdf and fill combinations relatively low it's pretty performant. My machine easily handles 100k shapes at 60 fps, with 40 different shape/fill combinations in randomized order (see [gallery](https://github.com/johanhelsing/bevy_smud/blob/main/examples/gallery.rs) example).
+It renders through Bevy's mesh2d pipeline, so it's fast. My machine easily handles 40k shapes at 120 fps, with 40 different shape/fill combinations in randomized order (see [gallery](https://github.com/johanhelsing/bevy_smud/blob/main/examples/gallery.rs) example).
 
 ## Usage
 
@@ -61,9 +61,9 @@ fn setup(
 
 Make sure you reuse the shaders, i.e. don't call `add_sdf_expr` every frame.
 
-You can also define shapes in .wgsl files. Note that in order to use the built-in shapes, you have to import [`smud`](https://github.com/johanhelsing/bevy_smud/blob/main/assets/smud.wgsl), and you must create a function named `sdf` that takes a `smud::SdfInput` and returns `f32`.
+You can also define shapes in .wesl files. The built-in shapes are in the [`smud`](https://github.com/johanhelsing/bevy_smud/blob/main/assets/smud.wesl) module (`smud::sd_circle` etc.), and you must create a function named `sdf` that takes a `smud::SdfInput` and returns `f32`.
 
-Other than that, make sure you understand how to combine shapes, use symmetries and change domains. For instance, the [bevy](https://github.com/johanhelsing/bevy_smud/blob/main/assets/bevy.wgsl) in the screenshot above is built up of several circles, ellipses, and a vesica for the beak.
+Other than that, make sure you understand how to combine shapes, use symmetries and change domains. For instance, the [bevy](https://github.com/johanhelsing/bevy_smud/blob/main/assets/bevy.wesl) in the screenshot above is built up of several circles, ellipses, and a vesica for the beak.
 
 Also, check out the [examples](https://github.com/johanhelsing/bevy_smud/blob/main/examples). In particular, the [basic](https://github.com/johanhelsing/bevy_smud/blob/main/examples/basic.rs) example should be a good place to start.
 
@@ -119,7 +119,8 @@ The `main` branch targets the latest bevy release.
 
 |bevy|bevy_smud|
 |----|---------|
-|0.19|0.14, main|
+|0.20|main     |
+|0.19|0.14     |
 |0.18|0.13     |
 |0.17|0.12     |
 |0.16|0.11     |

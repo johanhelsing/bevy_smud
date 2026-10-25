@@ -3,7 +3,7 @@ use std::borrow::Cow;
 use bevy::{
     asset::{load_internal_asset, uuid_handle},
     prelude::*,
-    shader::ShaderImport,
+    shader::{ShaderImport, Source},
 };
 
 const SMUD_SHADER_HANDLE: Handle<Shader> = uuid_handle!("eca0ed31-c377-41be-94a8-55154ecb0810");
@@ -93,4 +93,26 @@ pub(crate) fn wesl_import_path(shader: &Shader) -> String {
             .collect::<Vec<_>>()
             .join("::"),
     }
+}
+
+/// The WESL import path of a loaded sdf or fill shader, or `None` while it loads.
+pub(crate) fn import_path_of(
+    shaders: &Assets<Shader>,
+    handle: &Handle<Shader>,
+    kind: &str,
+) -> Option<String> {
+    let Some(shader) = shaders.get(handle) else {
+        debug!("Waiting for {kind} to load");
+        return None;
+    };
+    if !matches!(shader.source, Source::Wesl(_)) {
+        // Only WESL shaders can be imported. A `.wgsl` file is plain WGSL, so
+        // the generated shader would wait on it forever.
+        warn_once!(
+            "smud {kind} shader `{}` is not WESL. Rename it to `.wesl`.",
+            shader.path
+        );
+        return None;
+    }
+    Some(wesl_import_path(shader))
 }
