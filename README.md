@@ -92,7 +92,7 @@ For convenience, bevy_smud provides `From` implementations for some of Bevy's bu
 
 ## Web
 
-Works on WebGPU out of the box. For WebGL2, enable the `webgl2` feature.
+Works on WebGPU out of the box. For WebGL2, enable the `webgl2` feature, but expect it to be a lot slower.
 
 ## Showcase
 
