@@ -12,6 +12,7 @@ use render::ShapeRenderPlugin;
 #[cfg(feature = "webgl2")]
 use render_webgl2::ShapeRenderPlugin;
 use shader_loading::ShaderLoadingPlugin;
+use sorting::ShapeSortingPlugin;
 #[cfg(feature = "bevy_ui")]
 use ui::UiShapePlugin;
 
@@ -27,6 +28,7 @@ mod render_webgl2;
 pub mod sdf;
 mod sdf_assets;
 mod shader_loading;
+mod sorting;
 #[cfg(feature = "bevy_ui")]
 mod ui;
 mod util;
@@ -75,7 +77,7 @@ pub enum ShapeRenderSystems {
 impl Plugin for SmudPlugin {
     fn build(&self, app: &mut App) {
         // All the messy boiler-plate for loading a bunch of shaders
-        app.add_plugins((ShaderLoadingPlugin, ShapeRenderPlugin));
+        app.add_plugins((ShaderLoadingPlugin, ShapeRenderPlugin, ShapeSortingPlugin));
 
         #[cfg(feature = "bevy_primitives")]
         app.add_plugins(bevy_primitives::BevyPrimitivesPlugin);
