@@ -1,6 +1,6 @@
 //! Renders `SmudShape`s with smud's own instanced pipeline, a fork of Bevy's
-//! old sprite renderer. Used for WebGL2 (the `webgl2` feature), which has no
-//! storage buffers for the `Mesh2d` renderer in `render.rs`.
+//! old sprite renderer. Used for WebGL2 (the `webgl2` feature on wasm32), which
+//! has no storage buffers for the `Mesh2d` renderer in `render.rs`.
 
 use std::ops::Range;
 

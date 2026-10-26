@@ -7,9 +7,9 @@ use bevy::prelude::*;
 pub use components::*;
 pub use shader_loading::{DEFAULT_FILL_HANDLE, SIMPLE_FILL_HANDLE};
 
-#[cfg(not(feature = "webgl2"))]
+#[cfg(not(smud_webgl2_renderer))]
 use render::ShapeRenderPlugin;
-#[cfg(feature = "webgl2")]
+#[cfg(smud_webgl2_renderer)]
 use render_webgl2::ShapeRenderPlugin;
 use shader_loading::ShaderLoadingPlugin;
 use sorting::ShapeSortingPlugin;
@@ -21,9 +21,9 @@ pub mod bevy_primitives;
 mod components;
 #[cfg(feature = "bevy_picking")]
 mod picking_backend;
-#[cfg(not(feature = "webgl2"))]
+#[cfg(not(smud_webgl2_renderer))]
 mod render;
-#[cfg(feature = "webgl2")]
+#[cfg(smud_webgl2_renderer)]
 mod render_webgl2;
 pub mod sdf;
 mod sdf_assets;
@@ -33,7 +33,7 @@ mod sorting;
 mod ui;
 mod util;
 
-#[cfg(not(feature = "webgl2"))]
+#[cfg(not(smud_webgl2_renderer))]
 pub use render::{SmudMaterial, SmudMaterialKey};
 
 /// Re-export of the essentials needed for rendering shapes

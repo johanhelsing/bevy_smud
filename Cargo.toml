@@ -18,9 +18,12 @@ bevy_primitives = []
 # Bevy's own `libm` feature), so they return the same bits on every platform,
 # for deterministic simulation.
 libm = ["bevy/libm"]
-# For WebGL2, which has no storage buffers: render shapes with smud's own
-# instanced pipeline instead of Bevy's Mesh2d. Turns on Bevy's `webgl2`.
+# For WebGL2, which has no storage buffers: on wasm32, render shapes with
+# smud's own instanced pipeline instead of Bevy's Mesh2d. Turns on Bevy's
+# `webgl2`. Native builds keep Mesh2d.
 webgl2 = ["bevy/webgl2"]
+# Internal: use the WebGL2 renderer on native too, to compare the two.
+native_webgl2_renderer = []
 
 [dependencies]
 bevy = { version = "0.20", default-features = false, features = [
