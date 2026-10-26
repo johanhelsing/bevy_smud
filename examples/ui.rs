@@ -12,8 +12,8 @@ fn main() {
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn(Camera2d);
 
-    let circle_sdf = asset_server.load("shapes/circle.wgsl");
-    let ellipse_sdf = asset_server.load("shapes/ellipse.wgsl");
+    let circle_sdf = asset_server.load("shapes/circle.wesl");
+    let ellipse_sdf = asset_server.load("shapes/ellipse.wesl");
 
     // Container for all elements
     commands.spawn((

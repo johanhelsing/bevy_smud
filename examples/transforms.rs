@@ -13,7 +13,7 @@ fn main() {
 }
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
-    let bevy_shape_shader = asset_server.load("bevy.wgsl");
+    let bevy_shape_shader = asset_server.load("bevy.wesl");
 
     let transform = Transform {
         scale: Vec3::splat(0.05),

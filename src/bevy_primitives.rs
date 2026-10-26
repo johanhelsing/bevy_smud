@@ -41,12 +41,14 @@
 //! added to entities with primitive-based shapes for precise hit-testing.
 
 use bevy::asset::{load_internal_asset, uuid_handle};
-use bevy::math::bounding::Bounded2d;
+
+use crate::shader_loading::wesl_module;
 use bevy::math::ops;
-use bevy::math::primitives::{
+use bevy::prelude::*;
+use bevy::shape::Bounded2d;
+use bevy::shape::{
     Annulus, Capsule2d, Circle, CircularSector, Ellipse, Rectangle, RegularPolygon, Rhombus,
 };
-use bevy::prelude::*;
 
 use crate::SmudShape;
 
@@ -138,50 +140,58 @@ impl Plugin for BevyPrimitivesPlugin {
         load_internal_asset!(
             app,
             RECTANGLE_SDF_HANDLE,
-            "../assets/shapes/rectangle.wgsl",
-            Shader::from_wgsl
+            "../assets/shapes/rectangle.wesl",
+            wesl_module,
+            "smud::shapes::rectangle"
         );
         load_internal_asset!(
             app,
             CIRCLE_SDF_HANDLE,
-            "../assets/shapes/circle.wgsl",
-            Shader::from_wgsl
+            "../assets/shapes/circle.wesl",
+            wesl_module,
+            "smud::shapes::circle"
         );
         load_internal_asset!(
             app,
             ELLIPSE_SDF_HANDLE,
-            "../assets/shapes/ellipse.wgsl",
-            Shader::from_wgsl
+            "../assets/shapes/ellipse.wesl",
+            wesl_module,
+            "smud::shapes::ellipse"
         );
         load_internal_asset!(
             app,
             ANNULUS_SDF_HANDLE,
-            "../assets/shapes/annulus.wgsl",
-            Shader::from_wgsl
+            "../assets/shapes/annulus.wesl",
+            wesl_module,
+            "smud::shapes::annulus"
         );
         load_internal_asset!(
             app,
             CAPSULE_SDF_HANDLE,
-            "../assets/shapes/capsule.wgsl",
-            Shader::from_wgsl
+            "../assets/shapes/capsule.wesl",
+            wesl_module,
+            "smud::shapes::capsule"
         );
         load_internal_asset!(
             app,
             RHOMBUS_SDF_HANDLE,
-            "../assets/shapes/rhombus.wgsl",
-            Shader::from_wgsl
+            "../assets/shapes/rhombus.wesl",
+            wesl_module,
+            "smud::shapes::rhombus"
         );
         load_internal_asset!(
             app,
             CIRCULAR_SECTOR_SDF_HANDLE,
-            "../assets/shapes/circular_sector.wgsl",
-            Shader::from_wgsl
+            "../assets/shapes/circular_sector.wesl",
+            wesl_module,
+            "smud::shapes::circular_sector"
         );
         load_internal_asset!(
             app,
             REGULAR_POLYGON_SDF_HANDLE,
-            "../assets/shapes/regular_polygon.wgsl",
-            Shader::from_wgsl
+            "../assets/shapes/regular_polygon.wesl",
+            wesl_module,
+            "smud::shapes::regular_polygon"
         );
 
         // Register observers for auto-adding picking shapes
@@ -444,7 +454,7 @@ impl<T: SmudPrimitive> From<T> for crate::picking_backend::SmudPickingShape {
 /// Observer that automatically adds SmudPickingShape for shapes created from primitives
 #[cfg(feature = "bevy_picking")]
 fn auto_add_picking_shape(
-    trigger: On<Add, SmudShape>,
+    trigger: On<Add<SmudShape>>,
     query: Query<&SmudShape>,
     mut commands: Commands,
 ) {

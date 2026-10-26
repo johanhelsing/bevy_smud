@@ -5,7 +5,8 @@ use bevy::{
         SystemParamItem,
         lifetimeless::{Read, SRes},
     },
-    math::{Affine2, Rect},
+    math::{Affine2, FloatOrd, Rect},
+    mesh::VertexBufferLayout,
     prelude::*,
     render::{
         Extract, ExtractSchedule, MainWorld, Render, RenderApp, RenderSystems,
@@ -30,11 +31,12 @@ use bevy::{
     ui::{ComputedNode, ComputedStackIndex, ComputedUiTargetCamera, Node, UiGlobalTransform},
     ui_render::{TransparentUi, UiCameraMap, UiCameraView, stack_z_offsets},
 };
+
 use bytemuck::{Pod, Zeroable};
 
 use crate::{
-    BlendMode, FloatOrd, GeneratedShaders, SIMPLE_FILL_HANDLE, VertexBufferLayout,
-    shader_loading::VERTEX_SHADER_HANDLE,
+    BlendMode, SIMPLE_FILL_HANDLE,
+    shader_loading::{GeneratedShaders, VERTEX_SHADER_HANDLE},
 };
 
 /// Component for rendering shapes in UI.
@@ -194,7 +196,7 @@ fn extract_ui_shapes(
             continue;
         };
 
-        let render_entity = commands.spawn(TemporaryRenderEntity).id();
+        let render_entity = commands.spawn(TemporaryRenderEntity::default()).id();
 
         extracted_nodes.nodes.push(ExtractedUiShape {
             main_entity: entity.into(),
@@ -306,6 +308,7 @@ impl SpecializedRenderPipeline for UiShapePipeline {
                         },
                     ],
                 }],
+                ..default()
             },
             fragment: Some(FragmentState {
                 shader,
@@ -330,6 +333,7 @@ impl SpecializedRenderPipeline for UiShapePipeline {
                     }),
                     write_mask: ColorWrites::ALL,
                 })],
+                ..default()
             }),
             primitive: PrimitiveState {
                 topology: PrimitiveTopology::TriangleStrip,
@@ -474,9 +478,9 @@ fn queue_ui_shapes(
             draw_function,
             pipeline: pipeline_id,
             sort_key,
-            batch_range: 0..1,
+            // The instance of this node in the vertex buffer, one per node.
+            batch_range: index as u32..index as u32 + 1,
             extra_index: PhaseItemExtraIndex::None,
-            index,
             indexed: false,
         });
     }
@@ -529,13 +533,9 @@ impl RenderCommand<TransparentUi> for DrawUiShapeBatch {
             return RenderCommandResult::Failure("no vertex buffer");
         };
 
-        // Get the index of this specific UI node from the phase item
-        let node_index = item.index as u32;
-
         pass.set_vertex_buffer(0, vertices.slice(..));
-        // Draw 4 vertices for THIS specific instance only
         // Each instance uses 4 vertices in a triangle strip
-        pass.draw(0..4, node_index..(node_index + 1));
+        pass.draw(0..4, item.batch_range.clone());
         RenderCommandResult::Success
     }
 }
@@ -551,6 +551,7 @@ impl Plugin for UiShapePlugin {
     fn finish(&self, app: &mut App) {
         if let Some(render_app) = app.get_sub_app_mut(RenderApp) {
             render_app
+                .init_resource::<GeneratedShaders>()
                 .add_render_command::<TransparentUi, DrawUiShapes>()
                 .init_resource::<UiShapeMeta>()
                 .init_resource::<UiShapePipeline>()

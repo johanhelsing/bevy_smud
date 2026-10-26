@@ -11,8 +11,8 @@ fn main() {
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     // When sdfs are loaded from files, hot reloading works as normal
-    // Open up assets/bevy.wgsl and make some changes and see them reflected when you save
-    let bevy = asset_server.load("bevy.wgsl");
+    // Open up assets/bevy.wesl and make some changes and see them reflected when you save
+    let bevy = asset_server.load("bevy.wesl");
 
     commands.spawn((
         Transform {

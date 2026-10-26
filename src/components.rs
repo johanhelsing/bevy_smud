@@ -1,8 +1,11 @@
-use bevy::camera::visibility::{VisibilityClass, add_visibility_class};
 use bevy::color::palettes::css;
-use bevy::math::primitives::Rectangle;
 use bevy::prelude::*;
-use bevy::render::sync_world::SyncToRenderWorld;
+use bevy::shape::Rectangle;
+#[cfg(smud_webgl2_renderer)]
+use bevy::{
+    camera::visibility::{VisibilityClass, add_visibility_class},
+    render::sync_world::SyncToRenderWorld,
+};
 
 use crate::DEFAULT_FILL_HANDLE;
 
@@ -17,9 +20,11 @@ pub enum BlendMode {
 }
 
 #[derive(Component, Reflect, Debug, Clone)]
-#[require(Transform, Visibility, SyncToRenderWorld, VisibilityClass)] // TODO: anchor?
+#[require(Transform, Visibility)] // TODO: anchor?
+// The webgl2 renderer extracts shapes itself, like Bevy's old sprites.
+#[cfg_attr(smud_webgl2_renderer, require(SyncToRenderWorld, VisibilityClass))]
+#[cfg_attr(smud_webgl2_renderer, component(on_add = add_visibility_class::<SmudShape>))]
 #[reflect(Component, Default, Debug, Clone)]
-#[component(on_add = add_visibility_class::<SmudShape>)]
 /// Main component used for describing an sdf shape
 pub struct SmudShape {
     /// The color used by the fill shader

@@ -32,8 +32,8 @@ return smud::sd_circle(p_2 - vec2<f32>(20., 0.), 40.);
     ",
     );
 
-    // If the sdf gets very complicated, you can keep it in a .wgsl file:
-    let bevy = asset_server.load("bevy.wgsl");
+    // If the sdf gets very complicated, you can keep it in a .wesl file:
+    let bevy = asset_server.load("bevy.wesl");
 
     commands.spawn(SmudShape {
         color: css::TOMATO.into(),

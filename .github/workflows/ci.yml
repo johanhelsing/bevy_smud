@@ -15,6 +15,16 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo check
 
+  check-webgl2:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo check --target wasm32-unknown-unknown --features webgl2 --examples
+
   test:
     runs-on: ubuntu-latest
     env:

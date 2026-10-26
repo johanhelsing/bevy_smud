@@ -66,30 +66,30 @@ fn setup(
 
     // TODO: These could be inlined with .add_sdf_body
     let shaders = vec![
-        asset_server.load("gallery/box.wgsl"),
-        asset_server.load("gallery/circle.wgsl"),
-        asset_server.load("gallery/heart.wgsl"),
-        asset_server.load("gallery/moon.wgsl"),
-        asset_server.load("gallery/pie.wgsl"),
-        asset_server.load("gallery/egg.wgsl"),
-        asset_server.load("gallery/rounded_x.wgsl"),
-        asset_server.load("gallery/ellipse.wgsl"),
-        asset_server.load("gallery/star_5.wgsl"),
-        asset_server.load("gallery/star_4.wgsl"),
-        asset_server.load("gallery/horseshoe.wgsl"),
-        asset_server.load("gallery/blobby_cross.wgsl"),
-        asset_server.load("gallery/hexagon.wgsl"),
-        asset_server.load("gallery/vesica.wgsl"),
-        asset_server.load("gallery/segment.wgsl"),
-        asset_server.load("gallery/triangle.wgsl"),
-        asset_server.load("gallery/stairs.wgsl"),
-        asset_server.load("gallery/donut.wgsl"),
+        asset_server.load("gallery/box.wesl"),
+        asset_server.load("gallery/circle.wesl"),
+        asset_server.load("gallery/heart.wesl"),
+        asset_server.load("gallery/moon.wesl"),
+        asset_server.load("gallery/pie.wesl"),
+        asset_server.load("gallery/egg.wesl"),
+        asset_server.load("gallery/rounded_x.wesl"),
+        asset_server.load("gallery/ellipse.wesl"),
+        asset_server.load("gallery/star_5.wesl"),
+        asset_server.load("gallery/star_4.wesl"),
+        asset_server.load("gallery/horseshoe.wesl"),
+        asset_server.load("gallery/blobby_cross.wesl"),
+        asset_server.load("gallery/hexagon.wesl"),
+        asset_server.load("gallery/vesica.wesl"),
+        asset_server.load("gallery/segment.wesl"),
+        asset_server.load("gallery/triangle.wesl"),
+        asset_server.load("gallery/stairs.wesl"),
+        asset_server.load("gallery/donut.wesl"),
     ];
 
     let fills = [
-        // asset_server.load("fills/simple.wgsl"),
-        asset_server.load("fills/cubic_falloff.wgsl"),
-        asset_server.load("fills/outline.wgsl"),
+        // asset_server.load("fills/simple.wesl"),
+        asset_server.load("fills/cubic_falloff.wesl"),
+        asset_server.load("fills/outline.wesl"),
     ];
 
     for i in 0..w {
