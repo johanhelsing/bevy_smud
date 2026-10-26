@@ -18,6 +18,9 @@ bevy_primitives = []
 # Bevy's own `libm` feature), so they return the same bits on every platform,
 # for deterministic simulation.
 libm = ["bevy/libm"]
+# For WebGL2, which has no storage buffers: render shapes with smud's own
+# instanced pipeline instead of Bevy's Mesh2d. Turns on Bevy's `webgl2`.
+webgl2 = ["bevy/webgl2"]
 
 [dependencies]
 bevy = { version = "0.20", default-features = false, features = [
@@ -43,13 +46,20 @@ bevy = { version = "0.20", default-features = false, features = [
   "png",
   "bevy_winit",
   "default_font",
-  "file_watcher",
   "x11",            # github actions runners don't have libxkbcommon installed, so can't use wayland
 ] }
 bevy_asset_loader = "0.28"
 bevy_lospec = "0.14"
 bevy_pancam = "0.22"
-rand = "0.9"
+rand = "0.10"
+
+# Hot reloading in the examples; there's no file watcher in the browser.
+[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+bevy = { version = "0.20", default-features = false, features = ["file_watcher"] }
+
+# rand needs a source of randomness in the browser.
+[target.'cfg(target_arch = "wasm32")'.dev-dependencies]
+getrandom = { version = "0.4", default-features = false, features = ["wasm_js"] }
 
 [profile.dev]
 opt-level = 1

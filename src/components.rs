@@ -1,6 +1,11 @@
 use bevy::color::palettes::css;
 use bevy::prelude::*;
 use bevy::shape::Rectangle;
+#[cfg(feature = "webgl2")]
+use bevy::{
+    camera::visibility::{VisibilityClass, add_visibility_class},
+    render::sync_world::SyncToRenderWorld,
+};
 
 use crate::DEFAULT_FILL_HANDLE;
 
@@ -16,6 +21,9 @@ pub enum BlendMode {
 
 #[derive(Component, Reflect, Debug, Clone)]
 #[require(Transform, Visibility)] // TODO: anchor?
+// The webgl2 renderer extracts shapes itself, like Bevy's old sprites.
+#[cfg_attr(feature = "webgl2", require(SyncToRenderWorld, VisibilityClass))]
+#[cfg_attr(feature = "webgl2", component(on_add = add_visibility_class::<SmudShape>))]
 #[reflect(Component, Default, Debug, Clone)]
 /// Main component used for describing an sdf shape
 pub struct SmudShape {

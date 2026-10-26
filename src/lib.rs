@@ -7,7 +7,10 @@ use bevy::prelude::*;
 pub use components::*;
 pub use shader_loading::{DEFAULT_FILL_HANDLE, SIMPLE_FILL_HANDLE};
 
+#[cfg(not(feature = "webgl2"))]
 use render::ShapeRenderPlugin;
+#[cfg(feature = "webgl2")]
+use render_webgl2::ShapeRenderPlugin;
 use shader_loading::ShaderLoadingPlugin;
 #[cfg(feature = "bevy_ui")]
 use ui::UiShapePlugin;
@@ -17,7 +20,10 @@ pub mod bevy_primitives;
 mod components;
 #[cfg(feature = "bevy_picking")]
 mod picking_backend;
+#[cfg(not(feature = "webgl2"))]
 mod render;
+#[cfg(feature = "webgl2")]
+mod render_webgl2;
 pub mod sdf;
 mod sdf_assets;
 mod shader_loading;
@@ -25,6 +31,7 @@ mod shader_loading;
 mod ui;
 mod util;
 
+#[cfg(not(feature = "webgl2"))]
 pub use render::{SmudMaterial, SmudMaterialKey};
 
 /// Re-export of the essentials needed for rendering shapes
@@ -60,7 +67,8 @@ pub struct SmudPlugin;
 /// System set for shape rendering.
 #[derive(Debug, Hash, PartialEq, Eq, Clone, SystemSet)]
 pub enum ShapeRenderSystems {
-    /// Gives new and changed shapes their mesh, material and bounds, in `PostUpdate`.
+    /// Prepares new and changed shapes for rendering: in `PostUpdate`, or in
+    /// `ExtractSchedule` with the `webgl2` feature.
     PrepareShapes,
 }
 

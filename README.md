@@ -90,6 +90,10 @@ Enable the `libm` feature for SDFs that give the same bits on every platform, as
 
 For convenience, bevy_smud provides `From` implementations for some of Bevy's built-in 2D primitive shapes (`Circle`, `Rectangle`, `Ellipse`, etc.), allowing you to quickly create SDF shapes without writing shader code. See the [bevy_primitives example](https://github.com/johanhelsing/bevy_smud/blob/main/examples/bevy_primitives.rs) for usage.
 
+## Web
+
+Works on WebGPU out of the box. For WebGL2, enable the `webgl2` feature.
+
 ## Showcase
 
 Send me a PR if you want your project featured here.
