@@ -13,7 +13,7 @@ Bevy smud is a way to conveniently construct and render sdf shapes with Bevy.
 
 Given a shape function/expression, and a fill type, it generates shaders at run-time.
 
-It renders through Bevy's mesh2d pipeline, so it's fast. My machine easily handles 40k shapes at 120 fps, with 40 different shape/fill combinations in randomized order (see [gallery](https://github.com/johanhelsing/bevy_smud/blob/main/examples/gallery.rs) example).
+It renders through Bevy's mesh2d pipeline, so it's fast. My machine easily handles 50k shapes at 60 fps, with 40 different shape/fill combinations in randomized order (see [gallery](https://github.com/johanhelsing/bevy_smud/blob/main/examples/gallery.rs) example).
 
 ## Usage
 
