@@ -62,7 +62,10 @@ impl Plugin for ShapeRenderPlugin {
                     .run_if(mesh2d_bindings_loaded)
                     .in_set(ShapeRenderSystems::PrepareShapes)
                     .before(VisibilitySystems::CalculateBounds),
-            );
+            )
+            // After `PostUpdate`, where the instance buffer drops the shape,
+            // and before the frame is drawn.
+            .add_systems(Last, drop_removed_shapes);
     }
 }
 
@@ -259,6 +262,41 @@ fn prepare_shapes(
     }
 }
 
+/// Takes what [`prepare_shapes`] gave an entity off it once its shape is
+/// gone, so it stops drawing.
+///
+/// Removing a [`SmudShape`] frees its slot in the instance buffer, and the
+/// last shape's data is moved into that slot. With its mesh and material
+/// left on, the entity would go on drawing its sdf with another shape's
+/// color, params and bounds. A shape put back before this runs keeps them.
+/// A `Mesh2d` that is not the shapes' quad belongs to someone else (a
+/// sprite) and stays.
+///
+/// The [`MeshTag`](bevy::mesh::MeshTag) stays too: the buffer owns it, and only the buffer knows
+/// when the slot is freed, which may be a frame after the removal. Taken
+/// off before that, a shape put back next frame is pushed again while the
+/// buffer still holds it.
+fn drop_removed_shapes(
+    mut removed: RemovedComponents<SmudShape>,
+    entities: Query<(Has<SmudShape>, Option<&Mesh2d>)>,
+    shape_materials: Res<ShapeMaterials>,
+    mut commands: Commands,
+) {
+    for entity in removed.read() {
+        let Ok((has_shape, mesh)) = entities.get(entity) else {
+            continue; // despawned
+        };
+        if has_shape {
+            continue;
+        }
+        let mut entity = commands.entity(entity);
+        entity.try_remove::<(MeshMaterial2d<SmudMaterial>, NoAutoAabb, Aabb)>();
+        if mesh.is_some_and(|mesh| mesh.0 == shape_materials.quad) {
+            entity.try_remove::<Mesh2d>();
+        }
+    }
+}
+
 fn generate_shader(
     shaders: &mut Assets<Shader>,
     sdf: &Handle<Shader>,
@@ -304,4 +342,112 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {{
         // An asset path, so `package::` in the imports names the asset root.
         format!("bevy_smud/generated/shape{}.wesl", generate_shader_id()),
     )))
+}
+
+#[cfg(test)]
+mod tests {
+    use bevy::{app::TaskPoolPlugin, mesh::MeshTag};
+
+    use super::*;
+
+    /// The instance buffer as the renderer keeps it, and what
+    /// [`prepare_shapes`] gives a shape, without a renderer.
+    fn app() -> (App, Handle<Mesh>) {
+        let mut app = App::new();
+        app.add_plugins((TaskPoolPlugin::default(), AssetPlugin::default()))
+            .init_asset::<ShaderBuffer>()
+            .add_plugins(GpuComponentArrayBufferPlugin::<SmudShape>::default());
+        let quad = Handle::<Mesh>::default();
+        app.insert_resource(ShapeMaterials {
+            quad: quad.clone(),
+            ..default()
+        })
+        .add_systems(Last, drop_removed_shapes);
+        (app, quad)
+    }
+
+    /// A shape told apart from the others by its first param.
+    fn shape(id: f32) -> SmudShape {
+        SmudShape {
+            params: Vec4::new(id, 0., 0., 0.),
+            ..default()
+        }
+    }
+
+    fn drawn_shape(id: f32, quad: &Handle<Mesh>) -> impl Bundle {
+        (
+            shape(id),
+            Mesh2d(quad.clone()),
+            MeshMaterial2d::<SmudMaterial>::default(),
+            NoAutoAabb,
+        )
+    }
+
+    /// The first param in the slot the entity's tag names.
+    fn drawn_id(world: &World, entity: Entity) -> f32 {
+        let array = world.resource::<GpuComponentArray<SmudShape>>();
+        let buffer = world
+            .resource::<Assets<ShaderBuffer>>()
+            .get(&array.buffer)
+            .unwrap();
+        let instances = buffer.cast_slice::<GpuSmudInstance>().unwrap();
+        let tag = **world.get::<MeshTag>(entity).unwrap();
+        instances[tag as usize].params[0]
+    }
+
+    fn draws(world: &World, entity: Entity) -> bool {
+        world.get::<Mesh2d>(entity).is_some()
+            || world.get::<MeshMaterial2d<SmudMaterial>>(entity).is_some()
+    }
+
+    /// An entity that loses its shape stops drawing, while the shape moved
+    /// into its slot draws its own data from there. A sprite keeps its mesh,
+    /// and a shape put back the same frame draws its new data.
+    #[test]
+    fn an_entity_that_loses_its_shape_stops_drawing_it() {
+        let (mut app, quad) = app();
+        let sprite_mesh: Handle<Mesh> = uuid_handle!("2d0c6f6e-5d0a-4a52-8a1e-6c3f9b1d7e42");
+        let world = app.world_mut();
+        let wall = world.spawn(drawn_shape(1., &quad)).id();
+        let sprite = world.spawn(drawn_shape(2., &quad)).id();
+        let put_back = world.spawn(drawn_shape(3., &quad)).id();
+        let despawned = world.spawn(drawn_shape(4., &quad)).id();
+        // Last, so the slots of the shapes removed above move it.
+        let moved = world.spawn(drawn_shape(5., &quad)).id();
+        app.update();
+        assert_eq!(drawn_id(app.world(), moved), 5.);
+
+        let world = app.world_mut();
+        for entity in [wall, sprite, put_back] {
+            world.entity_mut(entity).remove::<SmudShape>();
+        }
+        world.entity_mut(sprite).insert(Mesh2d(sprite_mesh));
+        world.entity_mut(put_back).insert(shape(6.));
+        app.update();
+
+        let world = app.world();
+        assert!(!draws(world, wall), "the wall still draws");
+        assert!(
+            world.get::<Mesh2d>(sprite).is_some(),
+            "the sprite lost its mesh"
+        );
+        assert!(
+            world.get::<MeshMaterial2d<SmudMaterial>>(sprite).is_none(),
+            "the sprite's entity still draws a shape"
+        );
+        assert!(draws(world, put_back), "a shape put back was dropped");
+        assert_eq!(drawn_id(world, put_back), 6.);
+        assert_eq!(
+            drawn_id(world, moved),
+            5.,
+            "the moved shape draws another's data"
+        );
+
+        // Its own frame: Bevy 0.20.1 panics inserting the tag of a shape
+        // moved into a freed slot when that shape is despawned too.
+        app.world_mut().despawn(despawned);
+        app.update();
+        assert_eq!(drawn_id(app.world(), moved), 5.);
+        assert_eq!(drawn_id(app.world(), put_back), 6.);
+    }
 }
