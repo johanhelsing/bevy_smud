@@ -35,7 +35,6 @@ bevy = { version = "0.20", default-features = false, features = [
   "multi_threaded",
 ] }
 bytemuck = { version = "1.15.0", features = ["derive"] }
-copyless = "0.1"
 bitflags = "2.5"
 fixedbitset = "0.5"
 uuid = "1.10.0"
