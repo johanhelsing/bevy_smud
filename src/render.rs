@@ -250,14 +250,14 @@ fn prepare_shapes(
         let aabb = Aabb::from_min_max((-half_extents).extend(0.), half_extents.extend(0.));
 
         if current_material.is_none_or(|current| current.0 != material) {
-            commands.entity(entity).insert((
+            commands.entity(entity).try_insert((
                 Mesh2d(quad.clone()),
                 MeshMaterial2d(material),
                 NoAutoAabb,
                 aabb,
             ));
         } else if current_aabb != Some(&aabb) {
-            commands.entity(entity).insert(aabb);
+            commands.entity(entity).try_insert(aabb);
         }
     }
 }
